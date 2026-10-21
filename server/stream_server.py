@@ -529,6 +529,82 @@ async def trigger_schedule_now(schedule_id: str, request: Request):
         raise HTTPException(status_code=500, detail=f"Gagal memicu jadwal: {str(exc)}")
 
 
+@app.get("/api/services/health")
+async def get_services_health():
+    """
+    Mengambil status ketersediaan microservice dari Redis cache (key: system:services_health).
+    Jika belum ada di cache, lakukan pengecekan langsung dan simpan ke Redis.
+    """
+    from orchestrator.tools.uptime_checker import (
+        run_all_health_checks,
+        REDIS_SERVICES_HEALTH_KEY,
+        REDIS_SERVICES_HEALTH_TTL,
+    )
+    if async_redis_client:
+        cached = await async_redis_client.get(REDIS_SERVICES_HEALTH_KEY)
+        if cached:
+            try:
+                return json.loads(cached)
+            except Exception:
+                pass
+
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, run_all_health_checks)
+
+    if async_redis_client:
+        await async_redis_client.setex(
+            REDIS_SERVICES_HEALTH_KEY,
+            REDIS_SERVICES_HEALTH_TTL,
+            json.dumps(result),
+        )
+
+    return result
+
+
+@app.post("/api/services/health/check")
+async def trigger_services_health_check():
+    """
+    Memicu pengecekan instan seluruh microservice saat itu juga,
+    memperbarui cache Redis, dan memancarkan event alert ke SSE.
+    """
+    from orchestrator.tools.uptime_checker import (
+        run_all_health_checks,
+        REDIS_SERVICES_HEALTH_KEY,
+        REDIS_SERVICES_HEALTH_TTL,
+    )
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, run_all_health_checks)
+
+    if async_redis_client:
+        await async_redis_client.setex(
+            REDIS_SERVICES_HEALTH_KEY,
+            REDIS_SERVICES_HEALTH_TTL,
+            json.dumps(result),
+        )
+
+    from orchestrator.events import emit_agent_event
+    overall_status = result.get("overall_status", "healthy")
+    if overall_status == "degraded":
+        down_services = [s["name"] for s in result.get("services", []) if s["status"] != "healthy"]
+        emit_agent_event(
+            thread_id="system",
+            node="uptime_alert",
+            status="failed",
+            message=f"⚠️ Peringatan Service Down: Satu atau lebih microservice tidak merespons! ({', '.join(down_services)})",
+            details={"agent_name": "Bay-Zero", "health": result},
+        )
+    else:
+        emit_agent_event(
+            thread_id="system",
+            node="uptime_alert",
+            status="completed",
+            message="✅ Seluruh microservice normal kembali.",
+            details={"agent_name": "Bay-Zero", "health": result},
+        )
+
+    return result
+
+
 # Static web UI serving if web/dist exists
 web_dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "web", "dist")
 if os.path.exists(web_dist_dir):

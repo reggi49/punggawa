@@ -341,6 +341,11 @@ def run_worker():
     last_schedule_check_timestamp = 0.0
     SCHEDULE_CHECK_INTERVAL_SECONDS = 60.0
 
+    # Inisialisasi timer uptime health check microservice (setiap 3600 detik / 1 jam)
+    last_uptime_check_timestamp = 0.0
+    UPTIME_CHECK_INTERVAL_SECONDS = 3600.0
+    last_uptime_status = None
+
     while not shutdown_handler.kill_now:
         try:
             now = time.time()
@@ -384,6 +389,55 @@ def run_worker():
                     )
                 except Exception as c_err:
                     logger.warning(f"Gagal menjalankan periodic auto-cleanup database: {c_err}")
+
+            # 3. Uptime health check microservice eksternal (setiap 1 jam / 3600 detik)
+            if now - last_uptime_check_timestamp >= UPTIME_CHECK_INTERVAL_SECONDS:
+                last_uptime_check_timestamp = now
+                try:
+                    from orchestrator.tools.uptime_checker import (
+                        run_all_health_checks,
+                        REDIS_SERVICES_HEALTH_KEY,
+                        REDIS_SERVICES_HEALTH_TTL,
+                    )
+                    health_res = run_all_health_checks()
+                    redis_client.setex(
+                        REDIS_SERVICES_HEALTH_KEY,
+                        REDIS_SERVICES_HEALTH_TTL,
+                        json.dumps(health_res),
+                    )
+                    current_status = health_res.get("overall_status", "healthy")
+                    logger.info(
+                        f"🩺 [UPTIME MONITOR] Health check selesai. Status keseluruhan: {current_status.upper()}"
+                    )
+
+                    if current_status == "degraded":
+                        down_services = [
+                            s["name"] for s in health_res.get("services", []) if s["status"] != "healthy"
+                        ]
+                        emit_agent_event(
+                            thread_id="system",
+                            node="uptime_alert",
+                            status="failed",
+                            message=f"⚠️ Peringatan Service Down: Satu atau lebih microservice tidak merespons! ({', '.join(down_services)})",
+                            details={
+                                "agent_name": "Bay-Zero",
+                                "health": health_res,
+                            },
+                        )
+                    elif last_uptime_status == "degraded" and current_status == "healthy":
+                        emit_agent_event(
+                            thread_id="system",
+                            node="uptime_alert",
+                            status="completed",
+                            message="✅ Seluruh microservice normal kembali.",
+                            details={
+                                "agent_name": "Bay-Zero",
+                                "health": health_res,
+                            },
+                        )
+                    last_uptime_status = current_status
+                except Exception as u_err:
+                    logger.warning(f"Error running uptime health check: {u_err}")
 
             # BLPOP memblokir koneksi secara efisien hingga task masuk
             task_raw = redis_client.blpop(settings.TASK_QUEUE_NAME, timeout=2)

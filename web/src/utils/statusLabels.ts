@@ -190,9 +190,19 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     action: 'success_celebration',
     color: '#10b981',
     glowColor: '#059669',
-    badgeBg: 'rgba(16, 185, 129, 0.25)',
+    badgeBg: 'rgba(168, 85, 247, 0.25)',
     description: 'Dongeng berhasil diunggah ke CMS Bogorstore.',
     icon: '🚀',
+    responsibleWorker: 'usagi',
+  },
+  trigger_notification_node: {
+    label: 'Kirim Notifikasi Mobile 🔔',
+    action: 'intense_typing',
+    color: '#c084fc',
+    glowColor: '#9333ea',
+    badgeBg: 'rgba(192, 132, 252, 0.25)',
+    description: 'Usagi memicu push notification Firebase FCM ke seluruh pembaca dongeng.',
+    icon: '🔔',
     responsibleWorker: 'usagi',
   },
   complete_node: {
@@ -251,6 +261,7 @@ export function getHumanStatus(node: string, defaultAction?: string): HumanStatu
   if (lower.includes('ingest') || lower.includes('start')) return STATUS_LABELS['ingest_node'];
   if (lower.includes('scrape') || lower.includes('search') || lower.includes('fetch')) return STATUS_LABELS['scrape_node'];
   if (lower.includes('curate') || lower.includes('youtube')) return STATUS_LABELS['curate_node'];
+  if (lower.includes('notif')) return STATUS_LABELS['trigger_notification_node'];
   if (lower.includes('draft') || lower.includes('write') || lower.includes('processor')) return STATUS_LABELS['draft_node'];
   if (lower.includes('thumbnail') || lower.includes('image') || lower.includes('cover')) return STATUS_LABELS['thumbnail_node'];
   if (lower.includes('sop') || lower.includes('validate') || lower.includes('check')) return STATUS_LABELS['sop_validator_node'];

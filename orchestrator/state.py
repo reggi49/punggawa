@@ -47,6 +47,8 @@ class AgentState(TypedDict):
     curation_result: dict[str, Any] | None    # {"skip": bool, "reason": "...", "title": "...", "category_id": "..."}
     thumbnail_path: str | None
     cms_post_result: dict[str, Any] | None
+    is_notified: bool | None
+    notification_status: str | None
 
     # Audit trail & logs terakumulasi tanpa menimpa data sebelumnya
     execution_logs: Annotated[list[str], add]

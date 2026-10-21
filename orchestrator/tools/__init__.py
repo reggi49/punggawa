@@ -10,10 +10,14 @@ import orchestrator.tools.image_generator
 import orchestrator.tools.kodepintar_publisher
 import orchestrator.tools.google_news
 import orchestrator.tools.github_trending
+import orchestrator.tools.uptime_checker
+import orchestrator.tools.cms_notifier
+from orchestrator.tools.cms_notifier import trigger_post_notification
 
 __all__ = [
     "registry",
     "register_tool",
     "ToolRegistry",
     "ToolDefinition",
+    "trigger_post_notification",
 ]

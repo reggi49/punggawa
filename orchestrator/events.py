@@ -88,7 +88,13 @@ def agent_node_tracker(node_name: str, description: str = ""):
             )
 
             # Tentukan aktor agen berdasarkan node dan tipe task
-            if node_name in ("curate_video_node", "curate_node", "render_cover_node", "post_cms_node"):
+            if node_name in (
+                "curate_video_node",
+                "curate_node",
+                "render_cover_node",
+                "post_cms_node",
+                "trigger_notification_node",
+            ):
                 agent_name = "Usagi"
             elif node_name in ("sop_validator_node", "await_approval"):
                 agent_name = "Bay-Zero"

@@ -19,6 +19,7 @@ from orchestrator.tools.dongeng_publisher import (
     post_to_cms,
 )
 from orchestrator.tools.dongeng_thumbnail import create_cms_thumbnail
+from orchestrator.tools.cms_notifier import trigger_post_notification
 from orchestrator.tools.youtube_client import (
     get_best_youtube_bg,
     get_youtube_metadata,
@@ -299,7 +300,7 @@ def publish_node(state: AgentState) -> dict[str, Any]:
         logger.info(f"🎉 [PUBLISH SUCCESS] Video '{video_id}' berhasil diterbitkan ke CMS Bogorstore!")
         return {
             "cms_post_result": post_resp,
-            "status": "completed",
+            "status": "processing",
             "execution_logs": [
                 f"[{timestamp}] Published to Bogorstore CMS successfully. Title='{final_title}', Category={category_id}."
             ],
@@ -315,12 +316,94 @@ def publish_node(state: AgentState) -> dict[str, Any]:
         }
 
 
+@agent_node_tracker("trigger_notification_node", "Mengirim push notification dongeng baru ke pembaca")
+def trigger_notification_node(state: AgentState) -> dict[str, Any]:
+    task_id = state.get("task_id", "unknown")
+    video_id = state.get("video_id", "")
+    cms_post_result = state.get("cms_post_result") or {}
+    status = state.get("status")
+    is_notified = state.get("is_notified", False)
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Guard 1: Jangan kirim jika task gagal atau sudah dinotifikasi sebelumnya
+    if status == "failed" or is_notified:
+        logger.info(f"⏭️ [NOTIFICATION SKIPPED] Status '{status}' atau is_notified={is_notified}.")
+        return {"is_notified": is_notified}
+
+    # Guard 2: Cek dry-run
+    input_data = state.get("input_data", {})
+    if input_data.get("dry_run", False) or cms_post_result.get("status") == "dry-run":
+        logger.info("🧪 [NOTIFICATION SKIPPED] Mode Dry-Run aktif, push notification dilewati.")
+        return {
+            "is_notified": False,
+            "notification_status": "skipped_dry_run",
+            "execution_logs": [f"[{timestamp}] Push notification dilewati (Mode Dry-Run)."],
+        }
+
+    # Guard 3: Ekstraksi post_id dari cms_post_result
+    # Respon ApipostController::store:
+    # {"status": "success", "message": "...", "data": {"id": 1106, ...}}
+    raw_post_id = None
+    if isinstance(cms_post_result, dict):
+        data_obj = cms_post_result.get("data")
+        if isinstance(data_obj, dict):
+            raw_post_id = data_obj.get("id")
+        if raw_post_id is None:
+            raw_post_id = cms_post_result.get("id")
+
+    # Validasi post_id harus numerik (bukan string YouTube ID atau None)
+    if not raw_post_id or not str(raw_post_id).isdigit():
+        logger.warning(
+            f"⚠️ [NOTIFICATION SKIPPED] ID Post CMS tidak valid atau tidak ditemukan ({raw_post_id}). "
+            "Notifikasi hanya dikirim untuk post baru yang berhasil disimpan di database CMS."
+        )
+        return {
+            "is_notified": False,
+            "notification_status": "skipped_invalid_id",
+            "execution_logs": [
+                f"[{timestamp}] Push notification dilewati: ID Post CMS ({raw_post_id}) tidak valid/bukan numerik."
+            ],
+        }
+
+    post_id = int(raw_post_id)
+    curation = state.get("curation_result") or {}
+    title = curation.get("title") or state.get("video_metadata", {}).get("title", f"Dongeng #{post_id}")
+
+    logger.info(f"🔔 [NOTIFICATION] Mengirim trigger push notification untuk post_id={post_id} ('{title}')...")
+
+    notify_res = trigger_post_notification(post_id)
+
+    if notify_res.get("success"):
+        logger.info(f"✨ [NOTIFICATION SUCCESS] Push notification untuk post #{post_id} berhasil dipicu!")
+        return {
+            "is_notified": True,
+            "notification_status": "sent",
+            "execution_logs": [
+                f"[{timestamp}] Push notification berhasil dikirim untuk post #{post_id}: '{title}'."
+            ],
+        }
+    else:
+        err = notify_res.get("error", "Unknown notification error")
+        logger.warning(f"⚠️ [NOTIFICATION WARNING] Gagal mengirim push notification untuk post #{post_id}: {err}")
+        return {
+            "is_notified": False,
+            "notification_status": "failed",
+            "execution_logs": [
+                f"[{timestamp}] Push notification gagal dipicu untuk post #{post_id}: {err}."
+            ],
+        }
+
+
 def complete_node(state: AgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     status = state.get("status", "completed")
+    if status != "failed":
+        status = "completed"
     video_id = state.get("video_id")
     curation = state.get("curation_result") or {}
     cms_res = state.get("cms_post_result") or {}
+    is_notified = state.get("is_notified", False)
+    notification_status = state.get("notification_status")
     error = state.get("error")
     timestamp = datetime.now(timezone.utc).isoformat()
 
@@ -330,6 +413,8 @@ def complete_node(state: AgentState) -> dict[str, Any]:
         f"Title: {curation.get('title', 'N/A')}. "
         f"Category: {curation.get('category_name', 'N/A')}."
     )
+    if is_notified:
+        summary_text += " Push notification terkirim."
     if error:
         summary_text += f" Error: {error}"
 
@@ -342,6 +427,8 @@ def complete_node(state: AgentState) -> dict[str, Any]:
             "category_id": curation.get("category_id"),
             "category_name": curation.get("category_name"),
             "cms_result": cms_res,
+            "is_notified": is_notified,
+            "notification_status": notification_status,
             "summary": summary_text,
             "status": status,
         },
@@ -358,6 +445,14 @@ def route_after_node(state: AgentState) -> Literal["complete_node", "continue"]:
     return "continue"
 
 
+def route_after_publish(state: AgentState) -> Literal["trigger_notification_node", "complete_node"]:
+    """Conditional edge setelah publish: Jika gagal, langsung lompat ke complete_node."""
+    status = state.get("status")
+    if status == "failed" or state.get("error"):
+        return "complete_node"
+    return "trigger_notification_node"
+
+
 def build_dongeng_graph() -> StateGraph:
     """Merakit alur sekuensial Assembly Line untuk kurasi dan publikasi video Dongeng."""
     workflow = StateGraph(AgentState)
@@ -369,6 +464,7 @@ def build_dongeng_graph() -> StateGraph:
     workflow.add_node("thumbnail_portrait_node", thumbnail_portrait_node)
     workflow.add_node("sop_validator_node", sop_validator_node)
     workflow.add_node("publish_node", publish_node)
+    workflow.add_node("trigger_notification_node", trigger_notification_node)
     workflow.add_node("complete_node", complete_node)
 
     # 2. Rangkai edge dengan conditional bypass
@@ -400,7 +496,12 @@ def build_dongeng_graph() -> StateGraph:
         {"complete_node": "complete_node", "continue": "publish_node"},
     )
 
-    workflow.add_edge("publish_node", "complete_node")
+    workflow.add_conditional_edges(
+        "publish_node",
+        route_after_publish,
+        {"trigger_notification_node": "trigger_notification_node", "complete_node": "complete_node"},
+    )
+    workflow.add_edge("trigger_notification_node", "complete_node")
     workflow.add_edge("complete_node", END)
 
     return workflow

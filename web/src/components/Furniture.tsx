@@ -1,15 +1,18 @@
 import React, { useMemo, useRef, Suspense } from 'react';
 import { useFrame } from '@react-three/fiber';
-import { useGLTF, RoundedBox, Clone } from '@react-three/drei';
+import { useGLTF, RoundedBox, Clone, Html } from '@react-three/drei';
 import * as THREE from 'three';
 import {
   WORKSTATION_CONFIG,
   MEETING_ZONE_CONFIG,
   BAYZERO_SEAT_ANCHOR,
 } from '../config/layoutAnchors';
+import { ServicesHealthResponse } from '../types';
 
 interface FurnitureProps {
   currentNode: string;
+  isDegraded?: boolean;
+  healthData?: ServicesHealthResponse | null;
 }
 
 // =========================================================================
@@ -631,13 +634,306 @@ export function PottedPlantCollection() {
 /**
  * 7. Maintenance & Storage Archive (Discreet Bin)
  */
-export function ServerArchiveRack({ currentNode }: FurnitureProps) {
+/**
+ * 7. Scandinavian High-Tech Server Rack & Microservice Archive
+ * Features dual server towers (Keselip API & Kataku API Health),
+ * rotated 90 degrees with back against the right wall and front facing the room,
+ * with dynamic LED strips, local point light, and real-time floating nameplates.
+ */
+interface SingleServerRackProps {
+  position: [number, number, number];
+  rotation?: [number, number, number];
+  serviceId: string;
+  serviceName: string;
+  endpointDisplay: string;
+  isDegraded: boolean;
+  statusCode?: number | null;
+  latencyMs?: number;
+  error?: string | null;
+  ledPhaseOffset?: number;
+  badgeY?: number;
+}
+
+function SingleServerRack({
+  position,
+  rotation = [0, -Math.PI / 2, 0],
+  serviceName,
+  endpointDisplay,
+  isDegraded,
+  statusCode,
+  latencyMs,
+  error,
+  ledPhaseOffset = 0,
+  badgeY = 1.55,
+}: SingleServerRackProps) {
+  const ledMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const pointLightRef = useRef<THREE.PointLight>(null);
+  const hologramWireRef = useRef<THREE.Mesh>(null);
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+    if (isDegraded) {
+      // Fast flashing red LED (10 rad/s)
+      const blink = Math.sin(t * 10 + ledPhaseOffset) > 0;
+      if (ledMatRef.current) {
+        ledMatRef.current.color.set(blink ? '#EF4444' : '#450A0A');
+        ledMatRef.current.emissive.set(blink ? '#EF4444' : '#1F0505');
+        ledMatRef.current.emissiveIntensity = blink ? 3.0 : 0.2;
+      }
+      if (pointLightRef.current) {
+        pointLightRef.current.color.set('#EF4444');
+        pointLightRef.current.intensity = blink ? 1.8 : 0.1;
+      }
+      if (hologramWireRef.current) {
+        hologramWireRef.current.rotation.y = t * 1.5;
+        hologramWireRef.current.rotation.x = Math.sin(t * 2) * 0.2;
+      }
+    } else {
+      // Calm green breathing LED
+      const breath = 0.8 + 0.3 * Math.sin(t * 2 + ledPhaseOffset);
+      if (ledMatRef.current) {
+        ledMatRef.current.color.set('#10B981');
+        ledMatRef.current.emissive.set('#10B981');
+        ledMatRef.current.emissiveIntensity = 1.2 * breath;
+      }
+      if (pointLightRef.current) {
+        pointLightRef.current.color.set('#10B981');
+        pointLightRef.current.intensity = 0.5 * breath;
+      }
+    }
+  });
+
   return (
-    <group position={[5.4, 0, -0.2]}>
-      <mesh position={[0, 0.18, 0]} castShadow>
-        <cylinderGeometry args={[0.14, 0.12, 0.36, 16]} />
-        <meshStandardMaterial color="#4A505A" roughness={0.5} metalness={0.6} />
+    <group position={position} rotation={rotation}>
+      {/* Server Tower Chassis (Sleek dark obsidian) */}
+      <RoundedBox radius={0.025} smoothness={3} args={[0.50, 1.35, 0.50]} position={[0, 0.68, 0]} castShadow receiveShadow>
+        <meshStandardMaterial color="#1A1E26" roughness={0.35} metalness={0.8} />
+      </RoundedBox>
+
+      {/* Front Perforated Grill / Tinted Smoked Glass Panel */}
+      <mesh position={[0, 0.68, 0.255]}>
+        <planeGeometry args={[0.44, 1.24]} />
+        <meshStandardMaterial
+          color="#0F1216"
+          roughness={0.1}
+          metalness={0.9}
+          transparent
+          opacity={0.7}
+        />
       </mesh>
+
+      {/* Server Blades inside cabinet */}
+      {[0.28, 0.54, 0.80, 1.06].map((y, idx) => (
+        <group key={`blade-${idx}`} position={[0, y, 0.10]}>
+          {/* Blade Unit */}
+          <mesh castShadow>
+            <boxGeometry args={[0.42, 0.20, 0.34]} />
+            <meshStandardMaterial color="#242A35" roughness={0.5} metalness={0.65} />
+          </mesh>
+
+          {/* Drive Bay Horizontal Dividers */}
+          <mesh position={[0, 0, 0.172]}>
+            <boxGeometry args={[0.38, 0.015, 0.01]} />
+            <meshStandardMaterial color="#3A4250" roughness={0.4} metalness={0.8} />
+          </mesh>
+
+          {/* Brushed Aluminum Handles */}
+          <mesh position={[-0.18, 0, 0.175]}>
+            <boxGeometry args={[0.014, 0.12, 0.02]} />
+            <meshStandardMaterial color="#94A3B8" roughness={0.2} metalness={0.9} />
+          </mesh>
+          <mesh position={[0.18, 0, 0.175]}>
+            <boxGeometry args={[0.014, 0.12, 0.02]} />
+            <meshStandardMaterial color="#94A3B8" roughness={0.2} metalness={0.9} />
+          </mesh>
+        </group>
+      ))}
+
+      {/* LED Status Indicator Strips */}
+      <group position={[0, 0, 0.258]}>
+        {[-0.13, -0.065, 0, 0.065, 0.13].map((x, i) => (
+          <React.Fragment key={`led-col-${i}`}>
+            {[0.32, 0.58, 0.84, 1.10].map((y, j) => (
+              <mesh key={`led-${i}-${j}`} position={[x, y, 0]}>
+                <boxGeometry args={[0.014, 0.012, 0.005]} />
+                <meshStandardMaterial
+                  ref={i === 0 && j === 0 ? ledMatRef : undefined}
+                  color={isDegraded ? '#EF4444' : '#10B981'}
+                  emissive={isDegraded ? '#EF4444' : '#10B981'}
+                  emissiveIntensity={isDegraded ? 2.5 : 1.2}
+                  roughness={0.2}
+                />
+              </mesh>
+            ))}
+          </React.Fragment>
+        ))}
+      </group>
+
+      {/* LED Point Light cast onto floor and wall */}
+      <pointLight
+        ref={pointLightRef}
+        position={[0, 0.75, 0.42]}
+        color={isDegraded ? '#EF4444' : '#10B981'}
+        intensity={isDegraded ? 1.8 : 0.5}
+        distance={3.0}
+        decay={2}
+      />
+
+      {/* Top Floating Hologram Badge with Server Name & Real-time Status */}
+      <group position={[0, badgeY, 0]}>
+        {/* 3D Wireframe Diamond when degraded */}
+        {isDegraded && (
+          <mesh ref={hologramWireRef} position={[0, 0.08, 0]}>
+            <octahedronGeometry args={[0.20, 0]} />
+            <meshStandardMaterial
+              color="#EF4444"
+              emissive="#EF4444"
+              emissiveIntensity={2.0}
+              wireframe
+            />
+          </mesh>
+        )}
+
+        {/* 2D Billboard Hologram Badge with Service Name */}
+        <Html center distanceFactor={11} position={[0, isDegraded ? 0.12 : 0, 0]}>
+          {isDegraded ? (
+            <div
+              className="punggawa-3d-badge"
+              style={{
+                background: 'rgba(185, 28, 28, 0.96)',
+                border: '1.5px solid #F87171',
+                borderRadius: '8px',
+                padding: '5px 12px',
+                color: '#FFFFFF',
+                fontSize: '11px',
+                fontWeight: 900,
+                letterSpacing: '0.04em',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                boxShadow: '0 0 20px rgba(239, 68, 68, 0.85), 0 0 10px rgba(239, 68, 68, 0.5)',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+                textShadow: '0 1px 3px rgba(0,0,0,0.6)',
+                animation: 'pulse 1s infinite',
+                pointerEvents: 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <span style={{ fontSize: '12px' }}>⚠️</span>
+                <span>{serviceName}</span>
+                <span
+                  style={{
+                    fontSize: '9px',
+                    background: 'rgba(0, 0, 0, 0.35)',
+                    padding: '1px 5px',
+                    borderRadius: '4px',
+                    color: '#FCA5A5',
+                  }}
+                >
+                  {statusCode ? `HTTP ${statusCode}` : 'DOWN'}
+                </span>
+              </div>
+              <div style={{ fontSize: '9px', color: '#FEE2E2', fontWeight: 700 }}>
+                {error ? (error.length > 26 ? error.slice(0, 26) + '...' : error) : 'Service Unreachable'}
+              </div>
+            </div>
+          ) : (
+            <div
+              className="punggawa-3d-badge"
+              style={{
+                background: 'rgba(15, 23, 42, 0.92)',
+                border: '1px solid rgba(16, 185, 129, 0.6)',
+                borderRadius: '8px',
+                padding: '4px 10px',
+                color: '#ECFDF5',
+                fontSize: '10.5px',
+                fontWeight: 800,
+                letterSpacing: '0.04em',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '2px',
+                boxShadow: '0 0 14px rgba(16, 185, 129, 0.35)',
+                whiteSpace: 'nowrap',
+                userSelect: 'none',
+                opacity: 0.96,
+                pointerEvents: 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span
+                  style={{
+                    width: '6.5px',
+                    height: '6.5px',
+                    borderRadius: '50%',
+                    background: '#10B981',
+                    boxShadow: '0 0 6px #10B981',
+                  }}
+                />
+                <span style={{ color: '#F8FAFC', fontWeight: 900 }}>{serviceName}</span>
+                <span style={{ color: '#34D399', fontSize: '9.5px', fontWeight: 700 }}>200 OK</span>
+              </div>
+              <div style={{ fontSize: '8.5px', color: '#6EE7B7', fontWeight: 600 }}>
+                ⚡ {latencyMs || 250}ms • {endpointDisplay}
+              </div>
+            </div>
+          )}
+        </Html>
+      </group>
+    </group>
+  );
+}
+
+export function ServerArchiveRack({ currentNode, isDegraded = false, healthData }: FurnitureProps) {
+  // Extract real-time status for Keselip API
+  const srvKeselip = healthData?.services?.find((s) => s.id === 'keselip');
+  const isKeselipDegraded = srvKeselip ? srvKeselip.status !== 'healthy' : isDegraded;
+  const keselipStatus = srvKeselip?.status ?? (isDegraded ? 'unhealthy' : 'healthy');
+  const keselipCode = srvKeselip?.status_code;
+  const keselipLatency = srvKeselip?.latency_ms;
+  const keselipError = srvKeselip?.error;
+
+  // Extract real-time status for Kataku API
+  const srvKataku = healthData?.services?.find((s) => s.id === 'kataku');
+  const isKatakuDegraded = srvKataku ? srvKataku.status !== 'healthy' : isDegraded;
+  const katakuStatus = srvKataku?.status ?? (isDegraded ? 'unhealthy' : 'healthy');
+  const katakuCode = srvKataku?.status_code;
+  const katakuLatency = srvKataku?.latency_ms;
+  const katakuError = srvKataku?.error;
+
+  return (
+    <group>
+      {/* Server Tower 1: Keselip API (Back against right wall X=6.34, front facing left towards room -X) */}
+      <SingleServerRack
+        position={[6.34, 0, -1.15]}
+        rotation={[0, -Math.PI / 2, 0]}
+        serviceId="keselip"
+        serviceName="Keselip API"
+        endpointDisplay="keselipapi"
+        isDegraded={isKeselipDegraded}
+        statusCode={keselipCode}
+        latencyMs={keselipLatency}
+        error={keselipError}
+        ledPhaseOffset={0}
+        badgeY={1.62}
+      />
+
+      {/* Server Tower 2: Kataku API Health (Back against right wall X=6.34, front facing left towards room -X) */}
+      <SingleServerRack
+        position={[6.34, 0, 0.22]}
+        rotation={[0, -Math.PI / 2, 0]}
+        serviceId="kataku"
+        serviceName="Kataku API"
+        endpointDisplay="katakuapi"
+        isDegraded={isKatakuDegraded}
+        statusCode={katakuCode}
+        latencyMs={katakuLatency}
+        error={katakuError}
+        ledPhaseOffset={1.5}
+        badgeY={1.48}
+      />
     </group>
   );
 }

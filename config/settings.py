@@ -115,6 +115,14 @@ class Settings(BaseSettings):
         "/usr/share/fonts/truetype/liberation/LiberationSans-Bold.ttf",
         description="Path ke file font bold untuk thumbnail dongeng",
     )
+    DONGENG_CMS_NOTIFICATION_URL: str = Field(
+        "https://bogorstore.com/agoose/posts/sendnotification",
+        description="Endpoint trigger push notification CMS Dongeng ({id})",
+    )
+    DONGENG_CMS_COOKIE: str = Field(
+        "",
+        description="Opsional session cookie untuk trigger notification CMS",
+    )
 
     model_config = SettingsConfigDict(
         env_file=".env",

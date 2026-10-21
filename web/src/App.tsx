@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { useEventStream } from './hooks/useEventStream';
+import { useServicesHealth } from './hooks/useServicesHealth';
 import { OfficeCanvas } from './components/OfficeCanvas';
 import { HUDOverlay } from './components/HUDOverlay';
 import { CharacterVisualState } from './simulation/useAmbientOffice';
@@ -24,6 +25,16 @@ export function App() {
     setCharacterStates(states);
   }, []);
 
+  const latestEvent = logs[0];
+  const {
+    healthData,
+    isDegraded,
+    isRechecking,
+    isDismissed: isAlertDismissed,
+    dismissAlert,
+    recheck: recheckHealth,
+  } = useServicesHealth(latestEvent);
+
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
       {/* 3D Office Isometric World with Multi-Agent Team */}
@@ -34,6 +45,8 @@ export function App() {
         details={details}
         threadId={threadId}
         connected={connected}
+        isDegraded={isDegraded}
+        healthData={healthData}
         onCharacterStatesChange={handleCharacterStatesChange}
       />
 
@@ -47,6 +60,12 @@ export function App() {
         logs={logs}
         connected={connected}
         characterStates={characterStates}
+        healthData={healthData}
+        isDegraded={isDegraded}
+        isRechecking={isRechecking}
+        isAlertDismissed={isAlertDismissed}
+        onDismissAlert={dismissAlert}
+        onRecheckHealth={recheckHealth}
         onSimulateNode={setSimulatedNode}
         onReconnect={reconnect}
       />

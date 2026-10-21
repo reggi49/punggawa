@@ -23,6 +23,7 @@ export type AgentNodeName =
   | 'curate_node'
   | 'render_cover_node'
   | 'post_cms_node'
+  | 'trigger_notification_node'
   | 'housekeeping'
   | 'housekeeping_node';
 
@@ -46,6 +47,23 @@ export interface AgentEventPayload {
 }
 
 export type ActualAgentState = 'Working' | 'Idle' | 'Waiting' | 'Blocked' | 'Meeting' | 'Offline';
+
+export interface MonitoredServiceStatus {
+  id: string;
+  name: string;
+  url: string;
+  status: 'healthy' | 'unhealthy';
+  status_code: number | null;
+  latency_ms: number;
+  error: string | null;
+  last_checked: number;
+}
+
+export interface ServicesHealthResponse {
+  overall_status: 'healthy' | 'degraded';
+  services: MonitoredServiceStatus[];
+  timestamp: number;
+}
 
 export type AmbientActivityType =
   | 'SeatedIdle'

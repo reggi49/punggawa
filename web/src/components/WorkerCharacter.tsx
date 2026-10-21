@@ -312,7 +312,22 @@ export function StylizedHumanoidCharacter({
     leftKnee.rotation.x = THREE.MathUtils.lerp(leftKnee.rotation.x, 0, delta * 8);
     rightKnee.rotation.x = THREE.MathUtils.lerp(rightKnee.rotation.x, 0, delta * 8);
 
-    if (action === 'searching_archive') {
+    if (action === 'confused_scratch') {
+      // Pusing & bingung menggaruk kepala / investigasi gangguan server di depan rak
+      head.rotation.y = Math.sin(t * 6) * 0.25;
+      head.rotation.x = 0.18 + Math.sin(t * 2) * 0.08;
+      chest.rotation.x = 0.08;
+
+      // Tangan kanan menggaruk kepala / dahi pusing
+      rightShoulder.rotation.x = -2.1;
+      rightShoulder.rotation.z = -0.55;
+      rightElbow.rotation.x = 1.65 + Math.sin(t * 12) * 0.18;
+
+      // Tangan kiri menunjuk panel / memeriksa kabel rak server
+      leftShoulder.rotation.x = -1.1 + Math.sin(t * 3) * 0.2;
+      leftShoulder.rotation.z = 0.25;
+      leftElbow.rotation.x = 0.8;
+    } else if (action === 'searching_archive') {
       // Memeriksa rak server / arsip
       head.rotation.y = Math.sin(t * 2.2) * 0.35;
       head.rotation.x = 0.15 + Math.cos(t * 1.5) * 0.1;

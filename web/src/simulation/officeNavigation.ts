@@ -76,6 +76,14 @@ export const OFFICE_POIS: Record<string, OfficePOI> = {
   // 3. Technical Inspection POIs
   server_rack: {
     id: 'server_rack',
+    name: 'Datacenter Server Cluster',
+    position: [5.4, 0, -0.45],
+    rotationY: Math.PI / 2, // Facing East (+X) towards the servers
+    isSeated: false,
+    type: 'server',
+  },
+  reference_library: {
+    id: 'reference_library',
     name: 'Reference Library Shelving',
     position: [-2.2, 0, -3.8],
     rotationY: 0,
@@ -201,14 +209,26 @@ const NAV_GRAPH: Record<string, NavNode> = {
   aisle_east_north: {
     id: 'aisle_east_north',
     pos: new THREE.Vector3(1.8, 0, -0.4),
-    neighbors: ['usagi_approach', 'aisle_center_mid', 'lounge_entry'],
+    neighbors: ['usagi_approach', 'aisle_center_mid', 'lounge_entry', 'server_corridor_east'],
   },
 
   // Lounge & Coffee Entry
   lounge_entry: {
     id: 'lounge_entry',
     pos: new THREE.Vector3(3.2, 0, -2.6),
-    neighbors: ['aisle_east_north', 'aisle_center_north'],
+    neighbors: ['aisle_east_north', 'aisle_center_north', 'server_corridor_east'],
+  },
+
+  // Datacenter Server Rack Approach (Right Wall X=6.34)
+  server_corridor_east: {
+    id: 'server_corridor_east',
+    pos: new THREE.Vector3(3.8, 0, -0.45),
+    neighbors: ['aisle_east_north', 'lounge_entry', 'server_approach'],
+  },
+  server_approach: {
+    id: 'server_approach',
+    pos: new THREE.Vector3(5.4, 0, -0.45),
+    neighbors: ['server_corridor_east'],
   },
 
   // Library & Whiteboard Entry
@@ -222,8 +242,8 @@ const NAV_GRAPH: Record<string, NavNode> = {
     pos: new THREE.Vector3(-3.6, 0, -2.6),
     neighbors: ['library_entry', 'aisle_west_north'],
   },
-  server_approach: {
-    id: 'server_approach',
+  library_approach: {
+    id: 'library_approach',
     pos: new THREE.Vector3(-2.2, 0, -3.6),
     neighbors: ['library_entry'],
   },

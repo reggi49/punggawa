@@ -26,11 +26,13 @@ import {
   ExternalLink,
   RefreshCw,
   AlertTriangle,
+  Server,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
-import { WORKER_PROFILES, WorkerId, ActualAgentState } from '../types';
+import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
 import { LogEntry } from '../hooks/useEventStream';
 import { CharacterVisualState } from '../simulation/useAmbientOffice';
+import { ServiceAlertBanner } from './ServiceAlertBanner';
 
 export interface TaskPreset {
   id: string;
@@ -236,6 +238,13 @@ interface HUDOverlayProps {
   characterStates?: Record<WorkerId, CharacterVisualState> | null;
   onSimulateNode: (node: string, msg?: string) => void;
   onReconnect: () => void;
+  // Microservices Health Observability Props
+  healthData?: ServicesHealthResponse | null;
+  isDegraded?: boolean;
+  isRechecking?: boolean;
+  isAlertDismissed?: boolean;
+  onDismissAlert?: () => void;
+  onRecheckHealth?: () => void;
 }
 
 export function HUDOverlay({
@@ -249,11 +258,18 @@ export function HUDOverlay({
   characterStates,
   onSimulateNode,
   onReconnect,
+  healthData,
+  isDegraded = false,
+  isRechecking = false,
+  isAlertDismissed = false,
+  onDismissAlert,
+  onRecheckHealth,
 }: HUDOverlayProps) {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [teamPanelOpen, setTeamPanelOpen] = useState(true);
   const [stagePanelOpen, setStagePanelOpen] = useState(true);
   const [immersiveMode, setImmersiveMode] = useState(false);
+  const [servicesModalOpen, setServicesModalOpen] = useState(false);
 
   // Authentication State
   const [authToken, setAuthToken] = useState<string | null>(() => {
@@ -451,7 +467,7 @@ export function HUDOverlay({
 
   // Suppress 3D labels and apply modal-active state to document.body
   useEffect(() => {
-    const isModalActive = authModalOpen || dispatchModalOpen || scheduleModalOpen;
+    const isModalActive = authModalOpen || dispatchModalOpen || scheduleModalOpen || servicesModalOpen;
     if (isModalActive) {
       document.body.classList.add('punggawa-modal-active');
     } else {
@@ -460,7 +476,7 @@ export function HUDOverlay({
     return () => {
       document.body.classList.remove('punggawa-modal-active');
     };
-  }, [authModalOpen, dispatchModalOpen, scheduleModalOpen]);
+  }, [authModalOpen, dispatchModalOpen, scheduleModalOpen, servicesModalOpen]);
 
   // Deduplicate status labels for dev preview
   const uniqueStatusOptions = useMemo(() => {
@@ -853,6 +869,41 @@ export function HUDOverlay({
             </button>
           )}
 
+          {/* Microservices Health Status Button */}
+          <button
+            onClick={() => setServicesModalOpen(true)}
+            style={{
+              background: isDegraded ? 'rgba(239, 68, 68, 0.15)' : 'rgba(244, 241, 234, 0.94)',
+              color: isDegraded ? '#EF4444' : '#30343A',
+              border: `1px solid ${isDegraded ? 'rgba(239, 68, 68, 0.5)' : 'rgba(196, 154, 108, 0.4)'}`,
+              borderRadius: '10px',
+              padding: '7px 14px',
+              fontSize: '12px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: isDegraded ? '0 0 12px rgba(239, 68, 68, 0.3)' : '0 2px 8px rgba(0, 0, 0, 0.08)',
+              letterSpacing: '0.02em',
+              transition: 'all 0.2s ease',
+            }}
+            title="Cek Status Ketersediaan Microservice (Keselip API & Kataku Health)"
+          >
+            <Server size={14} color={isDegraded ? '#EF4444' : '#354A60'} />
+            <span>{isDegraded ? 'Outage ⚠️' : 'Services'}</span>
+            <span
+              style={{
+                width: '7px',
+                height: '7px',
+                borderRadius: '50%',
+                background: isDegraded ? '#EF4444' : '#10B981',
+                boxShadow: isDegraded ? '0 0 8px #EF4444' : '0 0 6px #10B981',
+                marginLeft: '2px',
+              }}
+            />
+          </button>
+
           {/* Connection Status Badge */}
           <div
             onClick={onReconnect}
@@ -876,6 +927,17 @@ export function HUDOverlay({
           </div>
         </div>
       </div>
+
+      {/* Floating Service Outage Alert Banner (Under Top Header) */}
+      <ServiceAlertBanner
+        healthData={healthData}
+        isDegraded={isDegraded}
+        isRechecking={isRechecking}
+        isDismissed={isAlertDismissed}
+        onDismiss={onDismissAlert}
+        onRecheck={onRecheckHealth}
+        onViewDetails={() => setServicesModalOpen(true)}
+      />
 
       {/* 2. LEFT PANEL: Active Stage Card */}
       {!immersiveMode && (
@@ -2768,6 +2830,362 @@ export function HUDOverlay({
                 }}
               >
                 Tutup Kalender
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* 6. MICROSERVICES UPTIME & OBSERVABILITY MODAL */}
+      {servicesModalOpen && createPortal(
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 999999,
+            background: 'rgba(0, 0, 0, 0.65)',
+            backdropFilter: 'blur(8px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px',
+            pointerEvents: 'auto',
+          }}
+          onClick={() => setServicesModalOpen(false)}
+        >
+          <div
+            className="warm-panel"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              maxWidth: '740px',
+              maxHeight: '88vh',
+              borderRadius: '20px',
+              padding: '24px',
+              background: 'rgba(248, 246, 240, 0.98)',
+              border: isDegraded ? '2px solid rgba(239, 68, 68, 0.5)' : '1px solid rgba(196, 154, 108, 0.35)',
+              boxShadow: isDegraded
+                ? '0 20px 50px rgba(239, 68, 68, 0.25), 0 0 30px rgba(239, 68, 68, 0.15)'
+                : '0 20px 50px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '18px',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Header */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingBottom: '14px',
+                borderBottom: '1px solid rgba(48, 52, 58, 0.1)',
+                gap: '12px',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div
+                  style={{
+                    width: '42px',
+                    height: '42px',
+                    borderRadius: '12px',
+                    background: isDegraded
+                      ? 'linear-gradient(135deg, #DC2626, #EF4444)'
+                      : 'linear-gradient(135deg, #059669, #10B981)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: isDegraded
+                      ? '0 4px 14px rgba(220, 38, 38, 0.35)'
+                      : '0 4px 14px rgba(16, 185, 129, 0.35)',
+                  }}
+                >
+                  <Server size={22} color="#ffffff" />
+                </div>
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ fontSize: '17px', fontWeight: 900, margin: 0, color: '#2B3038' }}>
+                      Microservices Uptime & Observability
+                    </h3>
+                    <span
+                      style={{
+                        fontSize: '10px',
+                        fontWeight: 800,
+                        padding: '2px 8px',
+                        borderRadius: '10px',
+                        background: isDegraded ? 'rgba(239, 68, 68, 0.15)' : 'rgba(16, 185, 129, 0.15)',
+                        color: isDegraded ? '#DC2626' : '#059669',
+                        border: `1px solid ${isDegraded ? 'rgba(239, 68, 68, 0.4)' : 'rgba(16, 185, 129, 0.4)'}`,
+                      }}
+                    >
+                      {isDegraded ? 'DEGRADED' : 'OPERATIONAL'}
+                    </span>
+                  </div>
+                  <p style={{ fontSize: '11px', color: '#8A8A82', margin: '2px 0 0 0' }}>
+                    Pemantauan ketersediaan endpoint periodik (1 jam sekali) • Redis Caching • Zero LLM Cost
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button
+                  type="button"
+                  onClick={onRecheckHealth}
+                  disabled={isRechecking}
+                  style={{
+                    background: 'linear-gradient(135deg, #354A60, #8DA895)',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '10px',
+                    padding: '8px 14px',
+                    fontSize: '12px',
+                    fontWeight: 800,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    cursor: isRechecking ? 'not-allowed' : 'pointer',
+                    boxShadow: '0 4px 12px rgba(53, 74, 96, 0.2)',
+                    opacity: isRechecking ? 0.75 : 1,
+                  }}
+                  title="Ping semua service sekarang dan perbarui cache"
+                >
+                  <RefreshCw size={13} className={isRechecking ? 'animate-spin' : ''} />
+                  <span>{isRechecking ? 'Memeriksa...' : 'Cek Ulang Sekarang'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setServicesModalOpen(false)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: '#8A8A82',
+                    fontSize: '20px',
+                    cursor: 'pointer',
+                    padding: '4px 8px',
+                  }}
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* Status Summary Banner */}
+            {isDegraded ? (
+              <div
+                style={{
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <AlertTriangle size={24} color="#DC2626" style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#DC2626' }}>
+                    PERINGATAN GANGGUAN LAYANAN TERDETEKSI
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#7F1D1D', marginTop: '2px' }}>
+                    Satu atau lebih microservice eksternal mengalami timeout atau mengembalikan HTTP status selain 200 OK. Lampu indikator rak server di visualizer 3D menyala merah.
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div
+                style={{
+                  background: 'rgba(16, 185, 129, 0.08)',
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                }}
+              >
+                <CheckCircle2 size={24} color="#059669" style={{ flexShrink: 0 }} />
+                <div>
+                  <div style={{ fontSize: '12px', fontWeight: 800, color: '#059669' }}>
+                    SEMUA SISTEM BERJALAN NORMAL
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#065F46', marginTop: '2px' }}>
+                    Seluruh endpoint microservice yang dipantau merespons dengan HTTP 200 OK. Server rack blade di kantor 3D berstatus normal (lampu hijau aktif).
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Monitored Services List */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                overflowY: 'auto',
+                maxHeight: '48vh',
+                paddingRight: '4px',
+              }}
+            >
+              {(healthData?.services || []).map((srv) => {
+                const isHealthy = srv.status === 'healthy';
+                return (
+                  <div
+                    key={srv.id}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.95)',
+                      border: `1px solid ${isHealthy ? 'rgba(16, 185, 129, 0.3)' : 'rgba(239, 68, 68, 0.4)'}`,
+                      borderRadius: '12px',
+                      padding: '14px 16px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <span
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            borderRadius: '50%',
+                            background: isHealthy ? '#10B981' : '#EF4444',
+                            boxShadow: `0 0 8px ${isHealthy ? '#10B981' : '#EF4444'}`,
+                            flexShrink: 0,
+                          }}
+                        />
+                        <div>
+                          <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E293B' }}>
+                            {srv.name}
+                          </div>
+                          <a
+                            href={srv.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '11px',
+                              color: '#64748B',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              textDecoration: 'none',
+                            }}
+                          >
+                            <span>{srv.url}</span>
+                            <ExternalLink size={10} />
+                          </a>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        {/* Status Badge */}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: isHealthy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(239, 68, 68, 0.15)',
+                            color: isHealthy ? '#059669' : '#DC2626',
+                            border: `1px solid ${isHealthy ? 'rgba(16, 185, 129, 0.35)' : 'rgba(239, 68, 68, 0.35)'}`,
+                          }}
+                        >
+                          {isHealthy ? 'HEALTHY' : 'DOWN'}
+                        </span>
+
+                        {/* HTTP Status Code */}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: '#F1F5F9',
+                            color: isHealthy ? '#0F766E' : '#B91C1C',
+                          }}
+                        >
+                          HTTP {srv.status_code ?? 'ERR'}
+                        </span>
+
+                        {/* Latency */}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            padding: '3px 8px',
+                            borderRadius: '6px',
+                            background: srv.latency_ms > 1000 ? '#FEF2F2' : '#F0FDF4',
+                            color: srv.latency_ms > 1000 ? '#DC2626' : '#15803D',
+                          }}
+                        >
+                          ⚡ {srv.latency_ms} ms
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Error details if unhealthy */}
+                    {!isHealthy && srv.error && (
+                      <div
+                        style={{
+                          background: 'rgba(239, 68, 68, 0.08)',
+                          border: '1px solid rgba(239, 68, 68, 0.25)',
+                          borderRadius: '8px',
+                          padding: '8px 12px',
+                          fontSize: '11px',
+                          color: '#DC2626',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
+                        <AlertCircle size={13} style={{ flexShrink: 0 }} />
+                        <span><strong>Alasan Gangguan:</strong> {srv.error}</span>
+                      </div>
+                    )}
+
+                    {/* Last checked timestamp */}
+                    <div style={{ fontSize: '10px', color: '#94A3B8', textAlign: 'right' }}>
+                      Terakhir dicek: {srv.last_checked ? new Date(srv.last_checked * 1000).toLocaleString('id-ID') : '-'} WIB
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                fontSize: '11px',
+                color: '#8A8A82',
+                paddingTop: '6px',
+                borderTop: '1px solid rgba(48, 52, 58, 0.08)',
+              }}
+            >
+              <div>
+                Auto-check interval: <strong>3600s (1 jam)</strong> via background worker. Redis key: <code>system:services_health</code>.
+              </div>
+              <button
+                type="button"
+                onClick={() => setServicesModalOpen(false)}
+                style={{
+                  padding: '8px 18px',
+                  borderRadius: '8px',
+                  background: 'rgba(48, 52, 58, 0.08)',
+                  border: 'none',
+                  color: '#475569',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Tutup
               </button>
             </div>
           </div>

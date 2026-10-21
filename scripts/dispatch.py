@@ -367,6 +367,43 @@ def cmd_plan(args):
             pass
 
 
+def cmd_health(args):
+    """Pemeriksaan ketersediaan microservice eksternal (Uptime Monitor - Zero LLM Cost)."""
+    from orchestrator.tools.uptime_checker import run_all_health_checks
+    print("\n🔍 Memeriksa ketersediaan microservice eksternal...\n")
+    data = run_all_health_checks()
+    services = data.get("services", [])
+    overall = data.get("overall_status", "healthy").upper()
+
+    col_w = [22, 10, 14, 12]
+    border_top = f"┌{'─' * (col_w[0] + 2)}┬{'─' * (col_w[1] + 2)}┬{'─' * (col_w[2] + 2)}┬{'─' * (col_w[3] + 2)}┐"
+    border_mid = f"├{'─' * (col_w[0] + 2)}┼{'─' * (col_w[1] + 2)}┼{'─' * (col_w[2] + 2)}┼{'─' * (col_w[3] + 2)}┤"
+    border_bot = f"└{'─' * (col_w[0] + 2)}┴{'─' * (col_w[1] + 2)}┴{'─' * (col_w[2] + 2)}┴{'─' * (col_w[3] + 2)}┘"
+
+    print(border_top)
+    print(f"│ {'Service':<{col_w[0]}} │ {'Status':<{col_w[1]}} │ {'HTTP Code':<{col_w[2]}} │ {'Latency':<{col_w[3]}} │")
+    print(border_mid)
+
+    for s in services:
+        name = s["name"][:col_w[0]]
+        is_ok = s["status"] == "healthy"
+        status_str = "HEALTHY" if is_ok else "DOWN"
+        http_code = f"{s['status_code']} OK" if is_ok else (s.get("error") or "Error")[:col_w[2]]
+        latency = f"{s['latency_ms']} ms" if s.get("latency_ms") is not None else "-"
+        print(f"│ {name:<{col_w[0]}} │ {status_str:<{col_w[1]}} │ {http_code:<{col_w[2]}} │ {latency:<{col_w[3]}} │")
+
+    print(border_bot)
+    print(f"\nStatus Keseluruhan: {'🟢 NORMAL (HEALTHY)' if overall == 'HEALTHY' else '🔴 TERGANGGU (DEGRADED)'}")
+    print(f"Waktu Pengecekan: {datetime.fromtimestamp(data['timestamp']).strftime('%Y-%m-%d %H:%M:%S WIB')}\n")
+
+    try:
+        from orchestrator.connections import postgres_pool
+        postgres_pool.close()
+    except Exception:
+        pass
+    os._exit(0)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Punggawa CLI Command Center - Autonomous AI Orchestrator Controller",
@@ -441,6 +478,10 @@ def main():
     p_plan.add_argument("--list", action="store_true", help="Tampilkan daftar jadwal editorial saat ini")
     p_plan.add_argument("--limit", type=int, default=20, help="Jumlah baris jadwal yang ditampilkan (default: 20)")
     p_plan.set_defaults(func=cmd_plan)
+
+    # Subcommand: health
+    p_health = subparsers.add_parser("health", help="Pantau status ketersediaan microservice eksternal (Zero LLM Cost)")
+    p_health.set_defaults(func=cmd_health)
 
     args = parser.parse_args()
     args.func(args)

@@ -165,21 +165,33 @@ export class AmbientOfficeSimulator {
       }
       w.isSeated = !taskAction || taskAction === 'intense_typing';
     } else if (newState === 'Blocked') {
-      // 2. BLOCKED: Restrained confused / thinking posture at desk, cannot wander or socialize
+      // 2. BLOCKED: Restrained confused / thinking posture or investigating server outage
       if (w.socialPartnerId) {
         this.endSocialInteraction(workerId);
       }
       w.pathQueue = [];
-      const homeDesk = OFFICE_POIS[`${workerId}_desk`];
-      if (homeDesk) {
-        w.targetPosition = [...homeDesk.position];
-        w.currentPosition = [...homeDesk.position];
-        w.targetRotationY = homeDesk.rotationY;
+      if (taskWorkstationPos) {
+        w.targetPosition = [...taskWorkstationPos];
+        w.currentPosition = [...taskWorkstationPos];
+        if (taskRotationY !== undefined) {
+          w.targetRotationY = taskRotationY;
+        }
+        w.characterAction = taskAction || 'confused_scratch';
+        w.isSeated = false;
+        w.ambientActivity = 'StandingIdle';
+        w.destinationPOI = null;
+      } else {
+        const homeDesk = OFFICE_POIS[`${workerId}_desk`];
+        if (homeDesk) {
+          w.targetPosition = [...homeDesk.position];
+          w.currentPosition = [...homeDesk.position];
+          w.targetRotationY = homeDesk.rotationY;
+        }
+        w.isSeated = true;
+        w.ambientActivity = 'SeatedIdle';
+        w.characterAction = 'confused_scratch';
+        w.destinationPOI = homeDesk || null;
       }
-      w.isSeated = true;
-      w.ambientActivity = 'SeatedIdle';
-      w.characterAction = 'confused_scratch';
-      w.destinationPOI = homeDesk || null;
     } else if (newState === 'Waiting') {
       // 3. WAITING: Attentive observing at desk/podium, awaiting user approval or SOP
       if (w.socialPartnerId) {

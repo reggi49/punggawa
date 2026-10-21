@@ -30,7 +30,8 @@ export function useAmbientOffice(
   status: string = 'idle',
   details: Record<string, any> = {},
   threadId: string = '',
-  connected: boolean = true
+  connected: boolean = true,
+  isDegraded: boolean = false
 ) {
   const simulatorRef = useRef<AmbientOfficeSimulator | null>(null);
   if (!simulatorRef.current) {
@@ -75,6 +76,16 @@ export function useAmbientOffice(
       simulator.updateActualState('stark', 'Offline');
       simulator.updateActualState('usagi', 'Offline');
       simulator.updateActualState('bayzero', 'Offline');
+      return;
+    }
+
+    if (isDegraded) {
+      // Microservice Outage: Stark rushes to the server cluster to troubleshoot & inspect!
+      const serverTargetPos: [number, number, number] = [5.0, 0, -0.45];
+      const serverTargetRotY = Math.PI / 2; // Facing East (+X) directly towards the server racks
+      simulator.updateActualState('stark', 'Blocked', serverTargetPos, serverTargetRotY, 'confused_scratch');
+      simulator.updateActualState('usagi', 'Idle');
+      simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
       return;
     }
 
@@ -165,14 +176,14 @@ export function useAmbientOffice(
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
     }
-  }, [currentNode, status, isDongengPipeline, isIdle, isSOPNode, isAwaitingApproval, isFailed, isComplete, connected]);
+  }, [currentNode, status, isDongengPipeline, isIdle, isSOPNode, isAwaitingApproval, isFailed, isComplete, connected, isDegraded]);
 
   // Visual state hook updated efficiently on animation tick
   const [characterStates, setCharacterStates] = useState<Record<WorkerId, CharacterVisualState>>(() => ({
-    stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode),
-    usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode),
-    bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode),
-    clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode),
+    stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode, isDegraded),
+    usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
+    bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
+    clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode, isDegraded),
   }));
 
   const lastUpdateRef = useRef<number>(0);
@@ -187,10 +198,10 @@ export function useAmbientOffice(
       lastUpdateRef.current = now;
 
       setCharacterStates({
-        stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode),
-        usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode),
-        bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode),
-        clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode),
+        stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode, isDegraded),
+        usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
+        bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
+        clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode, isDegraded),
       });
     }
   });
@@ -204,9 +215,11 @@ export function useAmbientOffice(
 function buildVisualState(
   id: WorkerId,
   amb: WorkerAmbientState,
-  currentNode: string
+  currentNode: string,
+  isDegraded: boolean = false
 ): CharacterVisualState {
-  const isWorking = amb.actualState === 'Working';
+  const isOutageStark = id === 'stark' && isDegraded;
+  const isWorking = amb.actualState === 'Working' || isOutageStark;
 
   // Humanized ambient activity description
   let ambientLabel = 'Santai di Meja';
@@ -236,14 +249,16 @@ function buildVisualState(
       ambientLabel = 'Kembali ke Meja Kerja 🪑';
       break;
     case 'StandingIdle':
-      ambientLabel = 'Berdiri di Area Santai 🌿';
+      ambientLabel = isOutageStark ? 'Investigasi Server ⚠️' : 'Berdiri di Area Santai 🌿';
       break;
     default:
       ambientLabel = 'Santai di Meja ☕';
   }
 
   // Handle special actual states
-  if (amb.actualState === 'Blocked') {
+  if (isOutageStark) {
+    ambientLabel = 'Investigasi Server ⚠️';
+  } else if (amb.actualState === 'Blocked') {
     ambientLabel = 'Terblokir / Investigasi ⚠️';
   } else if (amb.actualState === 'Waiting') {
     ambientLabel = 'Standby Menunggu Approval ⏳';
@@ -256,11 +271,11 @@ function buildVisualState(
     targetPos: amb.targetPosition,
     targetRotY: amb.targetRotationY,
     action: amb.characterAction,
-    isSeated: isWorking ? (amb.targetPosition[2] > 0.6 && amb.targetPosition[2] < 1.0) : amb.isSeated,
-    isActive: isWorking, // True ONLY for actual running AI task
+    isSeated: isOutageStark ? false : (isWorking ? (amb.targetPosition[2] > 0.6 && amb.targetPosition[2] < 1.0) : amb.isSeated),
+    isActive: isWorking, // True for running AI task or active outage investigation
     actualState: amb.actualState,
     ambientActivity: amb.ambientActivity,
-    ambientLabel: isWorking ? getHumanStatus(currentNode).label : ambientLabel,
+    ambientLabel: isOutageStark ? 'Investigasi Server ⚠️' : (isWorking ? getHumanStatus(currentNode).label : ambientLabel),
     socialRole: amb.socialRole,
   };
 }

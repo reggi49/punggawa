@@ -13,7 +13,7 @@ import {
 import { StylizedHumanoidCharacter } from './WorkerCharacter';
 import { JanitorDroid } from './JanitorDroid';
 import { useAmbientOffice, CharacterVisualState } from '../simulation/useAmbientOffice';
-import { WorkerId } from '../types';
+import { WorkerId, ServicesHealthResponse } from '../types';
 import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
@@ -27,6 +27,8 @@ interface OfficeSceneProps {
   details?: Record<string, any>;
   threadId?: string;
   connected?: boolean;
+  isDegraded?: boolean;
+  healthData?: ServicesHealthResponse | null;
   onCharacterStatesChange?: (states: Record<WorkerId, CharacterVisualState>) => void;
 }
 
@@ -37,10 +39,12 @@ export function OfficeScene({
   details = {},
   threadId = '',
   connected = true,
+  isDegraded = false,
+  healthData,
   onCharacterStatesChange,
 }: OfficeSceneProps) {
   // Ambient Life Simulation Hook: coordinates realistic workplace activities and waypoint movement
-  const characters = useAmbientOffice(currentNode, status, details, threadId, connected);
+  const characters = useAmbientOffice(currentNode, status, details, threadId, connected, isDegraded);
 
   useEffect(() => {
     if (onCharacterStatesChange) {
@@ -78,7 +82,7 @@ export function OfficeScene({
       <BayZeroWorkstation currentNode={currentNode} />
       <UsagiWorkstation currentNode={currentNode} />
 
-      <ServerArchiveRack currentNode={currentNode} />
+      <ServerArchiveRack currentNode={currentNode} isDegraded={isDegraded} healthData={healthData} />
       <ArtCanvasDisplay currentNode={currentNode} />
       <CoffeeLounge currentNode={currentNode} />
 
@@ -93,29 +97,29 @@ export function OfficeScene({
       <StylizedHumanoidCharacter
         id="stark"
         currentNode={currentNode}
-        action={characters.stark.isActive ? characters.stark.action : 'intense_typing'}
-        targetPos={characters.stark.isActive ? characters.stark.targetPos : WORKSTATION_CONFIG.stark.seatWorldPosition}
-        targetRotY={characters.stark.isActive ? characters.stark.targetRotY : WORKSTATION_CONFIG.stark.seatWorldRotationY}
+        action={characters.stark.action}
+        targetPos={characters.stark.targetPos}
+        targetRotY={characters.stark.targetRotY}
         message={characters.stark.isActive ? message : undefined}
         isActive={characters.stark.isActive}
-        isSeated={characters.stark.isActive ? characters.stark.isSeated : true}
+        isSeated={characters.stark.isSeated}
         socialRole={characters.stark.socialRole}
         actualState={characters.stark.actualState}
         ambientLabel={characters.stark.ambientLabel}
-        badgeLabelOverride={characters.stark.isActive ? undefined : 'Fokus'}
-        dotColorOverride={characters.stark.isActive ? undefined : '#22C55E'}
+        badgeLabelOverride={isDegraded ? 'Investigasi Server ⚠️' : (characters.stark.isActive ? undefined : 'Fokus')}
+        dotColorOverride={isDegraded ? '#EF4444' : (characters.stark.isActive ? undefined : '#22C55E')}
       />
 
       {/* Usagi: Right Desk Creative Curator */}
       <StylizedHumanoidCharacter
         id="usagi"
         currentNode={currentNode}
-        action={characters.usagi.isActive ? characters.usagi.action : 'intense_typing'}
-        targetPos={characters.usagi.isActive ? characters.usagi.targetPos : WORKSTATION_CONFIG.usagi.seatWorldPosition}
-        targetRotY={characters.usagi.isActive ? characters.usagi.targetRotY : WORKSTATION_CONFIG.usagi.seatWorldRotationY}
+        action={characters.usagi.action}
+        targetPos={characters.usagi.targetPos}
+        targetRotY={characters.usagi.targetRotY}
         message={characters.usagi.isActive ? message : undefined}
         isActive={characters.usagi.isActive}
-        isSeated={characters.usagi.isActive ? characters.usagi.isSeated : true}
+        isSeated={characters.usagi.isSeated}
         socialRole={characters.usagi.socialRole}
         actualState={characters.usagi.actualState}
         ambientLabel={characters.usagi.ambientLabel}

@@ -5,7 +5,7 @@ import { EffectComposer, N8AO, Bloom, ToneMapping } from '@react-three/postproce
 import { ToneMappingMode } from 'postprocessing';
 import { OfficeScene } from './OfficeScene';
 import { CharacterVisualState } from '../simulation/useAmbientOffice';
-import { WorkerId } from '../types';
+import { WorkerId, ServicesHealthResponse } from '../types';
 
 interface OfficeCanvasProps {
   currentNode: string;
@@ -14,6 +14,8 @@ interface OfficeCanvasProps {
   details?: Record<string, any>;
   threadId?: string;
   connected?: boolean;
+  isDegraded?: boolean;
+  healthData?: ServicesHealthResponse | null;
   onCharacterStatesChange?: (states: Record<WorkerId, CharacterVisualState>) => void;
 }
 
@@ -24,6 +26,8 @@ export function OfficeCanvas({
   details = {},
   threadId = '',
   connected = true,
+  isDegraded = false,
+  healthData,
   onCharacterStatesChange,
 }: OfficeCanvasProps) {
   return (
@@ -71,6 +75,8 @@ export function OfficeCanvas({
             details={details}
             threadId={threadId}
             connected={connected}
+            isDegraded={isDegraded}
+            healthData={healthData}
             onCharacterStatesChange={onCharacterStatesChange}
           />
         </Suspense>
