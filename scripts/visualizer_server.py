@@ -9,7 +9,15 @@ project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from config.port_utils import find_available_port
+from config.settings import settings
 from server.stream_server import run
 
 if __name__ == "__main__":
-    run()
+    # Check port availability and pass resolved port
+    resolved_port = find_available_port(
+        preferred_port=settings.STREAM_SERVER_PORT,
+        fallback_ports=[8001, 8002, 8003, 8080, 8081, 8888],
+        host=settings.STREAM_SERVER_HOST,
+    )
+    run(port=resolved_port)

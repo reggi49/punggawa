@@ -32,10 +32,10 @@ export function useEventStream(endpoint: string = '/api/stream') {
       eventSourceRef.current = null;
     }
 
-    // Tentukan URL stream (dukung port 8000 langsung atau proxy vite)
+    // Tentukan URL stream (dukung port dinamis atau proxy vite relatif)
     const streamUrl = endpoint.startsWith('http')
       ? endpoint
-      : `${window.location.origin.includes('5173') ? 'http://localhost:8000' : ''}${endpoint}`;
+      : endpoint;
 
     console.log(`[useEventStream] Connecting to SSE at ${streamUrl}...`);
 

@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 import redis.asyncio as aioredis
 import uvicorn
 
+from config.port_utils import find_available_port
 from config.settings import settings
 from orchestrator.connections import postgres_pool
 
@@ -534,15 +535,27 @@ if os.path.exists(web_dist_dir):
     app.mount("/", StaticFiles(directory=web_dist_dir, html=True), name="static_web")
 
 
-def run():
-    """CLI runner function for stream server."""
+def run(port: int | None = None):
+    """CLI runner function for stream server with automatic fallback port detection."""
+    target_port = port or settings.STREAM_SERVER_PORT
+    active_port = find_available_port(
+        preferred_port=target_port,
+        fallback_ports=[8001, 8002, 8003, 8080, 8081, 8888],
+        host=settings.STREAM_SERVER_HOST,
+    )
+
+    if active_port != target_port:
+        logger.warning(
+            f"🔄 Port default {target_port} sedang dipakai! Mengalihkan ke port alternatif -> {active_port}"
+        )
+
     logger.info(
-        f"🚀 Starting Punggawa Streaming Server on http://{settings.STREAM_SERVER_HOST}:{settings.STREAM_SERVER_PORT}"
+        f"🚀 Starting Punggawa Streaming Server on http://{settings.STREAM_SERVER_HOST}:{active_port}"
     )
     uvicorn.run(
         "server.stream_server:app",
         host=settings.STREAM_SERVER_HOST,
-        port=settings.STREAM_SERVER_PORT,
+        port=active_port,
         reload=False,
     )
 
