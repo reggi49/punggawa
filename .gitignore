@@ -1,0 +1,57 @@
+# Environment Variables & Secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Python Environments & Cache
+.venv/
+venv/
+ENV/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node.js & Web Build Outputs
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+.npm
+.yarn/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Playwright & Browser Automation MCP artifacts
+.playwright-mcp/
+**/.playwright-mcp/
+
+# Agent & Debug Artifacts
+artifacts/
+**/artifacts/
+
+# OS Specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE & Editor Specific
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Root duplicate public folder (if any generated)
+/public/models/
+/public/textures/

@@ -1,0 +1,101 @@
+/* Punggawa 3D Office — Modern Scandinavian Design System */
+
+:root {
+  font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: #30343A;
+  background-color: #E8E4DA;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  /* Design Tokens */
+  --warm-white: #F4F1EA;
+  --oak: #C49A6C;
+  --charcoal: #30343A;
+  --warm-grey: #D6D2CA;
+  --sage: #8DA895;
+  --navy: #354A60;
+  --coral: #D98078;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body, html, #root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #E8E4DA;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: rgba(214,210,202,0.3); border-radius: 4px; }
+::-webkit-scrollbar-thumb { background: rgba(196,154,108,0.4); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(196,154,108,0.6); }
+
+/* Utility animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.fade-in   { animation: fadeIn  0.25s ease forwards; }
+.pulse-dot { animation: pulseDot 2s ease-in-out infinite; }
+
+/* Warm Scandinavian Glass-Panel (replaces cyberpunk glass-panel) */
+.warm-panel {
+  background: rgba(244, 241, 234, 0.88);
+  backdrop-filter: blur(16px) saturate(1.4);
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  color: var(--charcoal);
+}
+.warm-panel-accent {
+  background: rgba(244, 241, 234, 0.94);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  color: var(--charcoal);
+}
+
+/* =========================================================================
+   3D Drei HTML Badge Suppression & Stacking Context Isolation
+   ========================================================================= */
+
+/* Complete suppression of all 3D floating HTML tags when any modal is open */
+body.punggawa-modal-active .punggawa-3d-badge,
+body.punggawa-modal-active [data-drei-html],
+body.punggawa-modal-active div:has(> .punggawa-3d-badge) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* Enforce isolated local stacking context for 3D Canvas layer */
+.canvas-container-root {
+  isolation: isolate !important;
+  z-index: 0 !important;
+}
+
+/* Modals portaled to root body always stay on top */
+.punggawa-portal-modal-backdrop {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 999999 !important;
+  pointer-events: auto !important;
+}
+

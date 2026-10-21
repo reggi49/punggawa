@@ -1,0 +1,14 @@
+------------------------------------------------------
+Ultimate Furniture Pack by @Quaternius
+Consider supporting me on Patreon, even $1 helps me a lot!
+
+https://www.patreon.com/quaternius
+-------------------------------------------------------
+
+License:
+CC0 1.0 Universal (CC0 1.0) 
+Public Domain Dedication
+https://creativecommons.org/publicdomain/zero/1.0/
+
+
+Source: https://quaternius.com/packs/ultimatefurniture.html; these .glb files are poly.pizza's conversions of the pack's FBX files (https://poly.pizza/bundle/Furniture-Pack-pgvx8Zkq8v, CC0), named after the FBX files.
