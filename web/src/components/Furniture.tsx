@@ -636,7 +636,7 @@ export function PottedPlantCollection() {
  */
 /**
  * 7. Scandinavian High-Tech Server Rack & Microservice Archive
- * Features dual server towers (Keselip API & Kataku API Health),
+ * Features triple server towers (Keselip-API, Kataku-API & Dongeng-API),
  * rotated 90 degrees with back against the right wall and front facing the room,
  * with dynamic LED strips, local point light, and real-time floating nameplates.
  */
@@ -887,30 +887,35 @@ function SingleServerRack({
 }
 
 export function ServerArchiveRack({ currentNode, isDegraded = false, healthData }: FurnitureProps) {
-  // Extract real-time status for Keselip API
+  // Extract real-time status for Keselip-API
   const srvKeselip = healthData?.services?.find((s) => s.id === 'keselip');
   const isKeselipDegraded = srvKeselip ? srvKeselip.status !== 'healthy' : isDegraded;
-  const keselipStatus = srvKeselip?.status ?? (isDegraded ? 'unhealthy' : 'healthy');
   const keselipCode = srvKeselip?.status_code;
   const keselipLatency = srvKeselip?.latency_ms;
   const keselipError = srvKeselip?.error;
 
-  // Extract real-time status for Kataku API
+  // Extract real-time status for Kataku-API
   const srvKataku = healthData?.services?.find((s) => s.id === 'kataku');
   const isKatakuDegraded = srvKataku ? srvKataku.status !== 'healthy' : isDegraded;
-  const katakuStatus = srvKataku?.status ?? (isDegraded ? 'unhealthy' : 'healthy');
   const katakuCode = srvKataku?.status_code;
   const katakuLatency = srvKataku?.latency_ms;
   const katakuError = srvKataku?.error;
 
+  // Extract real-time status for Dongeng-API
+  const srvDongeng = healthData?.services?.find((s) => s.id === 'dongeng');
+  const isDongengDegraded = srvDongeng ? srvDongeng.status !== 'healthy' : isDegraded;
+  const dongengCode = srvDongeng?.status_code;
+  const dongengLatency = srvDongeng?.latency_ms;
+  const dongengError = srvDongeng?.error;
+
   return (
     <group>
-      {/* Server Tower 1: Keselip API (Back against right wall X=6.34, front facing left towards room -X) */}
+      {/* Server Tower 1: Keselip-API (Back against right wall X=6.34, front facing left towards room -X) */}
       <SingleServerRack
-        position={[6.34, 0, -1.15]}
+        position={[6.34, 0, -1.35]}
         rotation={[0, -Math.PI / 2, 0]}
         serviceId="keselip"
-        serviceName="Keselip API"
+        serviceName="Keselip-API"
         endpointDisplay="keselipapi"
         isDegraded={isKeselipDegraded}
         statusCode={keselipCode}
@@ -920,12 +925,12 @@ export function ServerArchiveRack({ currentNode, isDegraded = false, healthData 
         badgeY={1.62}
       />
 
-      {/* Server Tower 2: Kataku API Health (Back against right wall X=6.34, front facing left towards room -X) */}
+      {/* Server Tower 2: Kataku-API (Back against right wall X=6.34, front facing left towards room -X) */}
       <SingleServerRack
-        position={[6.34, 0, 0.22]}
+        position={[6.34, 0, -0.45]}
         rotation={[0, -Math.PI / 2, 0]}
         serviceId="kataku"
-        serviceName="Kataku API"
+        serviceName="Kataku-API"
         endpointDisplay="katakuapi"
         isDegraded={isKatakuDegraded}
         statusCode={katakuCode}
@@ -933,6 +938,21 @@ export function ServerArchiveRack({ currentNode, isDegraded = false, healthData 
         error={katakuError}
         ledPhaseOffset={1.5}
         badgeY={1.48}
+      />
+
+      {/* Server Tower 3: Dongeng-API (Back against right wall X=6.34, front facing left towards room -X) */}
+      <SingleServerRack
+        position={[6.34, 0, 0.45]}
+        rotation={[0, -Math.PI / 2, 0]}
+        serviceId="dongeng"
+        serviceName="Dongeng-API"
+        endpointDisplay="agoose/posts"
+        isDegraded={isDongengDegraded}
+        statusCode={dongengCode}
+        latencyMs={dongengLatency}
+        error={dongengError}
+        ledPhaseOffset={3.0}
+        badgeY={1.62}
       />
     </group>
   );

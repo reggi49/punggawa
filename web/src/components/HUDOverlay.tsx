@@ -888,7 +888,7 @@ export function HUDOverlay({
               letterSpacing: '0.02em',
               transition: 'all 0.2s ease',
             }}
-            title="Cek Status Ketersediaan Microservice (Keselip API & Kataku Health)"
+            title="Cek Status Ketersediaan Microservice (Keselip-API, Kataku-API & Dongeng-API)"
           >
             <Server size={14} color={isDegraded ? '#EF4444' : '#354A60'} />
             <span>{isDegraded ? 'Outage ⚠️' : 'Services'}</span>

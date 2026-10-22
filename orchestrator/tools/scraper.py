@@ -5,11 +5,32 @@ import urllib.parse
 logger = logging.getLogger("Scraper")
 
 try:
-    from scrapling.fetchers import Fetcher, StealthyFetcher
+    from scrapling import Selector
+except Exception as e:
+    Selector = None
+    logger.error(f"Gagal import scrapling.Selector: {e}")
+
+try:
+    from scrapling.fetchers import Fetcher
 except Exception as e:
     Fetcher = None
+    logger.debug(f"Fetcher tidak tersedia (membutuhkan patchright): {e}")
+
+try:
+    from scrapling.fetchers import StealthyFetcher
+except Exception as e:
     StealthyFetcher = None
-    logger.error(f"Gagal import scrapling.fetchers: {e}")
+    logger.debug(f"StealthyFetcher tidak tersedia (membutuhkan patchright): {e}")
+
+try:
+    from curl_cffi import requests as curl_requests
+except Exception:
+    curl_requests = None
+
+try:
+    import httpx
+except Exception:
+    httpx = None
 
 MIN_CONTENT_LEN = 200
 
@@ -59,20 +80,51 @@ def _extract_text(page, url: str) -> str:
 
 
 def _fetch_fast(url: str):
-    """Layer 1: Fast HTTP Fetcher."""
-    if Fetcher is None:
-        return None
-    try:
-        return Fetcher.get(url, stealthy_headers=True)
-    except TypeError:
+    """Layer 1: Fast HTTP Fetcher dengan multi-engine fallback (scrapling -> curl_cffi -> httpx)."""
+    # 1. Coba Scrapling Fetcher bawaan jika tersedia
+    if Fetcher is not None:
         try:
-            return Fetcher.get(url)
+            return Fetcher.get(url, stealthy_headers=True)
+        except TypeError:
+            try:
+                return Fetcher.get(url)
+            except Exception as e:
+                logger.debug(f"Fetcher.get error: {e}")
         except Exception as e:
-            logger.warning(f"Fetcher.get error: {e}")
-            return None
-    except Exception as e:
-        logger.warning(f"Fetcher.get error: {e}")
-        return None
+            logger.debug(f"Fetcher.get error: {e}")
+
+    # 2. Fallback ke curl_cffi dengan browser TLS impersonation
+    if curl_requests is not None and Selector is not None:
+        try:
+            resp = curl_requests.get(
+                url,
+                impersonate="chrome",
+                timeout=25,
+                headers={
+                    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                    "Accept-Language": "id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7",
+                },
+            )
+            if resp.status_code == 200 and resp.text:
+                return Selector(resp.text)
+        except Exception as e:
+            logger.debug(f"curl_cffi fallback error for {url}: {e}")
+
+    # 3. Fallback ke httpx standar
+    if httpx is not None and Selector is not None:
+        try:
+            resp = httpx.get(
+                url,
+                headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"},
+                timeout=25,
+                follow_redirects=True,
+            )
+            if resp.status_code == 200 and resp.text:
+                return Selector(resp.text)
+        except Exception as e:
+            logger.debug(f"httpx fallback error for {url}: {e}")
+
+    return None
 
 
 def _fetch_stealth(url: str):
@@ -109,8 +161,8 @@ def scrape_data(target_urls: str | list[str]) -> tuple[str, str]:
 
     logger.info(f"🔗 [SCRAPER] Memproses {len(url_list)} sumber URL...")
 
-    if Fetcher is None and StealthyFetcher is None:
-        raise RuntimeError("scrapling.fetchers tidak terpasang. Jalankan pip install scrapling.")
+    if Fetcher is None and StealthyFetcher is None and curl_requests is None and httpx is None:
+        raise RuntimeError("Tidak ada engine HTTP fetcher yang terpasang (scrapling/curl_cffi/httpx).")
 
     for i, url in enumerate(url_list):
         idx = i + 1

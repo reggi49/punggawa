@@ -6,14 +6,20 @@ from typing import Any
 MONITORED_SERVICES = [
     {
         "id": "keselip",
-        "name": "Keselip API",
+        "name": "Keselip-API",
         "url": "https://keselipapi.bogorstore.com/",
         "expected_status": 200,
     },
     {
         "id": "kataku",
-        "name": "Kataku API Health",
+        "name": "Kataku-API",
         "url": "https://katakuapi.bogorstore.com/api/health",
+        "expected_status": 200,
+    },
+    {
+        "id": "dongeng",
+        "name": "Dongeng-API",
+        "url": "https://bogorstore.com/agoose/api/posts",
         "expected_status": 200,
     },
 ]
