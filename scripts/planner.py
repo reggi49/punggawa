@@ -29,119 +29,236 @@ logger = logging.getLogger("BayZeroPlanner")
 WIB = timezone(timedelta(hours=7))
 
 
+def get_existing_scheduled_topics() -> set[str]:
+    """Mengambil seluruh judul, nama repo, URL, dan video ID yang sudah ada di database."""
+    existing: set[str] = set()
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT title, payload FROM content_schedules;")
+                for row in cur.fetchall():
+                    raw_title = (row[0] or "").strip().lower()
+                    if raw_title:
+                        existing.add(raw_title)
+                        # Ekstrak nama repo jika format "bedah repositori: owner/name"
+                        if "bedah repositori:" in raw_title:
+                            existing.add(raw_title.replace("bedah repositori:", "").strip())
+                    
+                    payload_raw = row[1]
+                    payload = payload_raw if isinstance(payload_raw, dict) else json.loads(payload_raw or "{}")
+                    inp = payload.get("input_data", {})
+                    if inp.get("target_urls"):
+                        existing.add(str(inp["target_urls"]).strip().lower())
+                    if inp.get("video_id"):
+                        existing.add(str(inp["video_id"]).strip().lower())
+                    if inp.get("topic"):
+                        existing.add(str(inp["topic"]).strip().lower())
+                    if inp.get("query"):
+                        existing.add(str(inp["query"]).strip().lower())
+    except Exception as exc:
+        logger.warning(f"Gagal membaca riwayat jadwal untuk deduplikasi: {exc}")
+    return existing
+
+
+def get_occupied_time_slots() -> set[str]:
+    """Mengambil daftar slot waktu WIB (format: YYYY-MM-DD-HH) yang sudah terisi jadwal pending atau in_progress."""
+    occupied: set[str] = set()
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    SELECT scheduled_at FROM content_schedules 
+                    WHERE status IN ('pending', 'in_progress');
+                """)
+                for row in cur.fetchall():
+                    dt = row[0]
+                    if dt:
+                        dt_wib = dt.astimezone(WIB)
+                        slot_key = dt_wib.strftime("%Y-%m-%d-%H")
+                        occupied.add(slot_key)
+    except Exception as exc:
+        logger.warning(f"Gagal memeriksa slot waktu terisi: {exc}")
+    return occupied
+
+
+def delete_editorial_schedule(schedule_id: str) -> bool:
+    """Menghapus jadwal spesifik dari PostgreSQL content_schedules."""
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM content_schedules WHERE id = %s;", (schedule_id,))
+                deleted = cur.rowcount > 0
+                if deleted:
+                    logger.info(f"🗑️ [Bay-Zero Planner] Jadwal '{schedule_id}' berhasil dihapus.")
+                return deleted
+    except Exception as exc:
+        logger.error(f"Gagal menghapus jadwal {schedule_id}: {exc}", exc_info=True)
+        return False
+
+
+def cleanup_duplicate_pending_schedules() -> int:
+    """
+    Menghapus jadwal berstatus 'pending' yang duplikat (judul konten sama),
+    hanya menyisakan satu jadwal pending per judul.
+    """
+    deleted_count = 0
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("""
+                    DELETE FROM content_schedules
+                    WHERE id IN (
+                        SELECT id
+                        FROM (
+                            SELECT id,
+                                   ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(title)) ORDER BY scheduled_at ASC) as rnum
+                            FROM content_schedules
+                            WHERE status = 'pending'
+                        ) t
+                        WHERE t.rnum > 1
+                    );
+                """)
+                deleted_count = cur.rowcount
+                if deleted_count > 0:
+                    logger.info(f"🧹 [Bay-Zero Planner] Berhasil membersihkan {deleted_count} jadwal pending yang duplikat.")
+    except Exception as exc:
+        logger.error(f"Gagal membersihkan jadwal duplikat: {exc}", exc_info=True)
+    return deleted_count
+
+
 def generate_weekly_editorial_plan() -> list[dict[str, Any]]:
     """
-    Menghasilkan rencana editorial mingguan (7 konten untuk 7 hari ke depan):
-    - 2 Repositori open-source teratas dari GitHub Trending Weekly (Stark)
-    - 2 Berita teknologi global terhangat dari Google News RSS (Stark)
-    - 3 Video cerita rakyat/fabel dari YouTube Dongeng (Usagi)
-    Alokasi:
-    - Stark: Pukul 09.00 WIB
-    - Usagi: Pukul 19.00 WIB
+    Menghasilkan rencana editorial mingguan pintar tanpa bentrok (Smart Conflict-Free Merging):
+    1. Membersihkan duplikat pending yang tidak sengaja terbuat sebelumnya.
+    2. Memeriksa tugas yang sudah ada di database agar tidak terjadi duplikasi topik/judul.
+    3. Menghindari tabrakan waktu: memeriksa slot jam 09.00 & 19.00 WIB yang sudah terisi jadwal pending.
+    4. Menggabungkan jadwal baru ke slot hari berikutnya yang masih kosong secara harmonis.
     """
-    logger.info("🧠 [Bay-Zero Planner] Menginisialisasi kurasi konten 7 hari ke depan...")
+    logger.info("🧠 [Bay-Zero Planner] Menginisialisasi kurasi cerdas tanpa duplikasi...")
 
-    # 1. Tarik 2 Topik dari GitHub Trending Weekly
+    # Bersihkan duplikat pending lama jika ada
+    cleanup_duplicate_pending_schedules()
+
+    existing_topics = get_existing_scheduled_topics()
+    occupied_slots = get_occupied_time_slots()
+    logger.info(f"Ditemukan {len(existing_topics)} topik terdahulu dan {len(occupied_slots)} slot waktu terisi.")
+
+    # 1. Tarik Kandidat dari GitHub Trending Weekly (Filter duplikat)
     github_items: list[dict[str, Any]] = []
     try:
-        github_items = get_github_trending_weekly(language="", max_items=2)
-        logger.info(f"GitHub Trending: Mendapatkan {len(github_items)} kandidat.")
+        raw_gh = get_github_trending_weekly(language="", max_items=10)
+        for item in raw_gh:
+            r_name = item.get("repo_name", "").strip().lower()
+            r_url = item.get("repo_url", "").strip().lower()
+            if r_name and r_name not in existing_topics and r_url not in existing_topics:
+                github_items.append(item)
+        logger.info(f"GitHub Trending: {len(github_items)} kandidat baru yang belum pernah dikerjakan.")
     except Exception as exc:
         logger.warning(f"Gagal mengambil GitHub Trending: {exc}")
 
-    # Fallback jika GitHub tidak merespons
-    if len(github_items) < 2:
-        github_items.append({
-            "repo_name": "langchain-ai/langgraph",
-            "repo_url": "https://github.com/langchain-ai/langgraph",
-            "description": "Build resilient language agents as graphs with human-in-the-loop and memory.",
-            "language": "Python",
-            "stars_this_week": 4200,
-        })
-        github_items.append({
-            "repo_name": "astral-sh/uv",
-            "repo_url": "https://github.com/astral-sh/uv",
-            "description": "An extremely fast Python package and project manager, written in Rust.",
-            "language": "Rust",
-            "stars_this_week": 3500,
-        })
+    # Fallback repositori jika habis / duplikat semua
+    fallback_repos = [
+        {"repo_name": "astral-sh/uv", "repo_url": "https://github.com/astral-sh/uv", "description": "Extremely fast Python package installer and resolver."},
+        {"repo_name": "langchain-ai/langgraph", "repo_url": "https://github.com/langchain-ai/langgraph", "description": "Build resilient language agents as graphs."},
+        {"repo_name": "ollama/ollama", "repo_url": "https://github.com/ollama/ollama", "description": "Get up and running with large language models locally."},
+        {"repo_name": "vllm-project/vllm", "repo_url": "https://github.com/vllm-project/vllm", "description": "High-throughput and memory-efficient LLM inference engine."},
+        {"repo_name": "fastapi/fastapi", "repo_url": "https://github.com/fastapi/fastapi", "description": "Modern, fast web framework for building APIs with Python."},
+    ]
+    for fb in fallback_repos:
+        if len(github_items) < 2 and fb["repo_name"].lower() not in existing_topics:
+            github_items.append(fb)
 
-    # 2. Tarik 2 Berita dari Google News RSS International
+    # 2. Tarik Kandidat dari Google News RSS International (Filter duplikat)
     gnews_items: list[dict[str, Any]] = []
     try:
-        gnews_items = get_google_news_topics(keyword="technology", max_items=2, lang="en")
-        logger.info(f"Google News RSS: Mendapatkan {len(gnews_items)} kandidat.")
+        raw_news = get_google_news_topics(keyword="technology", max_items=12, lang="en")
+        for item in raw_news:
+            t = item.get("title", "").strip().lower()
+            u = item.get("url", "").strip().lower()
+            if t and t not in existing_topics and u not in existing_topics:
+                gnews_items.append(item)
+        logger.info(f"Google News RSS: {len(gnews_items)} kandidat baru yang belum pernah dikerjakan.")
     except Exception as exc:
         logger.warning(f"Gagal mengambil Google News: {exc}")
 
-    if len(gnews_items) < 2:
-        gnews_items.append({
-            "title": "Next-Gen AI Reasoning Models Redefine Software Architecture",
-            "url": "https://techcrunch.com/category/artificial-intelligence/",
-            "source": "TechCrunch",
-            "published_at": datetime.now(timezone.utc).isoformat(),
-        })
-        gnews_items.append({
-            "title": "Autonomous Coding Agents and Multi-Agent Orchestration in 2026",
-            "url": "https://theverge.com/tech",
-            "source": "The Verge",
-            "published_at": datetime.now(timezone.utc).isoformat(),
-        })
+    fallback_news = [
+        {"title": "Quantum Computing Milestones and Post-Quantum Cryptography in 2026", "url": "https://techcrunch.com/category/enterprise/", "source": "TechCrunch"},
+        {"title": "Open Source AI Weights versus Proprietary Cloud Gateways Benchmark", "url": "https://theverge.com/tech", "source": "The Verge"},
+        {"title": "Decentralized Edge Intelligence and Low-Power Microcontroller AI Models", "url": "https://wired.com/category/gear/", "source": "Wired"},
+    ]
+    for fb in fallback_news:
+        if len(gnews_items) < 2 and fb["title"].lower() not in existing_topics:
+            gnews_items.append(fb)
 
-    # 3. Tarik 3 Video Dongeng YouTube
+    # 3. Tarik Kandidat dari YouTube Dongeng (Filter duplikat)
     dongeng_items: list[dict[str, Any]] = []
     try:
         from orchestrator.tools.youtube_client import list_channel_videos
         for ch_id in settings.DONGENG_TARGET_CHANNELS:
-            vids = list_channel_videos(ch_id, max_results=2)
+            vids = list_channel_videos(ch_id, max_results=5)
             for v in vids:
-                if v not in dongeng_items and len(dongeng_items) < 3:
-                    dongeng_items.append(v)
+                v_id = str(v.get("id") or v.get("video_id") or "").strip().lower()
+                v_title = str(v.get("title") or "").strip().lower()
+                if v_id and v_id not in existing_topics and v_title not in existing_topics:
+                    if v not in dongeng_items:
+                        dongeng_items.append(v)
             if len(dongeng_items) >= 3:
                 break
     except Exception as exc:
         logger.warning(f"Gagal memindai YouTube Dongeng: {exc}")
 
-    # Fallback kurasi dongeng jika API offline / kuota habis
     fallback_dongeng = [
-        {"id": "UC7GZguUCh8gdEs-VKhWqkWA", "title": "Kisah Si Kancil dan Buaya yang Cerdik"},
-        {"id": "UCaMrqakJglh9VQItR50pQwA", "title": "Legenda Sangkuriang dan Gunung Tangkuban Perahu"},
-        {"id": "UC0y73P4z4V89w3P9K1K1K1A", "title": "Petualangan Timun Mas Melawan Raksasa"},
+        {"id": "dongeng_kancil_buaya_2026", "title": "Kisah Si Kancil dan Buaya yang Cerdik Menyeberang Sungai"},
+        {"id": "dongeng_sangkuriang_tangkuban", "title": "Legenda Sangkuriang dan Terciptanya Gunung Tangkuban Perahu"},
+        {"id": "dongeng_timun_mas_raksasa", "title": "Petualangan Berani Timun Mas Mengalahkan Raksasa Jahat"},
+        {"id": "dongeng_malin_kundang_pantai", "title": "Kisah Pengorbanan Ibu dan Pelajaran Hidup Malin Kundang"},
+        {"id": "dongeng_keong_mas_candra", "title": "Misteri Keong Mas dan Putri Candra Kirana yang Bijaksana"},
     ]
     for fb in fallback_dongeng:
-        if len(dongeng_items) < 3:
+        if len(dongeng_items) < 3 and fb["title"].lower() not in existing_topics and fb["id"].lower() not in existing_topics:
             dongeng_items.append(fb)
 
-    # 4. Susun Alokasi Jadwal 7 Hari ke Depan (Hari ke-1 s.d. Hari ke-7)
-    # Jadwal bergantian antara Stark (Tech, 09:00 WIB) dan Usagi (Dongeng, 19:00 WIB)
+    # 4. Susun Alokasi Jadwal Pintar (Smart Merging)
+    # Jadwal bergantian antara Stark (Tech @ 09:00 WIB) dan Usagi (Dongeng @ 19:00 WIB)
     now_wib = datetime.now(WIB)
     planned_slots: list[dict[str, Any]] = []
 
-    # Susun antrean 7 konten:
-    # Day 1: Stark (GitHub Trending 1) @ 09:00 WIB
-    # Day 2: Usagi (Dongeng 1)          @ 19:00 WIB
-    # Day 3: Stark (Google News 1)      @ 09:00 WIB
-    # Day 4: Usagi (Dongeng 2)          @ 19:00 WIB
-    # Day 5: Stark (GitHub Trending 2) @ 09:00 WIB
-    # Day 6: Usagi (Dongeng 3)          @ 19:00 WIB
-    # Day 7: Stark (Google News 2)      @ 09:00 WIB
-
+    # Susun antrean 7 konten baru:
     task_definitions = [
-        ("stark", "trend-article", github_items[0], 9),
-        ("usagi", "dongeng", dongeng_items[0], 19),
-        ("stark", "trend-article", gnews_items[0], 9),
-        ("usagi", "dongeng", dongeng_items[1], 19),
-        ("stark", "trend-article", github_items[1], 9),
-        ("usagi", "dongeng", dongeng_items[2], 19),
-        ("stark", "trend-article", gnews_items[1], 9),
+        ("stark", "trend-article", github_items[0] if len(github_items) > 0 else fallback_repos[0], 9),
+        ("usagi", "dongeng", dongeng_items[0] if len(dongeng_items) > 0 else fallback_dongeng[0], 19),
+        ("stark", "trend-article", gnews_items[0] if len(gnews_items) > 0 else fallback_news[0], 9),
+        ("usagi", "dongeng", dongeng_items[1] if len(dongeng_items) > 1 else fallback_dongeng[1], 19),
+        ("stark", "trend-article", github_items[1] if len(github_items) > 1 else fallback_repos[1], 9),
+        ("usagi", "dongeng", dongeng_items[2] if len(dongeng_items) > 2 else fallback_dongeng[2], 19),
+        ("stark", "trend-article", gnews_items[1] if len(gnews_items) > 1 else fallback_news[1], 9),
     ]
 
-    for day_offset, (agent, t_type, item, target_hour) in enumerate(task_definitions, start=1):
-        sched_time_wib = (now_wib + timedelta(days=day_offset)).replace(
-            hour=target_hour, minute=0, second=0, microsecond=0
-        )
-        # Convert ke UTC untuk penyimpanan database
-        sched_time_utc = sched_time_wib.astimezone(timezone.utc)
+    for agent, t_type, item, target_hour in task_definitions:
+        # Cari slot hari dan jam berikutnya yang BENAR-BENAR MASIH KOSONG
+        check_day = 1
+        sched_time_wib = None
+        sched_time_utc = None
+
+        while check_day <= 30: # Cari slot kosong hingga 30 hari ke depan
+            candidate_wib = (now_wib + timedelta(days=check_day)).replace(
+                hour=target_hour, minute=0, second=0, microsecond=0
+            )
+            slot_key = candidate_wib.strftime("%Y-%m-%d-%H")
+            if slot_key not in occupied_slots:
+                # Slot kosong ditemukan!
+                occupied_slots.add(slot_key)
+                sched_time_wib = candidate_wib
+                sched_time_utc = candidate_wib.astimezone(timezone.utc)
+                break
+            check_day += 1
+
+        if not sched_time_wib or not sched_time_utc:
+            # Fallback darurat
+            sched_time_wib = (now_wib + timedelta(days=len(planned_slots) + 1)).replace(
+                hour=target_hour, minute=0, second=0, microsecond=0
+            )
+            sched_time_utc = sched_time_wib.astimezone(timezone.utc)
 
         schedule_id = f"sched_{uuid.uuid4().hex[:10]}"
         task_id = f"task_{schedule_id[6:]}"
@@ -247,6 +364,9 @@ def generate_weekly_editorial_plan() -> list[dict[str, Any]]:
                     ),
                 )
                 saved_count += 1
+
+    logger.info(f"✅ [Bay-Zero Planner] Berhasil menggabungkan {saved_count} jadwal baru tanpa bentrok!")
+    return planned_slots
 
     logger.info(f"✅ [Bay-Zero Planner] Berhasil menyimpan {saved_count} jadwal konten ke database!")
     return planned_slots

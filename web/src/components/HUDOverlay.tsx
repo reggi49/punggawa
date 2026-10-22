@@ -27,6 +27,7 @@ import {
   RefreshCw,
   AlertTriangle,
   Server,
+  Trash2,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
@@ -447,6 +448,63 @@ export function HUDOverlay({
     } catch (err: any) {
       setScheduleActionMsg(`❌ Gagal: ${err.message}`);
       setTimeout(() => setScheduleActionMsg(null), 3000);
+    }
+  };
+
+  const handleDeleteSchedule = async (schedId: string, title: string) => {
+    if (!confirm(`Hapus jadwal berikut dari antrean?\n"${title}"`)) return;
+    setScheduleActionMsg(`Menghapus jadwal ${schedId}...`);
+    try {
+      const res = await fetch(`/api/schedules/${schedId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken || ''}`,
+        },
+      });
+      if (res.ok) {
+        setScheduleActionMsg('✅ Jadwal berhasil dihapus!');
+        setSchedulesList((prev) => prev.filter((s) => s.id !== schedId));
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      } else if (res.status === 401) {
+        setScheduleActionMsg('❌ Memerlukan login pengelola untuk menghapus jadwal.');
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setScheduleActionMsg(`❌ Gagal: ${err.detail || 'Tidak dapat menghapus jadwal'}`);
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      }
+    } catch (err: any) {
+      setScheduleActionMsg(`❌ Gagal: ${err.message}`);
+      setTimeout(() => setScheduleActionMsg(null), 3000);
+    }
+  };
+
+  const handleCleanupDuplicates = async () => {
+    if (!confirm('Bersihkan semua jadwal pending yang memiliki judul sama (duplikat)?')) return;
+    setIsLoadingSchedules(true);
+    setScheduleActionMsg('Membersihkan jadwal duplikat...');
+    try {
+      const res = await fetch('/api/schedules/cleanup-duplicates', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken || ''}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScheduleActionMsg(`✅ Berhasil membersihkan ${data.deleted_count} jadwal duplikat!`);
+        fetchSchedules();
+        setTimeout(() => setScheduleActionMsg(null), 3500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setScheduleActionMsg(`❌ Gagal: ${err.detail || 'Tidak dapat membersihkan duplikat'}`);
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      }
+    } catch (err: any) {
+      setScheduleActionMsg(`❌ Gagal: ${err.message}`);
+      setTimeout(() => setScheduleActionMsg(null), 3000);
+    } finally {
+      setIsLoadingSchedules(false);
     }
   };
 
@@ -2357,10 +2415,19 @@ export function HUDOverlay({
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   type="button"
-                  onClick={handleGenerateWeeklyPlan}
+                  onClick={
+                    authToken
+                      ? handleGenerateWeeklyPlan
+                      : () => {
+                          setAuthError('Silakan masukkan password pengelola untuk membuat jadwal baru.');
+                          setAuthModalOpen(true);
+                        }
+                  }
                   disabled={isLoadingSchedules}
                   style={{
-                    background: 'linear-gradient(135deg, #354A60, #8DA895)',
+                    background: authToken
+                      ? 'linear-gradient(135deg, #354A60, #8DA895)'
+                      : 'rgba(53, 74, 96, 0.45)',
                     color: '#ffffff',
                     border: 'none',
                     borderRadius: '10px',
@@ -2373,7 +2440,11 @@ export function HUDOverlay({
                     cursor: isLoadingSchedules ? 'not-allowed' : 'pointer',
                     boxShadow: '0 4px 12px rgba(53, 74, 96, 0.2)',
                   }}
-                  title="Tarik tren Google News, GitHub & YouTube untuk menyusun kalender 7 hari ke depan"
+                  title={
+                    authToken
+                      ? 'Tarik tren Google News, GitHub & YouTube untuk menyusun kalender 7 hari ke depan (Smart Conflict-Free Merging)'
+                      : 'Login pengelola diperlukan untuk menyusun jadwal baru'
+                  }
                 >
                   <RefreshCw size={13} className={isLoadingSchedules ? 'animate-spin' : ''} />
                   <span>{isLoadingSchedules ? 'Menyusun...' : '⚡ Generate Jadwal 7 Hari'}</span>
@@ -2401,6 +2472,31 @@ export function HUDOverlay({
                   <RefreshCw size={13} />
                   <span>Refresh</span>
                 </button>
+
+                {authToken && (
+                  <button
+                    type="button"
+                    onClick={handleCleanupDuplicates}
+                    disabled={isLoadingSchedules}
+                    style={{
+                      background: 'rgba(239, 68, 68, 0.08)',
+                      color: '#DC2626',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
+                      borderRadius: '10px',
+                      padding: '8px 12px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                    title="Hapus jadwal pending duplikat yang memiliki judul sama"
+                  >
+                    <Trash2 size={13} />
+                    <span>Bersihkan Duplikat</span>
+                  </button>
+                )}
 
                 <button
                   type="button"
@@ -2499,7 +2595,7 @@ export function HUDOverlay({
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: '110px 140px 110px 1fr 180px',
+                  gridTemplateColumns: '100px 135px 95px 1fr 195px',
                   gap: '8px',
                   padding: '10px 14px',
                   background: 'rgba(244, 241, 234, 0.85)',
@@ -2567,7 +2663,7 @@ export function HUDOverlay({
                         <div
                           style={{
                             display: 'grid',
-                            gridTemplateColumns: '110px 140px 110px 1fr 180px',
+                            gridTemplateColumns: '100px 135px 95px 1fr 195px',
                             gap: '8px',
                             alignItems: 'center',
                             fontSize: '12px',
@@ -2686,7 +2782,7 @@ export function HUDOverlay({
                             )}
 
                             {isFailed && (
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end' }}>
                                 <button
                                   type="button"
                                   onClick={() =>
@@ -2708,51 +2804,121 @@ export function HUDOverlay({
                                     gap: '3px',
                                   }}
                                 >
-                                  <span>{isErrorExpanded ? 'Tutup Alasan' : 'Alasan Gagal'}</span>
+                                  <span>{isErrorExpanded ? 'Tutup' : 'Alasan'}</span>
                                   {isErrorExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                                 </button>
-                                <button
-                                  type="button"
-                                  onClick={() => handleTriggerScheduleNow(sched.id)}
-                                  title="Coba eksekusi ulang jadwal yang gagal"
-                                  style={{
-                                    background: '#DC2626',
-                                    border: 'none',
-                                    color: '#FFFFFF',
-                                    borderRadius: '6px',
-                                    padding: '3px 8px',
-                                    fontSize: '10.5px',
-                                    fontWeight: 800,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  Retry
-                                </button>
+                                {authToken && (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTriggerScheduleNow(sched.id)}
+                                      title="Coba eksekusi ulang jadwal yang gagal"
+                                      style={{
+                                        background: '#DC2626',
+                                        border: 'none',
+                                        color: '#FFFFFF',
+                                        borderRadius: '6px',
+                                        padding: '3px 8px',
+                                        fontSize: '10.5px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      Retry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                      title="Hapus jadwal gagal ini dari daftar"
+                                      style={{
+                                        background: 'rgba(100, 116, 139, 0.12)',
+                                        border: '1px solid rgba(100, 116, 139, 0.25)',
+                                        color: '#64748B',
+                                        borderRadius: '6px',
+                                        padding: '3px 6px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                      }}
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </>
+                                )}
                               </div>
                             )}
 
-                            {isPending && (
+                            {isCompleted && authToken && (
                               <button
                                 type="button"
-                                onClick={() => handleTriggerScheduleNow(sched.id)}
+                                onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                title="Hapus riwayat jadwal selesai ini"
                                 style={{
-                                  background: 'linear-gradient(135deg, #354A60, #D98078)',
-                                  color: '#ffffff',
-                                  border: 'none',
+                                  background: 'rgba(100, 116, 139, 0.12)',
+                                  border: '1px solid rgba(100, 116, 139, 0.25)',
+                                  color: '#64748B',
                                   borderRadius: '6px',
-                                  padding: '4px 10px',
-                                  fontSize: '11px',
-                                  fontWeight: 800,
+                                  padding: '3px 6px',
                                   cursor: 'pointer',
                                   display: 'flex',
                                   alignItems: 'center',
-                                  gap: '4px',
-                                  boxShadow: '0 2px 6px rgba(53, 74, 96, 0.2)',
+                                  marginLeft: '4px',
                                 }}
                               >
-                                <Play size={10} fill="#ffffff" />
-                                <span>Trigger</span>
+                                <Trash2 size={11} />
                               </button>
+                            )}
+
+                            {isPending && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end' }}>
+                                {authToken ? (
+                                  <>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleTriggerScheduleNow(sched.id)}
+                                      style={{
+                                        background: 'linear-gradient(135deg, #354A60, #D98078)',
+                                        color: '#ffffff',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        padding: '4px 9px',
+                                        fontSize: '11px',
+                                        fontWeight: 800,
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '4px',
+                                        boxShadow: '0 2px 6px rgba(53, 74, 96, 0.2)',
+                                      }}
+                                    >
+                                      <Play size={10} fill="#ffffff" />
+                                      <span>Trigger</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                      title="Hapus jadwal ini dari antrean"
+                                      style={{
+                                        background: 'rgba(239, 68, 68, 0.12)',
+                                        border: '1px solid rgba(239, 68, 68, 0.25)',
+                                        color: '#DC2626',
+                                        borderRadius: '6px',
+                                        padding: '4px 6px',
+                                        cursor: 'pointer',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '2px',
+                                      }}
+                                    >
+                                      <Trash2 size={11} />
+                                    </button>
+                                  </>
+                                ) : (
+                                  <span style={{ fontSize: '11px', color: '#8A8A82', fontStyle: 'italic' }}>
+                                    Terjadwal
+                                  </span>
+                                )}
+                              </div>
                             )}
 
                             {isInProgress && (

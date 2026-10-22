@@ -652,6 +652,7 @@ interface SingleServerRackProps {
   error?: string | null;
   ledPhaseOffset?: number;
   badgeY?: number;
+  isTopPriority?: boolean;
 }
 
 function SingleServerRack({
@@ -665,6 +666,7 @@ function SingleServerRack({
   error,
   ledPhaseOffset = 0,
   badgeY = 1.55,
+  isTopPriority = false,
 }: SingleServerRackProps) {
   const ledMatRef = useRef<THREE.MeshStandardMaterial>(null);
   const pointLightRef = useRef<THREE.PointLight>(null);
@@ -788,40 +790,54 @@ function SingleServerRack({
             <meshStandardMaterial
               color="#EF4444"
               emissive="#EF4444"
-              emissiveIntensity={2.0}
+              emissiveIntensity={isTopPriority ? 3.0 : 2.0}
               wireframe
             />
           </mesh>
         )}
 
-        {/* 2D Billboard Hologram Badge with Service Name */}
-        <Html center distanceFactor={11} position={[0, isDegraded ? 0.12 : 0, 0]}>
+        {/* 2D Billboard Hologram Badge with Service Name & Dynamic Z-Index */}
+        <Html
+          center
+          distanceFactor={11}
+          position={[0, isDegraded ? 0.14 : 0, 0]}
+          zIndexRange={isTopPriority ? [99999, 90000] : isDegraded ? [8000, 5000] : [100, 10]}
+          style={{
+            zIndex: isTopPriority ? 99999 : isDegraded ? 5000 : 10,
+            pointerEvents: 'none',
+          }}
+        >
           {isDegraded ? (
             <div
               className="punggawa-3d-badge"
               style={{
-                background: 'rgba(185, 28, 28, 0.96)',
-                border: '1.5px solid #F87171',
+                background: isTopPriority ? 'rgba(220, 20, 60, 0.98)' : 'rgba(185, 28, 28, 0.96)',
+                border: isTopPriority ? '2px solid #FFFFFF' : '1.5px solid #F87171',
                 borderRadius: '8px',
-                padding: '5px 12px',
+                padding: isTopPriority ? '6px 14px' : '5px 12px',
                 color: '#FFFFFF',
-                fontSize: '11px',
+                fontSize: isTopPriority ? '11.5px' : '10.5px',
                 fontWeight: 900,
                 letterSpacing: '0.04em',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '2px',
-                boxShadow: '0 0 20px rgba(239, 68, 68, 0.85), 0 0 10px rgba(239, 68, 68, 0.5)',
+                boxShadow: isTopPriority
+                  ? '0 0 35px rgba(239, 68, 68, 1), 0 0 20px rgba(255, 255, 255, 0.8), 0 6px 20px rgba(0,0,0,0.6)'
+                  : '0 0 20px rgba(239, 68, 68, 0.85), 0 0 10px rgba(239, 68, 68, 0.5)',
                 whiteSpace: 'nowrap',
                 userSelect: 'none',
-                textShadow: '0 1px 3px rgba(0,0,0,0.6)',
-                animation: 'pulse 1s infinite',
+                textShadow: '0 1px 3px rgba(0,0,0,0.7)',
+                animation: isTopPriority ? 'pulse 0.7s infinite' : 'pulse 1s infinite',
+                transform: isTopPriority ? 'scale(1.12)' : undefined,
+                transformOrigin: 'center center',
                 pointerEvents: 'none',
+                zIndex: isTopPriority ? 99999 : isDegraded ? 5000 : 10,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <span style={{ fontSize: '12px' }}>⚠️</span>
+                <span style={{ fontSize: isTopPriority ? '13px' : '12px' }}>⚠️</span>
                 <span>{serviceName}</span>
                 <span
                   style={{
@@ -845,37 +861,38 @@ function SingleServerRack({
               style={{
                 background: 'rgba(15, 23, 42, 0.92)',
                 border: '1px solid rgba(16, 185, 129, 0.6)',
-                borderRadius: '8px',
-                padding: '4px 10px',
+                borderRadius: '7px',
+                padding: '3px 8px',
                 color: '#ECFDF5',
-                fontSize: '10.5px',
+                fontSize: '10px',
                 fontWeight: 800,
-                letterSpacing: '0.04em',
+                letterSpacing: '0.03em',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
                 gap: '2px',
-                boxShadow: '0 0 14px rgba(16, 185, 129, 0.35)',
+                boxShadow: '0 0 12px rgba(16, 185, 129, 0.3)',
                 whiteSpace: 'nowrap',
                 userSelect: 'none',
-                opacity: 0.96,
+                opacity: 0.95,
                 pointerEvents: 'none',
+                zIndex: 10,
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                 <span
                   style={{
-                    width: '6.5px',
-                    height: '6.5px',
+                    width: '6px',
+                    height: '6px',
                     borderRadius: '50%',
                     background: '#10B981',
                     boxShadow: '0 0 6px #10B981',
                   }}
                 />
                 <span style={{ color: '#F8FAFC', fontWeight: 900 }}>{serviceName}</span>
-                <span style={{ color: '#34D399', fontSize: '9.5px', fontWeight: 700 }}>200 OK</span>
+                <span style={{ color: '#34D399', fontSize: '9px', fontWeight: 700 }}>200 OK</span>
               </div>
-              <div style={{ fontSize: '8.5px', color: '#6EE7B7', fontWeight: 600 }}>
+              <div style={{ fontSize: '8px', color: '#6EE7B7', fontWeight: 600 }}>
                 ⚡ {latencyMs || 250}ms • {endpointDisplay}
               </div>
             </div>
@@ -887,12 +904,17 @@ function SingleServerRack({
 }
 
 export function ServerArchiveRack({ currentNode, isDegraded = false, healthData }: FurnitureProps) {
+  // Count degraded services to determine if only 1 service has error
+  const degradedList = (healthData?.services || []).filter((s) => s.status !== 'healthy');
+  const isSingleDegraded = degradedList.length === 1;
+
   // Extract real-time status for Keselip-API
   const srvKeselip = healthData?.services?.find((s) => s.id === 'keselip');
   const isKeselipDegraded = srvKeselip ? srvKeselip.status !== 'healthy' : isDegraded;
   const keselipCode = srvKeselip?.status_code;
   const keselipLatency = srvKeselip?.latency_ms;
   const keselipError = srvKeselip?.error;
+  const isKeselipTop = isKeselipDegraded && isSingleDegraded;
 
   // Extract real-time status for Kataku-API
   const srvKataku = healthData?.services?.find((s) => s.id === 'kataku');
@@ -900,6 +922,7 @@ export function ServerArchiveRack({ currentNode, isDegraded = false, healthData 
   const katakuCode = srvKataku?.status_code;
   const katakuLatency = srvKataku?.latency_ms;
   const katakuError = srvKataku?.error;
+  const isKatakuTop = isKatakuDegraded && isSingleDegraded;
 
   // Extract real-time status for Dongeng-API
   const srvDongeng = healthData?.services?.find((s) => s.id === 'dongeng');
@@ -907,25 +930,27 @@ export function ServerArchiveRack({ currentNode, isDegraded = false, healthData 
   const dongengCode = srvDongeng?.status_code;
   const dongengLatency = srvDongeng?.latency_ms;
   const dongengError = srvDongeng?.error;
+  const isDongengTop = isDongengDegraded && isSingleDegraded;
 
   return (
     <group>
-      {/* Server Tower 1: Keselip-API (Back against right wall X=6.34, front facing left towards room -X) */}
+      {/* Server Tower 1: Keselip-API (Back against right wall X=6.34, Z=-1.75) */}
       <SingleServerRack
-        position={[6.34, 0, -1.35]}
+        position={[6.34, 0, -1.75]}
         rotation={[0, -Math.PI / 2, 0]}
         serviceId="keselip"
         serviceName="Keselip-API"
         endpointDisplay="keselipapi"
         isDegraded={isKeselipDegraded}
+        isTopPriority={isKeselipTop}
         statusCode={keselipCode}
         latencyMs={keselipLatency}
         error={keselipError}
         ledPhaseOffset={0}
-        badgeY={1.62}
+        badgeY={1.58}
       />
 
-      {/* Server Tower 2: Kataku-API (Back against right wall X=6.34, front facing left towards room -X) */}
+      {/* Server Tower 2: Kataku-API (Back against right wall X=6.34, Z=-0.45, Center) */}
       <SingleServerRack
         position={[6.34, 0, -0.45]}
         rotation={[0, -Math.PI / 2, 0]}
@@ -933,26 +958,28 @@ export function ServerArchiveRack({ currentNode, isDegraded = false, healthData 
         serviceName="Kataku-API"
         endpointDisplay="katakuapi"
         isDegraded={isKatakuDegraded}
+        isTopPriority={isKatakuTop}
         statusCode={katakuCode}
         latencyMs={katakuLatency}
         error={katakuError}
         ledPhaseOffset={1.5}
-        badgeY={1.48}
+        badgeY={1.58}
       />
 
-      {/* Server Tower 3: Dongeng-API (Back against right wall X=6.34, front facing left towards room -X) */}
+      {/* Server Tower 3: Dongeng-API (Back against right wall X=6.34, Z=0.85) */}
       <SingleServerRack
-        position={[6.34, 0, 0.45]}
+        position={[6.34, 0, 0.85]}
         rotation={[0, -Math.PI / 2, 0]}
         serviceId="dongeng"
         serviceName="Dongeng-API"
         endpointDisplay="agoose/posts"
         isDegraded={isDongengDegraded}
+        isTopPriority={isDongengTop}
         statusCode={dongengCode}
         latencyMs={dongengLatency}
         error={dongengError}
         ledPhaseOffset={3.0}
-        badgeY={1.62}
+        badgeY={1.58}
       />
     </group>
   );
