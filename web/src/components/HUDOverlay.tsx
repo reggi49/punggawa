@@ -2473,30 +2473,28 @@ export function HUDOverlay({
                   <span>Refresh</span>
                 </button>
 
-                {authToken && (
-                  <button
-                    type="button"
-                    onClick={handleCleanupDuplicates}
-                    disabled={isLoadingSchedules}
-                    style={{
-                      background: 'rgba(239, 68, 68, 0.08)',
-                      color: '#DC2626',
-                      border: '1px solid rgba(239, 68, 68, 0.25)',
-                      borderRadius: '10px',
-                      padding: '8px 12px',
-                      fontSize: '12px',
-                      fontWeight: 700,
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                    title="Hapus jadwal pending duplikat yang memiliki judul sama"
-                  >
-                    <Trash2 size={13} />
-                    <span>Bersihkan Duplikat</span>
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={handleCleanupDuplicates}
+                  disabled={isLoadingSchedules}
+                  style={{
+                    background: 'rgba(239, 68, 68, 0.08)',
+                    color: '#DC2626',
+                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                    borderRadius: '10px',
+                    padding: '8px 12px',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                  title="Hapus jadwal pending/failed duplikat yang memiliki judul sama"
+                >
+                  <Trash2 size={13} />
+                  <span>Bersihkan Duplikat</span>
+                </button>
 
                 <button
                   type="button"
@@ -2761,24 +2759,45 @@ export function HUDOverlay({
 
                           {/* Observability / Action Button */}
                           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
-                            {isCompleted && sched.result_url && (
-                              <a
-                                href={sched.result_url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontSize: '11px',
-                                  color: '#0284C7',
-                                  fontWeight: 700,
-                                  textDecoration: 'underline',
-                                }}
-                              >
-                                <span>Hasil Publikasi</span>
-                                <ExternalLink size={11} />
-                              </a>
+                            {isCompleted && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                                {sched.result_url && (
+                                  <a
+                                    href={sched.result_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      fontSize: '11px',
+                                      color: '#0284C7',
+                                      fontWeight: 700,
+                                      textDecoration: 'underline',
+                                    }}
+                                  >
+                                    <span>Hasil Publikasi</span>
+                                    <ExternalLink size={11} />
+                                  </a>
+                                )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                  title="Hapus riwayat jadwal selesai ini"
+                                  style={{
+                                    background: 'rgba(100, 116, 139, 0.12)',
+                                    border: '1px solid rgba(100, 116, 139, 0.25)',
+                                    color: '#64748B',
+                                    borderRadius: '6px',
+                                    padding: '4px 6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             )}
 
                             {isFailed && (
@@ -2808,116 +2827,91 @@ export function HUDOverlay({
                                   {isErrorExpanded ? <ChevronUp size={11} /> : <ChevronDown size={11} />}
                                 </button>
                                 {authToken && (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleTriggerScheduleNow(sched.id)}
-                                      title="Coba eksekusi ulang jadwal yang gagal"
-                                      style={{
-                                        background: '#DC2626',
-                                        border: 'none',
-                                        color: '#FFFFFF',
-                                        borderRadius: '6px',
-                                        padding: '3px 8px',
-                                        fontSize: '10.5px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                      }}
-                                    >
-                                      Retry
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                      title="Hapus jadwal gagal ini dari daftar"
-                                      style={{
-                                        background: 'rgba(100, 116, 139, 0.12)',
-                                        border: '1px solid rgba(100, 116, 139, 0.25)',
-                                        color: '#64748B',
-                                        borderRadius: '6px',
-                                        padding: '3px 6px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                      }}
-                                    >
-                                      <Trash2 size={11} />
-                                    </button>
-                                  </>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTriggerScheduleNow(sched.id)}
+                                    title="Coba eksekusi ulang jadwal yang gagal"
+                                    style={{
+                                      background: '#DC2626',
+                                      border: 'none',
+                                      color: '#FFFFFF',
+                                      borderRadius: '6px',
+                                      padding: '3px 8px',
+                                      fontSize: '10.5px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                    }}
+                                  >
+                                    Retry
+                                  </button>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                  title="Hapus jadwal gagal ini dari daftar"
+                                  style={{
+                                    background: 'rgba(100, 116, 139, 0.12)',
+                                    border: '1px solid rgba(100, 116, 139, 0.25)',
+                                    color: '#64748B',
+                                    borderRadius: '6px',
+                                    padding: '4px 6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
                               </div>
-                            )}
-
-                            {isCompleted && authToken && (
-                              <button
-                                type="button"
-                                onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                title="Hapus riwayat jadwal selesai ini"
-                                style={{
-                                  background: 'rgba(100, 116, 139, 0.12)',
-                                  border: '1px solid rgba(100, 116, 139, 0.25)',
-                                  color: '#64748B',
-                                  borderRadius: '6px',
-                                  padding: '3px 6px',
-                                  cursor: 'pointer',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  marginLeft: '4px',
-                                }}
-                              >
-                                <Trash2 size={11} />
-                              </button>
                             )}
 
                             {isPending && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '5px', justifyContent: 'flex-end' }}>
                                 {authToken ? (
-                                  <>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleTriggerScheduleNow(sched.id)}
-                                      style={{
-                                        background: 'linear-gradient(135deg, #354A60, #D98078)',
-                                        color: '#ffffff',
-                                        border: 'none',
-                                        borderRadius: '6px',
-                                        padding: '4px 9px',
-                                        fontSize: '11px',
-                                        fontWeight: 800,
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '4px',
-                                        boxShadow: '0 2px 6px rgba(53, 74, 96, 0.2)',
-                                      }}
-                                    >
-                                      <Play size={10} fill="#ffffff" />
-                                      <span>Trigger</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                      title="Hapus jadwal ini dari antrean"
-                                      style={{
-                                        background: 'rgba(239, 68, 68, 0.12)',
-                                        border: '1px solid rgba(239, 68, 68, 0.25)',
-                                        color: '#DC2626',
-                                        borderRadius: '6px',
-                                        padding: '4px 6px',
-                                        cursor: 'pointer',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '2px',
-                                      }}
-                                    >
-                                      <Trash2 size={11} />
-                                    </button>
-                                  </>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleTriggerScheduleNow(sched.id)}
+                                    style={{
+                                      background: 'linear-gradient(135deg, #354A60, #D98078)',
+                                      color: '#ffffff',
+                                      border: 'none',
+                                      borderRadius: '6px',
+                                      padding: '4px 9px',
+                                      fontSize: '11px',
+                                      fontWeight: 800,
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: '4px',
+                                      boxShadow: '0 2px 6px rgba(53, 74, 96, 0.2)',
+                                    }}
+                                  >
+                                    <Play size={10} fill="#ffffff" />
+                                    <span>Trigger</span>
+                                  </button>
                                 ) : (
-                                  <span style={{ fontSize: '11px', color: '#8A8A82', fontStyle: 'italic' }}>
+                                  <span style={{ fontSize: '11px', color: '#8A8A82', fontStyle: 'italic', marginRight: '4px' }}>
                                     Terjadwal
                                   </span>
                                 )}
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                  title="Hapus jadwal ini dari antrean"
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.12)',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    color: '#DC2626',
+                                    borderRadius: '6px',
+                                    padding: '4px 6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
                               </div>
                             )}
 

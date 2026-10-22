@@ -96,48 +96,90 @@ def delete_editorial_schedule(schedule_id: str) -> bool:
         return False
 
 
-def cleanup_duplicate_pending_schedules() -> int:
+def cleanup_duplicate_schedules() -> int:
     """
-    Menghapus jadwal berstatus 'pending' yang duplikat (judul konten sama),
-    hanya menyisakan satu jadwal pending per judul.
+    Membersihkan jadwal duplikat dari PostgreSQL content_schedules secara komprehensif:
+    1. Hapus jadwal pending/failed jika judul yang sama sudah berstatus 'in_progress' atau 'completed'.
+    2. Hapus duplikat jadwal pending yang memiliki judul sama (hanya simpan yang paling awal).
+    3. Hapus duplikat jadwal failed yang memiliki judul sama (hanya simpan yang paling baru).
     """
-    deleted_count = 0
+    deleted_total = 0
     try:
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
+                # 1. Hapus pending/failed jika sudah ada yang in_progress atau completed untuk judul yang sama
+                cur.execute("""
+                    DELETE FROM content_schedules
+                    WHERE status IN ('pending', 'failed')
+                      AND LOWER(TRIM(title)) IN (
+                          SELECT LOWER(TRIM(title))
+                          FROM content_schedules
+                          WHERE status IN ('completed', 'in_progress')
+                      );
+                """)
+                deleted_total += cur.rowcount
+
+                # 2. Hapus duplikat antar sesama pending (hanya sisakan 1 yang paling awal)
                 cur.execute("""
                     DELETE FROM content_schedules
                     WHERE id IN (
                         SELECT id
                         FROM (
                             SELECT id,
-                                   ROW_NUMBER() OVER (PARTITION BY LOWER(TRIM(title)) ORDER BY scheduled_at ASC) as rnum
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY LOWER(TRIM(title)) 
+                                       ORDER BY scheduled_at ASC, created_at ASC
+                                   ) as rnum
                             FROM content_schedules
                             WHERE status = 'pending'
                         ) t
                         WHERE t.rnum > 1
                     );
                 """)
-                deleted_count = cur.rowcount
-                if deleted_count > 0:
-                    logger.info(f"🧹 [Bay-Zero Planner] Berhasil membersihkan {deleted_count} jadwal pending yang duplikat.")
+                deleted_total += cur.rowcount
+
+                # 3. Hapus duplikat antar sesama failed (hanya sisakan 1 yang paling baru)
+                cur.execute("""
+                    DELETE FROM content_schedules
+                    WHERE id IN (
+                        SELECT id
+                        FROM (
+                            SELECT id,
+                                   ROW_NUMBER() OVER (
+                                       PARTITION BY LOWER(TRIM(title)) 
+                                       ORDER BY created_at DESC
+                                   ) as rnum
+                            FROM content_schedules
+                            WHERE status = 'failed'
+                        ) t
+                        WHERE t.rnum > 1
+                    );
+                """)
+                deleted_total += cur.rowcount
+
+                if deleted_total > 0:
+                    logger.info(f"🧹 [Bay-Zero Planner] Berhasil membersihkan {deleted_total} jadwal duplikat dari database.")
     except Exception as exc:
         logger.error(f"Gagal membersihkan jadwal duplikat: {exc}", exc_info=True)
-    return deleted_count
+    return deleted_total
+
+
+# Alias backward compatibility
+cleanup_duplicate_pending_schedules = cleanup_duplicate_schedules
 
 
 def generate_weekly_editorial_plan() -> list[dict[str, Any]]:
     """
     Menghasilkan rencana editorial mingguan pintar tanpa bentrok (Smart Conflict-Free Merging):
-    1. Membersihkan duplikat pending yang tidak sengaja terbuat sebelumnya.
+    1. Membersihkan duplikat pending/failed yang tidak sengaja terbuat sebelumnya.
     2. Memeriksa tugas yang sudah ada di database agar tidak terjadi duplikasi topik/judul.
     3. Menghindari tabrakan waktu: memeriksa slot jam 09.00 & 19.00 WIB yang sudah terisi jadwal pending.
     4. Menggabungkan jadwal baru ke slot hari berikutnya yang masih kosong secara harmonis.
     """
     logger.info("🧠 [Bay-Zero Planner] Menginisialisasi kurasi cerdas tanpa duplikasi...")
 
-    # Bersihkan duplikat pending lama jika ada
-    cleanup_duplicate_pending_schedules()
+    # Bersihkan duplikat lama jika ada
+    cleanup_duplicate_schedules()
 
     existing_topics = get_existing_scheduled_topics()
     occupied_slots = get_occupied_time_slots()
@@ -368,12 +410,12 @@ def generate_weekly_editorial_plan() -> list[dict[str, Any]]:
     logger.info(f"✅ [Bay-Zero Planner] Berhasil menggabungkan {saved_count} jadwal baru tanpa bentrok!")
     return planned_slots
 
-    logger.info(f"✅ [Bay-Zero Planner] Berhasil menyimpan {saved_count} jadwal konten ke database!")
-    return planned_slots
 
+def list_editorial_schedules(limit: int = 50, status: str | None = None) -> list[dict[str, Any]]:
+    """Mengambil daftar jadwal konten dari PostgreSQL content_schedules setelah auto-deduplikasi."""
+    # Selalu jalankan auto-cleanup terlebih dahulu agar data yang dikembalikan ke API 100% bebas duplikat!
+    cleanup_duplicate_schedules()
 
-def list_editorial_schedules(limit: int = 20, status: str | None = None) -> list[dict[str, Any]]:
-    """Mengambil daftar jadwal konten dari PostgreSQL content_schedules."""
     query = """
         SELECT id, agent_name, task_type, title, payload, scheduled_at, status, 
                started_at, completed_at, result_url, error_message, created_at

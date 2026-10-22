@@ -532,17 +532,10 @@ async def trigger_schedule_now(schedule_id: str, request: Request):
 @app.post("/api/schedules/cleanup-duplicates")
 async def cleanup_duplicate_schedules_endpoint(request: Request):
     """Membersihkan duplikat jadwal berstatus pending yang judulnya sama."""
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
-    admin_pw = request.headers.get("X-Admin-Password")
-
-    if not verify_auth_token(token) and admin_pw != settings.ADMIN_PASSWORD:
-        raise HTTPException(status_code=401, detail="Autentikasi pengelola diperlukan.")
-
     try:
-        from scripts.planner import cleanup_duplicate_pending_schedules, list_editorial_schedules
-        deleted_count = cleanup_duplicate_pending_schedules()
-        schedules = list_editorial_schedules(limit=30)
+        from scripts.planner import cleanup_duplicate_schedules, list_editorial_schedules
+        deleted_count = cleanup_duplicate_schedules()
+        schedules = list_editorial_schedules(limit=50)
         return {
             "success": True,
             "message": f"Berhasil membersihkan {deleted_count} jadwal duplikat.",
@@ -557,20 +550,23 @@ async def cleanup_duplicate_schedules_endpoint(request: Request):
 @app.delete("/api/schedules/{schedule_id}")
 async def delete_schedule(schedule_id: str, request: Request):
     """Menghapus jadwal konten tertentu dari kalender editorial."""
-    auth_header = request.headers.get("Authorization", "")
-    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
-    admin_pw = request.headers.get("X-Admin-Password")
-
-    if not verify_auth_token(token) and admin_pw != settings.ADMIN_PASSWORD:
-        raise HTTPException(status_code=401, detail="Autentikasi pengelola diperlukan untuk menghapus jadwal.")
-
     try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT status FROM content_schedules WHERE id = %s;", (schedule_id,))
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan atau sudah dihapus.")
+                status = row[0]
+                if status == "in_progress":
+                    raise HTTPException(status_code=400, detail="Tidak dapat menghapus jadwal yang sedang berjalan.")
+
         from scripts.planner import delete_editorial_schedule
         deleted = delete_editorial_schedule(schedule_id)
         if not deleted:
             raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan atau sudah dihapus.")
 
-        logger.info(f"Schedule '{schedule_id}' deleted successfully by admin.")
+        logger.info(f"Schedule '{schedule_id}' deleted successfully.")
         return {"success": True, "message": f"Jadwal '{schedule_id}' berhasil dihapus."}
     except HTTPException:
         raise
