@@ -80,12 +80,12 @@ export function useAmbientOffice(
     }
 
     if (isDegraded) {
-      // Microservice Outage: Stark rushes to the server cluster to troubleshoot & inspect!
+      // Microservice Outage: Bay-Zero (SOP Auditor & Lead Inspector) rushes to the server cluster to troubleshoot & inspect!
       const serverTargetPos: [number, number, number] = [5.0, 0, -0.45];
       const serverTargetRotY = Math.PI / 2; // Facing East (+X) directly towards the server racks
-      simulator.updateActualState('stark', 'Blocked', serverTargetPos, serverTargetRotY, 'confused_scratch');
+      simulator.updateActualState('bayzero', 'Blocked', serverTargetPos, serverTargetRotY, 'confused_scratch');
+      simulator.updateActualState('stark', 'Idle');
       simulator.updateActualState('usagi', 'Idle');
-      simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
       return;
     }
 
@@ -218,8 +218,8 @@ function buildVisualState(
   currentNode: string,
   isDegraded: boolean = false
 ): CharacterVisualState {
-  const isOutageStark = id === 'stark' && isDegraded;
-  const isWorking = amb.actualState === 'Working' || isOutageStark;
+  const isOutageBayZero = id === 'bayzero' && isDegraded;
+  const isWorking = amb.actualState === 'Working' || isOutageBayZero;
 
   // Humanized ambient activity description
   let ambientLabel = 'Santai di Meja';
@@ -249,14 +249,14 @@ function buildVisualState(
       ambientLabel = 'Kembali ke Meja Kerja 🪑';
       break;
     case 'StandingIdle':
-      ambientLabel = isOutageStark ? 'Investigasi Server ⚠️' : 'Berdiri di Area Santai 🌿';
+      ambientLabel = isOutageBayZero ? 'Investigasi Server ⚠️' : 'Berdiri di Area Santai 🌿';
       break;
     default:
       ambientLabel = 'Santai di Meja ☕';
   }
 
   // Handle special actual states
-  if (isOutageStark) {
+  if (isOutageBayZero) {
     ambientLabel = 'Investigasi Server ⚠️';
   } else if (amb.actualState === 'Blocked') {
     ambientLabel = 'Terblokir / Investigasi ⚠️';
@@ -271,11 +271,11 @@ function buildVisualState(
     targetPos: amb.targetPosition,
     targetRotY: amb.targetRotationY,
     action: amb.characterAction,
-    isSeated: isOutageStark ? false : (isWorking ? (amb.targetPosition[2] > 0.6 && amb.targetPosition[2] < 1.0) : amb.isSeated),
+    isSeated: isOutageBayZero ? false : (isWorking ? (amb.targetPosition[2] > 0.6 && amb.targetPosition[2] < 1.0) : amb.isSeated),
     isActive: isWorking, // True for running AI task or active outage investigation
     actualState: amb.actualState,
     ambientActivity: amb.ambientActivity,
-    ambientLabel: isOutageStark ? 'Investigasi Server ⚠️' : (isWorking ? getHumanStatus(currentNode).label : ambientLabel),
+    ambientLabel: isOutageBayZero ? 'Investigasi Server ⚠️' : (isWorking ? getHumanStatus(currentNode).label : ambientLabel),
     socialRole: amb.socialRole,
   };
 }

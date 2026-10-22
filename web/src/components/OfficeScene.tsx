@@ -106,8 +106,8 @@ export function OfficeScene({
         socialRole={characters.stark.socialRole}
         actualState={characters.stark.actualState}
         ambientLabel={characters.stark.ambientLabel}
-        badgeLabelOverride={isDegraded ? 'Investigasi Server ⚠️' : (characters.stark.isActive ? undefined : 'Fokus')}
-        dotColorOverride={isDegraded ? '#EF4444' : (characters.stark.isActive ? undefined : '#22C55E')}
+        badgeLabelOverride={characters.stark.isActive ? undefined : 'Fokus'}
+        dotColorOverride={characters.stark.isActive ? undefined : '#22C55E'}
       />
 
       {/* Usagi: Right Desk Creative Curator */}
@@ -127,7 +127,7 @@ export function OfficeScene({
         dotColorOverride={characters.usagi.isActive ? undefined : '#22C55E'}
       />
 
-      {/* Bay-Zero: Central Table SOP Auditor (Seated Review with Laptop, Exact Chair 0 Anchor) */}
+      {/* Bay-Zero: Central Table SOP Auditor & Server Inspector */}
       <StylizedHumanoidCharacter
         id="bayzero"
         currentNode={currentNode}
@@ -140,8 +140,8 @@ export function OfficeScene({
         socialRole={characters.bayzero.isActive ? characters.bayzero.socialRole : 'listener'}
         actualState={characters.bayzero.actualState}
         ambientLabel={characters.bayzero.ambientLabel}
-        badgeLabelOverride={characters.bayzero.isActive ? undefined : 'Meeting'}
-        dotColorOverride={characters.bayzero.isActive ? undefined : '#F59E0B'}
+        badgeLabelOverride={isDegraded ? 'Investigasi Server ⚠️' : (characters.bayzero.isActive ? undefined : 'Meeting')}
+        dotColorOverride={isDegraded ? '#EF4444' : (characters.bayzero.isActive ? undefined : '#F59E0B')}
       />
 
       {/* Clara: Central Table Editorial Partner (Standing with Coffee Mug in Discussion) */}

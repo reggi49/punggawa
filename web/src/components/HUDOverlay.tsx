@@ -37,7 +37,7 @@ import { ServiceAlertBanner } from './ServiceAlertBanner';
 
 export interface TaskPreset {
   id: string;
-  agent: 'stark' | 'usagi' | 'bayzero' | 'droid';
+  agent: 'stark' | 'usagi' | 'bayzero';
   agentName: string;
   agentRole: string;
   title: string;
@@ -134,18 +134,6 @@ export const TASK_PRESETS: TaskPreset[] = [
     icon: '🌐',
     badge: '3D Web',
   },
-  {
-    id: 'stark_cloud_security',
-    agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
-    title: 'Audit Keamanan Cloud Gateway & Hardening Token',
-    description: 'Praktik terbaik pengamanan API token HMAC, perlindungan antrean Redis, dan rate-limiting.',
-    type: 'article',
-    category: 'technology',
-    icon: '🔒',
-    badge: 'Security',
-  },
 
   // USAGI (Media & Dongeng Curator)
   {
@@ -187,14 +175,38 @@ export const TASK_PRESETS: TaskPreset[] = [
     badge: 'Design Art',
   },
 
-  // BAY-ZERO (SOP Auditor & Lead Manager)
+  // BAY-ZERO (SOP Auditor & Lead Server Inspector)
+  {
+    id: 'bayzero_server_health',
+    agent: 'bayzero',
+    agentName: 'Bay-Zero',
+    agentRole: 'SOP Auditor & Server Health Inspector',
+    title: 'Pengecekan Kesehatan Server & Microservices Uptime',
+    description: 'Inspeksi real-time seluruh microservice eksternal (Keselip, Kataku, Dongeng), latensi HTTP, konektivitas database & Redis, dan status rack server.',
+    type: 'article',
+    category: 'technology',
+    icon: '🖥️',
+    badge: 'Server Health',
+  },
+  {
+    id: 'bayzero_cloud_security',
+    agent: 'bayzero',
+    agentName: 'Bay-Zero',
+    agentRole: 'SOP Auditor & Server Health Inspector',
+    title: 'Audit Keamanan Server & Hardening Cloud Gateway',
+    description: 'Audit arsitektur keamanan server, verifikasi autentikasi token HMAC, mitigasi serangan DDoS, dan isolasi antrean Redis.',
+    type: 'article',
+    category: 'technology',
+    icon: '🛡️',
+    badge: 'Server Security',
+  },
   {
     id: 'bayzero_audit_sop',
     agent: 'bayzero',
     agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Lead Manager',
+    agentRole: 'SOP Auditor & Server Health Inspector',
     title: 'Audit Kepatuhan SOP & Quality Gate Publikasi',
-    description: 'Inspeksi menyeluruh struktur artikel, verifikasi standar editorial, dan deteksi kejanggalan.',
+    description: 'Inspeksi menyeluruh struktur artikel, verifikasi standar editorial, dan deteksi kejanggalan sebelum rilis.',
     type: 'article',
     category: 'general',
     icon: '📋',
@@ -204,7 +216,7 @@ export const TASK_PRESETS: TaskPreset[] = [
     id: 'bayzero_fact_check',
     agent: 'bayzero',
     agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Lead Manager',
+    agentRole: 'SOP Auditor & Server Health Inspector',
     title: 'Verifikasi Fakta, Sitasi Sumber & Plagiarisme',
     description: 'Validasi referensi web, akurasi kutipan teknis, dan verifikasi orisinalitas naskah.',
     type: 'article',
@@ -212,19 +224,17 @@ export const TASK_PRESETS: TaskPreset[] = [
     icon: '🔍',
     badge: 'Fact-Check',
   },
-
-  // JANITOR DROID (Maintenance & Health Check)
   {
-    id: 'droid_clean_cache',
-    agent: 'droid',
-    agentName: 'Janitor Droid',
-    agentRole: 'Automated Facility Maintenance',
-    title: 'Pembersihan Sistem & Garbage Collection Antrean',
-    description: 'Pembersihan buffer log kedaluwarsa, pemeliharaan memori Redis, dan docking otomatis robot cleaner.',
+    id: 'bayzero_clean_system',
+    agent: 'bayzero',
+    agentName: 'Bay-Zero',
+    agentRole: 'SOP Auditor & Server Health Inspector',
+    title: 'Pembersihan Buffer Sistem & Maintenance Antrean',
+    description: 'Pemeliharaan memori Redis, pembersihan riwayat log kedaluwarsa, dan auto-cleanup database PostgreSQL.',
     type: 'article',
     category: 'technology',
     icon: '🧹',
-    badge: 'Maintenance',
+    badge: 'System Care',
   },
 ];
 
@@ -299,7 +309,7 @@ export function HUDOverlay({
 
   // Task Dispatch Modal State
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
-  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero' | 'droid'>('all');
+  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero'>('all');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('stark_ai_trends_2026');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -641,6 +651,20 @@ export function HUDOverlay({
     setDispatchResult(null);
 
     try {
+      // Pengecekan server khusus Bay-Zero: picu pengecekan langsung dan buka modal observabilitas
+      if (currentPreset.id === 'bayzero_server_health') {
+        if (onRecheckHealth) {
+          onRecheckHealth();
+        }
+        setDispatchResult('✅ Bay-Zero sedang menjalankan pengecekan server & microservices...');
+        setTimeout(() => {
+          setDispatchModalOpen(false);
+          setDispatchResult(null);
+          setServicesModalOpen(true);
+        }, 1200);
+        return;
+      }
+
       const prompt =
         showCustomInput && customPrompt.trim()
           ? customPrompt.trim()
@@ -2011,11 +2035,10 @@ export function HUDOverlay({
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {[
-                    { id: 'all', label: 'Semua Misi (10)', icon: '🌟' },
+                    { id: 'all', label: `Semua Misi (${TASK_PRESETS.length})`, icon: '🌟' },
                     { id: 'stark', label: '⚡ Stark (Writer)', icon: '⚡' },
-                    { id: 'usagi', label: '🎬 Usagi (Dongeng)', icon: '🦊' },
-                    { id: 'bayzero', label: '🔍 Bay-Zero (Audit)', icon: '📋' },
-                    { id: 'droid', label: '🧹 Janitor (Cleaner)', icon: '🧹' },
+                    { id: 'usagi', label: '🦊 Usagi (Dongeng)', icon: '🦊' },
+                    { id: 'bayzero', label: '🛡️ Bay-Zero (Server & Audit)', icon: '🛡️' },
                   ].map((tab) => {
                     const active = activeAgentTab === tab.id;
                     return (
@@ -3084,7 +3107,7 @@ export function HUDOverlay({
                     </span>
                   </div>
                   <p style={{ fontSize: '11px', color: '#8A8A82', margin: '2px 0 0 0' }}>
-                    Pemantauan ketersediaan endpoint periodik (1 jam sekali) • Redis Caching • Zero LLM Cost
+                    Dikelola oleh Bay-Zero (Server & Quality Inspector) • Pemantauan ketersediaan endpoint periodik (1 jam sekali) • Redis Caching • Zero LLM Cost
                   </p>
                 </div>
               </div>

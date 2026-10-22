@@ -137,9 +137,9 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   bayzero: {
     id: 'bayzero',
     name: 'Bay-Zero',
-    codeName: 'SOP Auditor',
-    role: 'SOP Auditor & Lead Manager',
-    specialty: 'Verifikasi Mutu, Quality Gate & Error Diagnostics',
+    codeName: 'System Inspector',
+    role: 'SOP Auditor & Server Health Inspector',
+    specialty: 'Quality Gate, Pengecekan Server & Uptime Microservices',
     color: '#8DA895',
     glowColor: '#30343A',
     badgeBg: 'rgba(141, 168, 149, 0.15)',

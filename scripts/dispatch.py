@@ -368,9 +368,9 @@ def cmd_plan(args):
 
 
 def cmd_health(args):
-    """Pemeriksaan ketersediaan microservice eksternal (Uptime Monitor - Zero LLM Cost)."""
+    """Pemeriksaan ketersediaan microservice eksternal & server (Bay-Zero Inspector - Zero LLM Cost)."""
     from orchestrator.tools.uptime_checker import run_all_health_checks
-    print("\n🔍 Memeriksa ketersediaan microservice eksternal...\n")
+    print("\n🔍 [Bay-Zero Inspector] Memeriksa ketersediaan microservice eksternal & kesehatan server...\n")
     data = run_all_health_checks()
     services = data.get("services", [])
     overall = data.get("overall_status", "healthy").upper()
@@ -480,7 +480,7 @@ def main():
     p_plan.set_defaults(func=cmd_plan)
 
     # Subcommand: health
-    p_health = subparsers.add_parser("health", help="Pantau status ketersediaan microservice eksternal (Zero LLM Cost)")
+    p_health = subparsers.add_parser("health", help="Pantau status ketersediaan microservice & server (Bay-Zero Inspector)")
     p_health.set_defaults(func=cmd_health)
 
     args = parser.parse_args()
