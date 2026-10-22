@@ -4,6 +4,7 @@ from typing import Any
 from orchestrator.graphs.article_pipeline import article_graph_app
 from orchestrator.graphs.chat_agent import chat_graph_app
 from orchestrator.graphs.dongeng_pipeline import dongeng_graph_app
+from orchestrator.graphs.job_pipeline import job_graph_app
 
 logger = logging.getLogger("GraphRegistry")
 
@@ -21,6 +22,12 @@ GRAPH_REGISTRY: dict[str, Any] = {
     "dongeng": dongeng_graph_app,
     "dongeng_pipeline": dongeng_graph_app,
     "youtube_dongeng": dongeng_graph_app,
+    "job": job_graph_app,
+    "job_hunt": job_graph_app,
+    "job_ops": job_graph_app,
+    "career": job_graph_app,
+    "career_ops": job_graph_app,
+    "job_hunter": job_graph_app,
 }
 
 # Default fallback jika task_type tidak dikenal

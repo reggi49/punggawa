@@ -21,7 +21,7 @@ export interface HumanStatusConfig {
   badgeBg: string;
   description: string;
   icon: string;
-  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'team';
+  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'team';
 }
 
 export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
@@ -204,6 +204,76 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     description: 'Usagi memicu push notification Firebase FCM ke seluruh pembaca dongeng.',
     icon: '🔔',
     responsibleWorker: 'usagi',
+  },
+  ingest_job_node: {
+    label: 'Analisis Target Loker 📋',
+    action: 'walk_to_desk',
+    color: '#D4A373',
+    glowColor: '#F59E0B',
+    badgeBg: 'rgba(212, 163, 115, 0.25)',
+    description: 'Clara memuat URL lowongan dan master profil karir kandidat.',
+    icon: '📋',
+    responsibleWorker: 'clara',
+  },
+  fetch_job_node: {
+    label: 'Scouting Loker & Riset 🌐',
+    action: 'searching_archive',
+    color: '#06b6d4',
+    glowColor: '#0891b2',
+    badgeBg: 'rgba(6, 182, 212, 0.25)',
+    description: 'Clara mengekstrak detail kualifikasi, deskripsi pekerjaan, dan info perusahaan.',
+    icon: '🌐',
+    responsibleWorker: 'clara',
+  },
+  evaluate_fit_node: {
+    label: 'Evaluasi Matriks A-H 🧠',
+    action: 'inspecting_sop',
+    color: '#f59e0b',
+    glowColor: '#d97706',
+    badgeBg: 'rgba(245, 158, 11, 0.25)',
+    description: 'Clara menghitung Fit Score (1-5), red flags, dan Block G keaktifan loker.',
+    icon: '🧠',
+    responsibleWorker: 'clara',
+  },
+  draft_application_node: {
+    label: 'Drafter: Tailoring Cover Letter ✍️',
+    action: 'intense_typing',
+    color: '#10b981',
+    glowColor: '#059669',
+    badgeBg: 'rgba(16, 185, 129, 0.25)',
+    description: 'Clara menyusun Cover Letter dan CV points yang dipersonalisasi sesuai lowongan.',
+    icon: '✍️',
+    responsibleWorker: 'clara',
+  },
+  review_critique_node: {
+    label: 'Reviewer: Audit Anti-Halusinasi 🔍',
+    action: 'observing',
+    color: '#a855f7',
+    glowColor: '#9333ea',
+    badgeBg: 'rgba(168, 85, 247, 0.25)',
+    description: 'Clara menguji draf terhadap CV asli untuk mencegah klaim berlebih/fiktif.',
+    icon: '🔍',
+    responsibleWorker: 'clara',
+  },
+  generate_prep_node: {
+    label: 'STAR+R Interview Prep 🎯',
+    action: 'intense_typing',
+    color: '#ec4899',
+    glowColor: '#db2777',
+    badgeBg: 'rgba(236, 72, 153, 0.25)',
+    description: 'Clara menyusun skenario latihan wawancara STAR+R berdasarkan posisi target.',
+    icon: '🎯',
+    responsibleWorker: 'clara',
+  },
+  save_job_node: {
+    label: 'Menyimpan ke Database 💾',
+    action: 'walk_to_desk',
+    color: '#3b82f6',
+    glowColor: '#2563eb',
+    badgeBg: 'rgba(59, 130, 246, 0.25)',
+    description: 'Menyimpan hasil kurasi, skor, dan materi aplikasi ke PostgreSQL.',
+    icon: '💾',
+    responsibleWorker: 'clara',
   },
   complete_node: {
     label: 'Misi Selesai Gemilang ✨',

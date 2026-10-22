@@ -1,0 +1,64 @@
+# ==============================================================================
+# MASTER CAREER PROFILE & PREFERENCES (Punggawa Career-Ops Agent)
+# ==============================================================================
+# Dokumen ini adalah acuan profil pengguna untuk:
+# 1. Menghitung Fit Score (1-5) terhadap deskripsi lowongan kerja.
+# 2. Menyesuaikan (tailoring) Cover Letter dan resume poin-poin.
+# 3. Menghasilkan STAR+R interview preparation materi.
+# ==============================================================================
+
+personal:
+  name: "Reggi"
+  email: "reggi@example.com"
+  phone: "+62 812-xxxx-xxxx"
+  location: "Indonesia (WIB / GMT+7)"
+  portfolio_url: "https://github.com/reggi49"
+  linkedin_url: "https://linkedin.com/in/reggi"
+
+target_preferences:
+  target_roles:
+    - "Senior Backend Engineer"
+    - "Fullstack Developer (Go / Python / React)"
+    - "AI / Agentic Systems Engineer"
+    - "Software Engineer"
+  preferred_work_modes:
+    - "remote"
+    - "hybrid"
+  target_locations:
+    - "Worldwide"
+    - "Remote"
+    - "Singapore"
+    - "Indonesia"
+  min_salary_usd_monthly: 2000
+  notice_period: "Immediately / 1 month"
+
+core_competencies:
+  languages:
+    - "Python"
+    - "Golang"
+    - "TypeScript / JavaScript"
+    - "SQL"
+  frameworks_and_tools:
+    - "FastAPI"
+    - "React / Next.js / Vite"
+    - "LangGraph / LangChain"
+    - "PostgreSQL"
+    - "Redis"
+    - "Docker"
+    - "Playwright / Web Scraping"
+    - "TailwindCSS"
+  specialties:
+    - "Distributed Agentic Workflows & Multi-Agent Systems"
+    - "High-Performance Backend & Real-time Event Streaming (SSE / WebSockets)"
+    - "Automated Web Scraping & Resilience Engineering"
+    - "API Integration & Cloud Microservices"
+
+master_cv_markdown: |
+  # Professional Experience Summary
+  Software Engineer & AI Solutions Architect with strong expertise in building autonomous agentic systems,
+  scalable backend services (Python, Go), and modern reactive web applications.
+  
+  ## Key Highlights & Projects
+  - **Punggawa Multi-Agent Orchestrator:** Engineered an event-driven autonomous multi-agent platform using LangGraph, Redis task queuing, distributed locking, and PostgreSQL state management with 3D retro office visualization.
+  - **Scalable Microservice & Content Engine:** Built dual-language content pipelines with automated quality gating (Zero-LLM cost checks, Gemini 2.5 API integration, and push notification triggers).
+  - **Data Ingestion & Resilient Scraping:** Developed robust scraping and parsing pipelines using Playwright and Scrapling with anti-bot bypass and fallback strategies.

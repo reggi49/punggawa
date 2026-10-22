@@ -28,21 +28,23 @@ import {
   AlertTriangle,
   Server,
   Trash2,
+  Briefcase,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
 import { LogEntry } from '../hooks/useEventStream';
 import { CharacterVisualState } from '../simulation/useAmbientOffice';
 import { ServiceAlertBanner } from './ServiceAlertBanner';
+import { CareerOpsModal } from './CareerOpsModal';
 
 export interface TaskPreset {
   id: string;
-  agent: 'stark' | 'usagi' | 'bayzero';
+  agent: 'stark' | 'usagi' | 'bayzero' | 'clara';
   agentName: string;
   agentRole: string;
   title: string;
   description: string;
-  type: 'article' | 'dongeng' | 'chat';
+  type: 'article' | 'dongeng' | 'chat' | 'job_hunt' | string;
   category: string;
   defaultUrls?: string;
   videoId?: string;
@@ -236,6 +238,30 @@ export const TASK_PRESETS: TaskPreset[] = [
     icon: '🧹',
     badge: 'System Care',
   },
+  {
+    id: 'clara_analyze_url',
+    agent: 'clara',
+    agentName: 'Clara',
+    agentRole: 'Talent & Career Strategist',
+    title: 'Analisis Mendalam Loker dari URL',
+    description: 'Evaluasi keselarasan kualifikasi A–H, Fit Scoring (1–5), deteksi keaktifan Block G, serta draf Cover Letter & CV Points.',
+    type: 'job_hunt',
+    category: 'career_ops',
+    icon: '💼',
+    badge: 'Career-Ops',
+  },
+  {
+    id: 'clara_auto_scout_remote',
+    agent: 'clara',
+    agentName: 'Clara',
+    agentRole: 'Talent & Career Strategist',
+    title: 'Auto-Scout Loker Remote (RemoteOK)',
+    description: 'Mencari dan menyaring lowongan remote engineering aktif di RemoteOK yang paling cocok dengan skill profil kandidat.',
+    type: 'job_hunt',
+    category: 'career_ops',
+    icon: '🌐',
+    badge: 'Auto-Scout',
+  },
 ];
 
 interface HUDOverlayProps {
@@ -309,7 +335,8 @@ export function HUDOverlay({
 
   // Task Dispatch Modal State
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
-  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero'>('all');
+  const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero' | 'clara'>('all');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('stark_ai_trends_2026');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -535,7 +562,7 @@ export function HUDOverlay({
 
   // Suppress 3D labels and apply modal-active state to document.body
   useEffect(() => {
-    const isModalActive = authModalOpen || dispatchModalOpen || scheduleModalOpen || servicesModalOpen;
+    const isModalActive = authModalOpen || dispatchModalOpen || scheduleModalOpen || servicesModalOpen || jobModalOpen;
     if (isModalActive) {
       document.body.classList.add('punggawa-modal-active');
     } else {
@@ -544,7 +571,7 @@ export function HUDOverlay({
     return () => {
       document.body.classList.remove('punggawa-modal-active');
     };
-  }, [authModalOpen, dispatchModalOpen, scheduleModalOpen, servicesModalOpen]);
+  }, [authModalOpen, dispatchModalOpen, scheduleModalOpen, servicesModalOpen, jobModalOpen]);
 
   // Deduplicate status labels for dev preview
   const uniqueStatusOptions = useMemo(() => {
@@ -690,10 +717,11 @@ export function HUDOverlay({
       const payload: Record<string, any> = {
         prompt,
         type,
-        action: currentPreset.source ? 'trend-article' : (type === 'dongeng' ? 'dongeng' : 'article'),
+        action: currentPreset.source ? 'trend-article' : (type === 'dongeng' ? 'dongeng' : (type === 'job_hunt' ? 'job_hunt' : 'article')),
         source: currentPreset.source,
         lang: currentPreset.lang,
-        query: currentPreset.source === 'gnews' ? prompt : undefined,
+        query: currentPreset.source === 'gnews' ? prompt : (type === 'job_hunt' ? prompt : undefined),
+        job_url: urls || (prompt.startsWith('http') ? prompt : undefined),
         category,
         urls,
         video_id: videoId || undefined,
@@ -886,6 +914,31 @@ export function HUDOverlay({
           >
             <Calendar size={14} color="#354A60" />
             <span>Kalender Konten</span>
+          </button>
+
+          {/* Peluang Karir (Career-Ops Clara) Modal Button */}
+          <button
+            onClick={() => setJobModalOpen(true)}
+            style={{
+              background: 'rgba(244, 241, 234, 0.94)',
+              color: '#30343A',
+              border: '1px solid rgba(212, 163, 115, 0.5)',
+              borderRadius: '10px',
+              padding: '7px 14px',
+              fontSize: '12px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              letterSpacing: '0.02em',
+              transition: 'all 0.2s ease',
+            }}
+            title="Buka Peluang Karir & Hasil Kurasi Loker (Career-Ops Clara)"
+          >
+            <Briefcase size={14} color="#D4A373" />
+            <span>Peluang Karir</span>
           </button>
 
           {/* Kirim Task Action Button (Shows Lock if guest, Send if logged in) */}
@@ -2039,6 +2092,7 @@ export function HUDOverlay({
                     { id: 'stark', label: '⚡ Stark (Writer)', icon: '⚡' },
                     { id: 'usagi', label: '🦊 Usagi (Dongeng)', icon: '🦊' },
                     { id: 'bayzero', label: '🛡️ Bay-Zero (Server & Audit)', icon: '🛡️' },
+                    { id: 'clara', label: '💼 Clara (Career-Ops)', icon: '💼' },
                   ].map((tab) => {
                     const active = activeAgentTab === tab.id;
                     return (
@@ -3375,6 +3429,13 @@ export function HUDOverlay({
         </div>,
         document.body
       )}
+
+      {/* 9. CAREER-OPS & TALENT OPPORTUNITIES MODAL (Clara) */}
+      <CareerOpsModal
+        isOpen={jobModalOpen}
+        onClose={() => setJobModalOpen(false)}
+        onOpenDispatch={handleOpenDispatch}
+      />
     </div>
   );
 }

@@ -41,6 +41,11 @@ def _handle_task_success(
         result_url = cms_res["url"]
     elif curation_res.get("skip"):
         result_url = f"Dilewati ({curation_res.get('reason', 'skip')})"
+    elif final_state.get("saved_job_id"):
+        job_id = final_state.get("saved_job_id")
+        eval_res = final_state.get("evaluation_result") or {}
+        score = eval_res.get("fit_score", 1)
+        result_url = f"Evaluasi Loker #{job_id} (Skor: {score}/5)"
 
     if schedule_id:
         try:
@@ -219,7 +224,8 @@ def execute_graph_with_lock(task_payload: dict[str, Any]) -> dict[str, Any] | No
     input_data = task_payload.get("input_data") or {}
     schedule_id = task_payload.get("schedule_id") or input_data.get("schedule_id")
     task_type = task_payload.get("task_type") or input_data.get("task_type")
-    agent_name = "Usagi" if task_type == "dongeng" else "Stark"
+    is_job = str(task_type).lower() in ("job", "job_hunt", "job_ops", "career", "career_ops", "job_hunter")
+    agent_name = "Clara" if is_job else ("Usagi" if task_type == "dongeng" else "Stark")
     title = (
         task_payload.get("title")
         or input_data.get("topic")

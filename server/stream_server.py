@@ -86,6 +86,8 @@ class DispatchRequest(BaseModel):
     source: str | None = Field(None, description="Trend source: 'github' or 'gnews'")
     lang: str | None = Field(None, description="Programming language for GitHub trending")
     query: str | None = Field(None, description="Search query for Google News RSS")
+    job_url: str | None = Field(None, description="Direct Job URL for Career-Ops analysis")
+    job_description: str | None = Field(None, description="Raw job description text")
 
 
 def generate_auth_token(username: str) -> str:
@@ -422,6 +424,9 @@ async def dispatch_task(req: DispatchRequest, request: Request):
             "urls": req.urls,
             "target_urls": req.urls,
             "video_id": req.video_id,
+            "job_url": req.job_url or req.urls or (req.query if req.query and req.query.startswith("http") else None),
+            "job_description": req.job_description,
+            "raw_text": req.job_description,
             "dry_run": req.dry_run,
         },
     }
@@ -649,6 +654,117 @@ async def trigger_services_health_check():
         )
 
     return result
+
+
+# =========================================================================
+# 9. CAREER-OPS (JOB OPPORTUNITIES & TALENT OPS) ENDPOINTS
+# =========================================================================
+@app.get("/api/jobs")
+async def list_jobs(limit: int = 50, status: str | None = None):
+    """Mengembalikan daftar lowongan kerja yang sudah dianalisis oleh Clara/Career-Ops."""
+    from orchestrator.connections import postgres_pool
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                if status:
+                    cur.execute(
+                        """
+                        SELECT id, job_url, company_name, role_title, location, work_mode,
+                               salary_range, fit_score, fit_reasoning, is_active, status,
+                               applied_at, created_at, updated_at
+                        FROM job_opportunities
+                        WHERE status = %s
+                        ORDER BY fit_score DESC, created_at DESC
+                        LIMIT %s;
+                        """,
+                        (status, limit),
+                    )
+                else:
+                    cur.execute(
+                        """
+                        SELECT id, job_url, company_name, role_title, location, work_mode,
+                               salary_range, fit_score, fit_reasoning, is_active, status,
+                               applied_at, created_at, updated_at
+                        FROM job_opportunities
+                        ORDER BY fit_score DESC, created_at DESC
+                        LIMIT %s;
+                        """,
+                        (limit,),
+                    )
+                cols = [d[0] for d in cur.description]
+                rows = cur.fetchall()
+                jobs = [dict(zip(cols, r)) for r in rows]
+                for j in jobs:
+                    for k in ("applied_at", "created_at", "updated_at"):
+                        if j.get(k):
+                            j[k] = j[k].isoformat()
+                return {"total": len(jobs), "jobs": jobs}
+    except Exception as exc:
+        logger.error(f"Gagal mengambil daftar lowongan: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/jobs/{job_id}")
+async def get_job_detail(job_id: str):
+    """Mengembalikan detail lengkap evaluasi A-H, draf cover letter, dan STAR+R prep."""
+    from orchestrator.connections import postgres_pool
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    SELECT * FROM job_opportunities WHERE id = %s;
+                    """,
+                    (job_id,),
+                )
+                row = cur.fetchone()
+                if not row:
+                    raise HTTPException(status_code=404, detail="Lowongan tidak ditemukan.")
+                cols = [d[0] for d in cur.description]
+                job = dict(zip(cols, row))
+                for k in ("applied_at", "created_at", "updated_at"):
+                    if job.get(k):
+                        job[k] = job[k].isoformat()
+                return job
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Gagal mengambil detail lowongan {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.patch("/api/jobs/{job_id}/status")
+async def update_job_status(job_id: str, payload: dict[str, Any]):
+    """Memperbarui status aplikasi loker (e.g. 'applied', 'interviewing', 'rejected', 'shortlisted')."""
+    new_status = payload.get("status")
+    if not new_status:
+        raise HTTPException(status_code=400, detail="Field 'status' wajib diisi.")
+    from orchestrator.connections import postgres_pool
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE job_opportunities
+                    SET status = %s,
+                        applied_at = CASE WHEN %s = 'applied' THEN NOW() ELSE applied_at END,
+                        updated_at = NOW()
+                    WHERE id = %s;
+                    """,
+                    (new_status, new_status, job_id),
+                )
+                conn.commit()
+                return {"message": f"Status lowongan {job_id} berhasil diubah menjadi '{new_status}'."}
+    except Exception as exc:
+        logger.error(f"Gagal memperbarui status lowongan {job_id}: {exc}")
+        raise HTTPException(status_code=500, detail=str(exc))
+
+
+@app.get("/api/career/profile")
+async def get_career_profile_endpoint():
+    """Mengembalikan profil dan preferensi karir kandidat saat ini."""
+    from orchestrator.prompts.career_hunter import load_career_profile
+    return load_career_profile()
 
 
 # Static web UI serving if web/dist exists

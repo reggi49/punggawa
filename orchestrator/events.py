@@ -87,8 +87,20 @@ def agent_node_tracker(node_name: str, description: str = ""):
                 or ("dongeng" if "dongeng" in str(thread_id).lower() or "dongeng" in str(task_id).lower() else "article")
             )
 
+            is_job_task = str(task_type).lower() in ("job", "job_hunt", "job_ops", "career", "career_ops", "job_hunter") or "job" in str(thread_id).lower() or "job" in str(task_id).lower()
+
             # Tentukan aktor agen berdasarkan node dan tipe task
             if node_name in (
+                "ingest_job_node",
+                "fetch_job_node",
+                "evaluate_fit_node",
+                "draft_application_node",
+                "review_critique_node",
+                "generate_prep_node",
+                "save_job_node",
+            ) or is_job_task:
+                agent_name = "Clara"
+            elif node_name in (
                 "curate_video_node",
                 "curate_node",
                 "render_cover_node",
@@ -101,9 +113,9 @@ def agent_node_tracker(node_name: str, description: str = ""):
             elif node_name in ("housekeeping", "housekeeping_node"):
                 agent_name = "Janitor Droid"
             elif node_name in ("publish_node", "complete_node"):
-                agent_name = "Usagi" if task_type == "dongeng" else "Stark"
+                agent_name = "Clara" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
             else:
-                agent_name = "Usagi" if task_type == "dongeng" else "Stark"
+                agent_name = "Clara" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
 
             # Extract basic context for HUD
             input_data = state.get("input_data", {})

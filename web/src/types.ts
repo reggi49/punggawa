@@ -24,6 +24,13 @@ export type AgentNodeName =
   | 'render_cover_node'
   | 'post_cms_node'
   | 'trigger_notification_node'
+  | 'ingest_job_node'
+  | 'fetch_job_node'
+  | 'evaluate_fit_node'
+  | 'draft_application_node'
+  | 'review_critique_node'
+  | 'generate_prep_node'
+  | 'save_job_node'
   | 'housekeeping'
   | 'housekeeping_node';
 
@@ -149,9 +156,9 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   clara: {
     id: 'clara',
     name: 'Clara',
-    codeName: 'Editorial Partner',
-    role: 'Editorial Lead & Strategist',
-    specialty: 'Strategy, Quality Control & Content Review',
+    codeName: 'Career & Talent Lead',
+    role: 'Talent & Career Strategist',
+    specialty: 'Career-Ops, Loker Matching, ATS Resume & STAR+R Prep',
     color: '#D4A373',
     glowColor: '#F59E0B',
     badgeBg: 'rgba(212, 163, 115, 0.15)',
