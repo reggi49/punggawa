@@ -367,7 +367,8 @@ def trigger_notification_node(state: AgentState) -> dict[str, Any]:
 
     post_id = int(raw_post_id)
     curation = state.get("curation_result") or {}
-    title = curation.get("title") or state.get("video_metadata", {}).get("title", f"Dongeng #{post_id}")
+    meta = state.get("video_metadata") or {}
+    title = curation.get("title") or meta.get("title", f"Dongeng #{post_id}")
 
     logger.info(f"🔔 [NOTIFICATION] Mengirim trigger push notification untuk post_id={post_id} ('{title}')...")
 

@@ -467,8 +467,8 @@ def complete_node(state: AgentState) -> dict[str, Any]:
         summary = f"Article Pipeline Gagal: {state.get('error')}"
     else:
         status = "completed"
-        id_title = dual_content.get("id", {}).get("title", "")
-        en_title = dual_content.get("en", {}).get("title", "")
+        id_title = (dual_content.get("id") or {}).get("title", "")
+        en_title = (dual_content.get("en") or {}).get("title", "")
         summary = (
             f"Dual-Language Artikel Resmi Terbit!\n"
             f"- [ID] {id_title} (ID: {published.get('id')})\n"

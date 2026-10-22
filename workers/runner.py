@@ -32,10 +32,15 @@ def _handle_task_success(
     """Mencatat status keberhasilan task ke content_schedules dan memancarkan event sukses."""
     result_url = None
     published_ids = final_state.get("published_ids") or {}
+    cms_res = final_state.get("cms_post_result") or {}
+    curation_res = final_state.get("curation_result") or {}
+
     if published_ids.get("id"):
         result_url = f"https://www.kodeabc.tech/article/{published_ids['id']}"
-    elif final_state.get("cms_post_result", {}).get("url"):
-        result_url = final_state["cms_post_result"]["url"]
+    elif cms_res.get("url"):
+        result_url = cms_res["url"]
+    elif curation_res.get("skip"):
+        result_url = f"Dilewati ({curation_res.get('reason', 'skip')})"
 
     if schedule_id:
         try:
@@ -44,12 +49,12 @@ def _handle_task_success(
                     cur.execute(
                         """
                         UPDATE content_schedules
-                        SET status = 'completed', completed_at = NOW(), result_url = %s
+                        SET status = 'completed', completed_at = NOW(), result_url = %s, error_message = NULL
                         WHERE id = %s;
                         """,
                         (result_url, schedule_id),
                     )
-                    logger.info(f"✅ Schedule '{schedule_id}' ditandai COMPLETED di PostgreSQL.")
+                    logger.info(f"✅ Schedule '{schedule_id}' ditandai COMPLETED di PostgreSQL (result_url='{result_url}').")
         except Exception as db_err:
             logger.warning(f"Gagal memperbarui status schedule {schedule_id}: {db_err}")
 
@@ -211,13 +216,14 @@ def execute_graph_with_lock(task_payload: dict[str, Any]) -> dict[str, Any] | No
     lock_key = f"lock:thread:{thread_id}"
     config = {"configurable": {"thread_id": thread_id}}
 
-    schedule_id = task_payload.get("schedule_id") or task_payload.get("input_data", {}).get("schedule_id")
-    task_type = task_payload.get("task_type") or task_payload.get("input_data", {}).get("task_type")
+    input_data = task_payload.get("input_data") or {}
+    schedule_id = task_payload.get("schedule_id") or input_data.get("schedule_id")
+    task_type = task_payload.get("task_type") or input_data.get("task_type")
     agent_name = "Usagi" if task_type == "dongeng" else "Stark"
     title = (
         task_payload.get("title")
-        or task_payload.get("input_data", {}).get("topic")
-        or task_payload.get("input_data", {}).get("query")
+        or input_data.get("topic")
+        or input_data.get("query")
         or f"Task {task_id}"
     )
 

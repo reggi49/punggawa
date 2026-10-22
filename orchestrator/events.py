@@ -83,7 +83,7 @@ def agent_node_tracker(node_name: str, description: str = ""):
             thread_id = state.get("thread_id") or task_id
             task_type = (
                 state.get("task_type")
-                or state.get("input_data", {}).get("task_type")
+                or (state.get("input_data") or {}).get("task_type")
                 or ("dongeng" if "dongeng" in str(thread_id).lower() or "dongeng" in str(task_id).lower() else "article")
             )
 
