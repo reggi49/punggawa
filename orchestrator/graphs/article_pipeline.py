@@ -10,7 +10,7 @@ from config.settings import settings
 from orchestrator.connections import get_checkpointer, postgres_pool
 from orchestrator.events import agent_node_tracker, emit_agent_event
 from orchestrator.llm import llm_client
-from orchestrator.prompts.writer import get_en_prompt, get_id_prompt, parse_json_output
+from orchestrator.prompts.writer import generate_content, get_en_prompt, get_id_prompt, parse_json_output
 from orchestrator.state import AgentState
 from orchestrator.tools.image_generator import generate_dual_thumbnails
 from orchestrator.tools.kodepintar_publisher import PublishError, publish_article, resolve_category
@@ -256,41 +256,15 @@ def draft_node(state: AgentState) -> dict[str, Any]:
                 url_references = f"- {trend_selected_item.get('url')}\n"
 
     try:
-        # 1. Versi ID
-        prompt_id = get_id_prompt(topic, clean_context, url_references)
-        resp_id = llm_client.generate(
-            messages=[
-                {"role": "system", "content": "You are a professional tech editor. Always respond in valid JSON format."},
-                {"role": "user", "content": prompt_id},
-            ],
-            temperature=0.4,
-        )
-        data_id = parse_json_output(resp_id["content"])
-        data_id["locale"] = "id"
-
-        # 2. Versi EN
-        prompt_en = get_en_prompt(topic, clean_context, url_references, data_id)
-        resp_en = llm_client.generate(
-            messages=[
-                {"role": "system", "content": "You are a professional tech editor. Always respond in valid JSON format."},
-                {"role": "user", "content": prompt_en},
-            ],
-            temperature=0.4,
-        )
-        data_en = parse_json_output(resp_en["content"])
-        data_en["locale"] = "en"
-
-        translation_key = str(uuid.uuid4())
-        data_id["translationKey"] = translation_key
-        data_en["translationKey"] = translation_key
+        # Generate konten dwibahasa ID & EN via Google AI Studio Gemini 3.8/3.7/...
+        dual_content = generate_content(topic, clean_context, url_references)
+        data_id = dual_content["id"]
+        data_en = dual_content["en"]
+        translation_key = dual_content["translation_key"]
 
         logger.info(f"✅ Draft berhasil dibuat: ID='{data_id.get('title')}' | EN='{data_en.get('title')}'")
         return {
-            "dual_content": {
-                "id": data_id,
-                "en": data_en,
-                "translation_key": translation_key,
-            },
+            "dual_content": dual_content,
             "execution_logs": [
                 f"[{timestamp}] Drafted dual content (ID: '{data_id.get('title')[:40]}...', EN: '{data_en.get('title')[:40]}...')."
             ],

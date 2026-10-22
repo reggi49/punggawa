@@ -15,5 +15,6 @@ fastapi>=0.115.0
 uvicorn>=0.30.0
 sse-starlette>=2.1.0
 googlenewsdecoder>=0.1.0
+google-generativeai>=0.8.0
 
 
