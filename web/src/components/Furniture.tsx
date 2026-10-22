@@ -6,6 +6,7 @@ import {
   WORKSTATION_CONFIG,
   MEETING_ZONE_CONFIG,
   BAYZERO_SEAT_ANCHOR,
+  SCOUT_SEAT_ANCHOR,
 } from '../config/layoutAnchors';
 import { ServicesHealthResponse } from '../types';
 
@@ -443,6 +444,14 @@ export function BayZeroWorkstation({ currentNode }: FurnitureProps) {
       <group
         position={BAYZERO_SEAT_ANCHOR.laptopLocalPosition}
         rotation={[0, BAYZERO_SEAT_ANCHOR.laptopLocalRotationY, 0]}
+      >
+        <Clone object={laptopModel.scene} scale={[1.15, 1.15, 1.15]} />
+      </group>
+
+      {/* 5. Scout's Career Intelligence Laptop directly in front of Chair 2 (Scout) */}
+      <group
+        position={SCOUT_SEAT_ANCHOR.laptopLocalPosition}
+        rotation={[0, SCOUT_SEAT_ANCHOR.laptopLocalRotationY, 0]}
       >
         <Clone object={laptopModel.scene} scale={[1.15, 1.15, 1.15]} />
       </group>

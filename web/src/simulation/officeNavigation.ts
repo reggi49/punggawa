@@ -5,7 +5,7 @@
  * without characters clipping through furniture or walking into walls.
  */
 import * as THREE from 'three';
-import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR } from '../config/layoutAnchors';
+import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
 
 export interface OfficePOI {
   id: string;
@@ -14,7 +14,7 @@ export interface OfficePOI {
   rotationY: number;
   isSeated: boolean;
   type: 'desk' | 'lounge' | 'coffee' | 'server' | 'easel' | 'social' | 'lookout';
-  assignedTo?: 'stark' | 'usagi' | 'bayzero';
+  assignedTo?: 'stark' | 'usagi' | 'bayzero' | 'scout';
 }
 
 export const OFFICE_POIS: Record<string, OfficePOI> = {
@@ -45,6 +45,15 @@ export const OFFICE_POIS: Record<string, OfficePOI> = {
     isSeated: true,
     type: 'desk',
     assignedTo: 'bayzero',
+  },
+  scout_desk: {
+    id: 'scout_desk',
+    name: "Scout's Station",
+    position: SCOUT_SEAT_ANCHOR.seatWorldPosition,
+    rotationY: SCOUT_SEAT_ANCHOR.seatWorldRotationY,
+    isSeated: true,
+    type: 'desk',
+    assignedTo: 'scout',
   },
 
   // 2. Coffee Corner & Lounge POIs

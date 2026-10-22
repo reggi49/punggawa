@@ -99,7 +99,7 @@ def agent_node_tracker(node_name: str, description: str = ""):
                 "generate_prep_node",
                 "save_job_node",
             ) or is_job_task:
-                agent_name = "Clara"
+                agent_name = "Scout"
             elif node_name in (
                 "curate_video_node",
                 "curate_node",
@@ -113,9 +113,9 @@ def agent_node_tracker(node_name: str, description: str = ""):
             elif node_name in ("housekeeping", "housekeeping_node"):
                 agent_name = "Janitor Droid"
             elif node_name in ("publish_node", "complete_node"):
-                agent_name = "Clara" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
+                agent_name = "Scout" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
             else:
-                agent_name = "Clara" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
+                agent_name = "Scout" if is_job_task else ("Usagi" if task_type == "dongeng" else "Stark")
 
             # Extract basic context for HUD
             input_data = state.get("input_data", {})

@@ -670,7 +670,7 @@ async def list_jobs(limit: int = 50, status: str | None = None):
                     cur.execute(
                         """
                         SELECT id, job_url, company_name, role_title, location, work_mode,
-                               salary_range, fit_score, fit_reasoning, is_active, status,
+                               salary_range, ats_vendor, fit_score, job_quality_score, fit_reasoning, is_active, status,
                                applied_at, created_at, updated_at
                         FROM job_opportunities
                         WHERE status = %s
@@ -683,7 +683,7 @@ async def list_jobs(limit: int = 50, status: str | None = None):
                     cur.execute(
                         """
                         SELECT id, job_url, company_name, role_title, location, work_mode,
-                               salary_range, fit_score, fit_reasoning, is_active, status,
+                               salary_range, ats_vendor, fit_score, job_quality_score, fit_reasoning, is_active, status,
                                applied_at, created_at, updated_at
                         FROM job_opportunities
                         ORDER BY fit_score DESC, created_at DESC
@@ -765,6 +765,18 @@ async def get_career_profile_endpoint():
     """Mengembalikan profil dan preferensi karir kandidat saat ini."""
     from orchestrator.prompts.career_hunter import load_career_profile
     return load_career_profile()
+
+
+@app.post("/api/career/enrich")
+async def enrich_career_profile_endpoint(payload: dict[str, Any]):
+    """Memperkaya profil master kandidat menggunakan Profile Evolution Engine."""
+    from scripts.profile_learning_pipeline import enrich_profile_from_text
+    text = payload.get("text", "")
+    if not text:
+        raise HTTPException(status_code=400, detail="Field 'text' catatan proyek/sertifikat wajib diisi.")
+    loop = asyncio.get_event_loop()
+    updated = await loop.run_in_executor(None, enrich_profile_from_text, text)
+    return {"message": "Profil berhasil diperkaya oleh Scout!", "profile": updated}
 
 
 # Static web UI serving if web/dist exists

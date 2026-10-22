@@ -101,7 +101,7 @@ export type CharacterAction =
   | 'casual_conversation'
   | 'offline_rest';
 
-export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'clara';
+export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout';
 
 export interface WorkerProfile {
   id: WorkerId;
@@ -156,14 +156,26 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   clara: {
     id: 'clara',
     name: 'Clara',
-    codeName: 'Career & Talent Lead',
-    role: 'Talent & Career Strategist',
-    specialty: 'Career-Ops, Loker Matching, ATS Resume & STAR+R Prep',
+    codeName: 'Editorial Partner',
+    role: 'Editorial Lead & Brand Strategist',
+    specialty: 'Content Strategy, Quality Control & Editorial Review',
     color: '#D4A373',
     glowColor: '#F59E0B',
     badgeBg: 'rgba(212, 163, 115, 0.15)',
     deskPosition: CLARA_STAND_ANCHOR.worldPosition,
     seatRotation: CLARA_STAND_ANCHOR.worldRotationY,
+  },
+  scout: {
+    id: 'scout',
+    name: 'Scout',
+    codeName: 'Career Intelligence Lead',
+    role: 'Career Intelligence & Talent Ops',
+    specialty: 'Profile Evolution, ATS Intelligence, Dual-Scoring & Interview Pack',
+    color: '#0D9488',
+    glowColor: '#14B8A6',
+    badgeBg: 'rgba(13, 148, 136, 0.15)',
+    deskPosition: [-2.2, 0.82, -0.6],
+    seatRotation: Math.PI / 4,
   },
 };
 

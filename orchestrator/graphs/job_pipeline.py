@@ -1,21 +1,17 @@
 """
 job_pipeline.py
-LangGraph Sequential Assembly Line Pipeline untuk Career-Ops Agent (Clara).
-Alur:
-1. ingest_job_node: Ingest URL loker, query, atau raw text.
-2. fetch_job_node: Scrape deskripsi loker (atau fetch dari RemoteOK).
-3. evaluate_fit_node: Analisis Matriks A-H, Fit Scoring (1-5), dan Block G Legitimacy.
-4. route_after_evaluation (Conditional Edge):
-   - Jika expired/ghost job -> complete_node (skip)
-   - Jika fit_score < 3 -> save_job_node -> complete_node
-   - Jika fit_score >= 3 -> draft_application_node
-5. draft_application_node: Drafter membuat Cover Letter & Tailored CV Points.
-6. review_critique_node: Reviewer mengaudit draf terhadap CV asli (anti-halusinasi).
-7. generate_prep_node: Menghasilkan 3 skenario STAR+R untuk wawancara.
-8. save_job_node: Menyimpan hasil ke PostgreSQL (tabel job_opportunities).
-9. complete_node: Finalisasi hasil & emit event real-time.
+LangGraph Sequential Assembly Line Pipeline untuk Career Intelligence Lead (Scout).
+Fitur Unggulan:
+1. ATS Intelligence (Greenhouse, Lever, Ashby, Workday, dsb).
+2. Dual-Scoring: Candidate Fit Score (1-5) & Job Quality Score (1-5).
+3. Skill Gap Heatmap dengan estimasi waktu belajar (e.g. Terraform -> 2 minggu).
+4. Multi-Agent Drafter-Reviewer Loop (Anti-Halusinasi).
+5. Comprehensive Interview Pack (Riset Perusahaan, Tech Stack, STAR+R, Negosiasi Gaji).
+6. Automated Follow-Up Generator.
+7. Knowledge Memory Integration (PostgreSQL context reuse).
 """
 from datetime import datetime, timezone
+import json
 import logging
 from typing import Any, Literal, TypedDict
 from langgraph.graph import END, StateGraph
@@ -26,11 +22,13 @@ from orchestrator.events import agent_node_tracker
 from orchestrator.prompts.career_hunter import (
     draft_application,
     evaluate_job,
-    generate_interview_prep,
+    generate_interview_pack,
+    generate_follow_up_email,
     load_career_profile,
     review_application,
 )
 from orchestrator.tools.job_scraper import (
+    detect_ats_vendor,
     fetch_job_from_url,
     generate_job_hash,
     search_remote_jobs,
@@ -47,16 +45,18 @@ class JobAgentState(TypedDict, total=False):
     input_data: dict[str, Any]
     error: str | None
     execution_logs: list[str]
-    
-    # Career-Ops Payload
+
+    # Career-Ops & Scout Payload
     job_url: str | None
     raw_content: str | None
     company_name: str | None
     role_title: str | None
+    ats_vendor: str | None
     evaluation_result: dict[str, Any] | None
     tailored_draft: dict[str, Any] | None
     reviewed_application: dict[str, Any] | None
-    interview_prep: list[dict[str, Any]] | None
+    interview_pack: dict[str, Any] | None
+    follow_up_draft: str | None
     saved_job_id: str | None
     result: dict[str, Any] | None
 
@@ -75,15 +75,17 @@ def ingest_job_node(state: JobAgentState) -> dict[str, Any]:
         or ""
     )
     raw_text = input_data.get("raw_text") or input_data.get("job_description") or ""
+    detected_ats = detect_ats_vendor(url, raw_text)
 
-    logger.info(f"[{settings.WORKER_ID}] Ingesting job task: {task_id} (URL='{url}')")
+    logger.info(f"[{settings.WORKER_ID}] Scout ingesting job: {task_id} (URL='{url}', ATS='{detected_ats}')")
 
     return {
         "status": "processing",
         "task_type": "job_hunt",
         "job_url": url.strip() if url.startswith("http") else None,
         "raw_content": raw_text.strip() if raw_text else None,
-        "execution_logs": [f"[{timestamp}] Ingesting job task: {task_id}. Target URL='{url}'."],
+        "ats_vendor": detected_ats,
+        "execution_logs": [f"[{timestamp}] Scout menerima target loker: {task_id}. ATS terdeteksi: '{detected_ats}'."],
         "error": None,
     }
 
@@ -95,9 +97,9 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
     raw_content = state.get("raw_content")
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    # 1. Jika pengguna sudah memberikan teks langsung
+    # 1. Jika pengguna memberikan teks langsung
     if raw_content and len(raw_content) > 100:
-        logger.info(f"Menggunakan deskripsi loker dari teks input langsung ({len(raw_content)} chars).")
+        logger.info(f"Menggunakan deskripsi loker dari teks input langsung ({len(raw_content)} karakter).")
         return {
             "execution_logs": [f"[{timestamp}] Deskripsi pekerjaan langsung dimuat dari input data ({len(raw_content)} karakter)."],
             "error": None,
@@ -108,13 +110,15 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
         try:
             scraped = fetch_job_from_url(url)
             text = scraped.get("raw_text", "")
+            ats = scraped.get("ats_vendor") or state.get("ats_vendor") or "Direct / Unknown"
             if len(text) < 100:
                 raise ValueError("Konten teks dari URL terlalu pendek atau diproteksi bot.")
 
-            logger.info(f"Berhasil scrape lowongan dari URL ({len(text)} karakter).")
+            logger.info(f"Berhasil scrape lowongan dari URL ({len(text)} karakter, ATS={ats}).")
             return {
                 "raw_content": text,
-                "execution_logs": [f"[{timestamp}] Berhasil scrape URL '{url}' ({len(text)} karakter)."],
+                "ats_vendor": ats,
+                "execution_logs": [f"[{timestamp}] Berhasil scrape URL '{url}' (ATS: {ats}, {len(text)} karakter)."],
                 "error": None,
             }
         except Exception as exc:
@@ -147,6 +151,7 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
         "raw_content": first_job.get("description"),
         "company_name": first_job.get("company_name"),
         "role_title": first_job.get("role_title"),
+        "ats_vendor": "RemoteOK Board",
         "execution_logs": [
             f"[{timestamp}] Auto-scout menemukan loker: '{first_job.get('role_title')}' di {first_job.get('company_name')}."
         ],
@@ -154,31 +159,34 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
     }
 
 
-@agent_node_tracker("evaluate_fit_node", "Menganalisis matriks A-H, fit scoring, dan validasi keaktifan loker")
+@agent_node_tracker("evaluate_fit_node", "Menganalisis matriks A-H, dual scoring, dan skill gap heatmap")
 def evaluate_fit_node(state: JobAgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     raw_content = state.get("raw_content") or ""
+    detected_ats = state.get("ats_vendor") or "Direct / Unknown"
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    logger.info(f"[{settings.WORKER_ID}] Mengevaluasi kecocokan loker dengan profil kandidat...")
+    logger.info(f"[{settings.WORKER_ID}] Scout mengevaluasi kecocokan loker dengan profil kandidat...")
     profile = load_career_profile()
-    eval_res = evaluate_job(raw_content, profile)
+    eval_res = evaluate_job(raw_content, profile, detected_ats=detected_ats)
 
     fit_score = eval_res.get("fit_score", 1)
+    job_quality = eval_res.get("job_quality_score", 3)
     is_active = eval_res.get("is_active", True)
     company = eval_res.get("company_name", "Company")
     role = eval_res.get("role_title", "Position")
 
     logger.info(
-        f"✅ Hasil Evaluasi: {company} - {role} | Fit Score: {fit_score}/5 | Active: {is_active}"
+        f"✅ Hasil Evaluasi Scout: {company} - {role} | Fit Score: {fit_score}/5 | Job Quality: {job_quality}/5 | ATS: {detected_ats}"
     )
 
     return {
         "company_name": company,
         "role_title": role,
+        "ats_vendor": eval_res.get("ats_vendor", detected_ats),
         "evaluation_result": eval_res,
         "execution_logs": [
-            f"[{timestamp}] Evaluasi A-H selesai: Skor {fit_score}/5 ({eval_res.get('fit_reasoning', '')}). Active={is_active}."
+            f"[{timestamp}] Evaluasi A-H selesai: Fit Score {fit_score}/5, Job Quality {job_quality}/5 (ATS: {eval_res.get('ats_vendor')}). Active={is_active}."
         ],
         "error": None,
     }
@@ -193,17 +201,14 @@ def route_after_evaluation(state: JobAgentState) -> Literal["draft_application_n
     is_active = eval_res.get("is_active", True)
     fit_score = eval_res.get("fit_score", 1)
 
-    # 1. Jika terdeteksi ghost job atau expired -> langsung selesai tanpa simpan
     if not is_active:
         logger.info(f"Loker terdeteksi tidak aktif (Block G: expired/ghost job). Melewati tailoring.")
         return "complete_node"
 
-    # 2. Jika skor < 3 (kurang cocok) -> simpan ke DB sebagai arsip tanpa membuat tailored draf
     if fit_score < 3:
         logger.info(f"Fit score ({fit_score}/5) di bawah batas minimum (3). Melewati pembuatan draf.")
         return "save_job_node"
 
-    # 3. Jika cocok (>= 3) -> lanjut ke pembuatan draf tailoring
     return "draft_application_node"
 
 
@@ -212,16 +217,26 @@ def draft_application_node(state: JobAgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     raw_content = state.get("raw_content") or ""
     eval_res = state.get("evaluation_result") or {}
+    company = state.get("company_name") or eval_res.get("company_name", "Company")
+    role = state.get("role_title") or eval_res.get("role_title", "Position")
     timestamp = datetime.now(timezone.utc).isoformat()
 
     logger.info(f"[{settings.WORKER_ID}] Drafter Agent menyusun Cover Letter & CV points...")
     profile = load_career_profile()
     draft = draft_application(raw_content, eval_res, profile)
 
+    follow_up = generate_follow_up_email(
+        company_name=company,
+        role_title=role,
+        candidate_name=profile.get("personal", {}).get("name", "Reggi"),
+        days_elapsed=14,
+    )
+
     return {
         "tailored_draft": draft,
+        "follow_up_draft": follow_up,
         "execution_logs": [
-            f"[{timestamp}] Drafter Agent selesai menyusun draf Cover Letter ({len(draft.get('cover_letter', ''))} karakter) dan {len(draft.get('tailored_cv_points', []))} CV points."
+            f"[{timestamp}] Drafter Agent selesai menyusun draf Cover Letter ({len(draft.get('cover_letter', ''))} karakter) dan Follow-up template."
         ],
         "error": None,
     }
@@ -247,7 +262,7 @@ def review_critique_node(state: JobAgentState) -> dict[str, Any]:
     }
 
 
-@agent_node_tracker("generate_prep_node", "Menyusun skenario wawancara berformat STAR+R")
+@agent_node_tracker("generate_prep_node", "Menyusun Comprehensive Interview Pack & Taktik Negosiasi")
 def generate_prep_node(state: JobAgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     raw_content = state.get("raw_content") or ""
@@ -255,23 +270,22 @@ def generate_prep_node(state: JobAgentState) -> dict[str, Any]:
     fit_score = eval_res.get("fit_score", 1)
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    scenarios = []
-    # Buat persiapan wawancara jika skor tinggi (>= 4)
-    if fit_score >= 4:
-        logger.info(f"[{settings.WORKER_ID}] Menyusun materi persiapan wawancara STAR+R...")
+    pack = {}
+    if fit_score >= 3:
+        logger.info(f"[{settings.WORKER_ID}] Menyusun Comprehensive Interview Pack (Riset, Arsitektur, STAR+R, Gaji)...")
         profile = load_career_profile()
-        scenarios = generate_interview_prep(raw_content, eval_res, profile)
+        pack = generate_interview_pack(raw_content, eval_res, profile)
 
     return {
-        "interview_prep": scenarios,
+        "interview_pack": pack,
         "execution_logs": [
-            f"[{timestamp}] STAR+R Interview Prep: {len(scenarios)} skenario berhasil disiapkan."
+            f"[{timestamp}] Interview Pack siap: {len(pack.get('likely_questions', []))} pertanyaan prediksi, {len(pack.get('star_scenarios', []))} STAR+R skenario."
         ],
         "error": None,
     }
 
 
-@agent_node_tracker("save_job_node", "Menyimpan data lowongan dan dokumen ke database PostgreSQL")
+@agent_node_tracker("save_job_node", "Menyimpan data lowongan, dual scoring, dan materi ke PostgreSQL")
 def save_job_node(state: JobAgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     job_url = state.get("job_url") or f"https://manual-entry/{task_id}"
@@ -280,23 +294,27 @@ def save_job_node(state: JobAgentState) -> dict[str, Any]:
     raw_content = state.get("raw_content") or ""
     eval_res = state.get("evaluation_result") or {}
     reviewed = state.get("reviewed_application") or state.get("tailored_draft") or {}
-    interview_prep = state.get("interview_prep") or []
+    interview_pack = state.get("interview_pack") or {}
+    follow_up_draft = state.get("follow_up_draft")
     timestamp = datetime.now(timezone.utc).isoformat()
 
     job_id = generate_job_hash(company, role, job_url)
     fit_score = eval_res.get("fit_score", 1)
+    job_quality_score = eval_res.get("job_quality_score", 3)
     fit_reasoning = eval_res.get("fit_reasoning", "Evaluasi otomatis Career-Ops")
     work_mode = eval_res.get("work_mode", "remote")
     location = eval_res.get("location", "Remote")
     salary = eval_res.get("salary_range", "Tidak Disebutkan")
+    ats_vendor = state.get("ats_vendor") or eval_res.get("ats_vendor", "Direct / Unknown")
     is_active = eval_res.get("is_active", True)
     cover_letter = reviewed.get("cover_letter")
     cv_points = reviewed.get("tailored_cv_points") or []
+    quality_breakdown = eval_res.get("quality_breakdown", {})
+    skill_gaps = eval_res.get("skill_gap_analysis", [])
 
     status_app = "shortlisted" if fit_score >= 4 else "evaluated"
 
     try:
-        import json
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute(
@@ -304,18 +322,30 @@ def save_job_node(state: JobAgentState) -> dict[str, Any]:
                     INSERT INTO job_opportunities (
                         id, job_url, company_name, role_title, location, work_mode, salary_range,
                         job_description, fit_score, fit_reasoning, evaluation_report, is_active,
-                        tailored_cover_letter, tailored_cv_points, interview_star_prep, status, updated_at
+                        tailored_cover_letter, tailored_cv_points, interview_star_prep, status,
+                        ats_vendor, job_quality_score, quality_breakdown, skill_gap_analysis,
+                        interview_pack, follow_up_draft, updated_at
                     ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s::jsonb, %s, %s, %s::jsonb, %s::jsonb, %s, NOW()
+                        %s, %s, %s, %s, %s, %s, %s,
+                        %s, %s, %s, %s::jsonb, %s,
+                        %s, %s::jsonb, %s::jsonb, %s,
+                        %s, %s, %s::jsonb, %s::jsonb,
+                        %s::jsonb, %s, NOW()
                     )
                     ON CONFLICT (id) DO UPDATE SET
                         fit_score = EXCLUDED.fit_score,
+                        job_quality_score = EXCLUDED.job_quality_score,
                         fit_reasoning = EXCLUDED.fit_reasoning,
                         evaluation_report = EXCLUDED.evaluation_report,
                         is_active = EXCLUDED.is_active,
                         tailored_cover_letter = EXCLUDED.tailored_cover_letter,
                         tailored_cv_points = EXCLUDED.tailored_cv_points,
                         interview_star_prep = EXCLUDED.interview_star_prep,
+                        ats_vendor = EXCLUDED.ats_vendor,
+                        quality_breakdown = EXCLUDED.quality_breakdown,
+                        skill_gap_analysis = EXCLUDED.skill_gap_analysis,
+                        interview_pack = EXCLUDED.interview_pack,
+                        follow_up_draft = EXCLUDED.follow_up_draft,
                         status = EXCLUDED.status,
                         updated_at = NOW();
                     """,
@@ -334,12 +364,18 @@ def save_job_node(state: JobAgentState) -> dict[str, Any]:
                         is_active,
                         cover_letter,
                         json.dumps(cv_points),
-                        json.dumps(interview_prep),
+                        json.dumps(interview_pack.get("star_scenarios", [])),
                         status_app,
+                        ats_vendor,
+                        job_quality_score,
+                        json.dumps(quality_breakdown),
+                        json.dumps(skill_gaps),
+                        json.dumps(interview_pack),
+                        follow_up_draft,
                     ),
                 )
                 conn.commit()
-                logger.info(f"✅ Lowongan '{job_id}' berhasil disimpan di PostgreSQL (Status='{status_app}').")
+                logger.info(f"✅ Lowongan '{job_id}' berhasil disimpan di PostgreSQL (Fit: {fit_score}/5, Quality: {job_quality_score}/5, ATS: {ats_vendor}).")
     except Exception as exc:
         logger.error(f"Gagal menyimpan lowongan ke database: {exc}", exc_info=True)
 
@@ -357,15 +393,18 @@ def complete_node(state: JobAgentState) -> dict[str, Any]:
     role = state.get("role_title", "Job")
     eval_res = state.get("evaluation_result") or {}
     fit_score = eval_res.get("fit_score", 1)
+    quality_score = eval_res.get("job_quality_score", 3)
+    ats = state.get("ats_vendor", "Direct")
     saved_id = state.get("saved_job_id")
     timestamp = datetime.now(timezone.utc).isoformat()
 
     summary = (
-        f"Career-Ops Selesai: {company} - {role} (Skor: {fit_score}/5). "
+        f"Scout Career Intelligence Selesai: {company} - {role} "
+        f"(Fit: {fit_score}/5, Quality: {quality_score}/5, ATS: {ats}). "
         f"Tersimpan di DB: {saved_id or 'N/A'}."
     )
     if state.get("error"):
-        summary = f"Career-Ops Gagal: {state.get('error')}"
+        summary = f"Scout Gagal: {state.get('error')}"
 
     return {
         "status": status,
@@ -374,6 +413,8 @@ def complete_node(state: JobAgentState) -> dict[str, Any]:
             "company_name": company,
             "role_title": role,
             "fit_score": fit_score,
+            "job_quality_score": quality_score,
+            "ats_vendor": ats,
             "fit_reasoning": eval_res.get("fit_reasoning"),
             "summary": summary,
             "status": status,
@@ -383,7 +424,7 @@ def complete_node(state: JobAgentState) -> dict[str, Any]:
 
 
 def build_job_graph() -> StateGraph:
-    """Merakit alur sekuensial LangGraph untuk kurasi dan analisis Career-Ops."""
+    """Merakit alur sekuensial LangGraph untuk kurasi dan analisis Career Intelligence (Scout)."""
     workflow = StateGraph(JobAgentState)
 
     workflow.add_node("ingest_job_node", ingest_job_node)
@@ -418,5 +459,4 @@ def build_job_graph() -> StateGraph:
     return workflow
 
 
-# Inisialisasi graph application instance
 job_graph_app = build_job_graph().compile()

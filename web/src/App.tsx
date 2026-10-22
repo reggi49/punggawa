@@ -1,10 +1,15 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, Suspense, lazy } from 'react';
 import { useEventStream } from './hooks/useEventStream';
 import { useServicesHealth } from './hooks/useServicesHealth';
-import { OfficeCanvas } from './components/OfficeCanvas';
 import { HUDOverlay } from './components/HUDOverlay';
+import { MobileDashboard } from './components/MobileDashboard';
+import { OfficeLoadingScreen } from './components/OfficeLoadingScreen';
 import { CharacterVisualState } from './simulation/useAmbientOffice';
 import { WorkerId } from './types';
+import { useDeviceMode } from './utils/device';
+
+// Lazy load 3D Office Canvas to eliminate initial bundle bloat & asset freezing
+const OfficeCanvas = lazy(() => import('./components/OfficeCanvas'));
 
 export function App() {
   const {
@@ -18,6 +23,8 @@ export function App() {
     setSimulatedNode,
     reconnect,
   } = useEventStream();
+
+  const { viewMode, setViewMode, isMobile, isEffective2D } = useDeviceMode();
 
   const [characterStates, setCharacterStates] = useState<Record<WorkerId, CharacterVisualState> | null>(null);
 
@@ -35,20 +42,47 @@ export function App() {
     recheck: recheckHealth,
   } = useServicesHealth(latestEvent);
 
-  return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      {/* 3D Office Isometric World with Multi-Agent Team */}
-      <OfficeCanvas
+  // If in 2D Mode (default on mobile screens or toggled by user), render lightweight 2D Dashboard
+  if (isEffective2D) {
+    return (
+      <MobileDashboard
         currentNode={currentNode}
+        threadId={threadId}
         status={status}
         message={message}
         details={details}
-        threadId={threadId}
+        logs={logs}
         connected={connected}
-        isDegraded={isDegraded}
+        characterStates={characterStates}
         healthData={healthData}
-        onCharacterStatesChange={handleCharacterStatesChange}
+        isDegraded={isDegraded}
+        isRechecking={isRechecking}
+        onSwitchTo3D={() => setViewMode('3d')}
+        onSimulateNode={setSimulatedNode}
+        onReconnect={reconnect}
+        onRecheckHealth={recheckHealth}
       />
+    );
+  }
+
+  // Otherwise, render full 3D Office with Progressive Suspense Fallback
+  return (
+    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
+      <Suspense fallback={<OfficeLoadingScreen onSwitchTo2D={() => setViewMode('2d')} />}>
+        {/* 3D Office Isometric World with Multi-Agent Team */}
+        <OfficeCanvas
+          currentNode={currentNode}
+          status={status}
+          message={message}
+          details={details}
+          threadId={threadId}
+          connected={connected}
+          isDegraded={isDegraded}
+          isMobile={isMobile}
+          healthData={healthData}
+          onCharacterStatesChange={handleCharacterStatesChange}
+        />
+      </Suspense>
 
       {/* Multi-Agent Dashboard & HUD Overlay */}
       <HUDOverlay
@@ -68,6 +102,7 @@ export function App() {
         onRecheckHealth={recheckHealth}
         onSimulateNode={setSimulatedNode}
         onReconnect={reconnect}
+        onSwitchTo2D={() => setViewMode('2d')}
       />
     </div>
   );

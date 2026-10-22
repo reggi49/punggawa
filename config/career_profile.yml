@@ -62,3 +62,4 @@ master_cv_markdown: |
   - **Punggawa Multi-Agent Orchestrator:** Engineered an event-driven autonomous multi-agent platform using LangGraph, Redis task queuing, distributed locking, and PostgreSQL state management with 3D retro office visualization.
   - **Scalable Microservice & Content Engine:** Built dual-language content pipelines with automated quality gating (Zero-LLM cost checks, Gemini 2.5 API integration, and push notification triggers).
   - **Data Ingestion & Resilient Scraping:** Developed robust scraping and parsing pipelines using Playwright and Scrapling with anti-bot bypass and fallback strategies.
+

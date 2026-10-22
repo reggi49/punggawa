@@ -81,3 +81,4 @@ def setup_job_tables():
 
 if __name__ == "__main__":
     setup_job_tables()
+

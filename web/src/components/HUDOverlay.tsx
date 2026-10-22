@@ -39,7 +39,7 @@ import { CareerOpsModal } from './CareerOpsModal';
 
 export interface TaskPreset {
   id: string;
-  agent: 'stark' | 'usagi' | 'bayzero' | 'clara';
+  agent: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout';
   agentName: string;
   agentRole: string;
   title: string;
@@ -239,22 +239,22 @@ export const TASK_PRESETS: TaskPreset[] = [
     badge: 'System Care',
   },
   {
-    id: 'clara_analyze_url',
-    agent: 'clara',
-    agentName: 'Clara',
-    agentRole: 'Talent & Career Strategist',
+    id: 'scout_analyze_url',
+    agent: 'scout',
+    agentName: 'Scout',
+    agentRole: 'Career Intelligence Lead',
     title: 'Analisis Mendalam Loker dari URL',
-    description: 'Evaluasi keselarasan kualifikasi A–H, Fit Scoring (1–5), deteksi keaktifan Block G, serta draf Cover Letter & CV Points.',
+    description: 'Evaluasi keselarasan kualifikasi A–H, Dual-Scoring (Fit & Quality), deteksi ATS, Skill Gap Heatmap, serta Tailored Cover Letter.',
     type: 'job_hunt',
     category: 'career_ops',
-    icon: '💼',
+    icon: '🎯',
     badge: 'Career-Ops',
   },
   {
-    id: 'clara_auto_scout_remote',
-    agent: 'clara',
-    agentName: 'Clara',
-    agentRole: 'Talent & Career Strategist',
+    id: 'scout_auto_scout_remote',
+    agent: 'scout',
+    agentName: 'Scout',
+    agentRole: 'Career Intelligence Lead',
     title: 'Auto-Scout Loker Remote (RemoteOK)',
     description: 'Mencari dan menyaring lowongan remote engineering aktif di RemoteOK yang paling cocok dengan skill profil kandidat.',
     type: 'job_hunt',
@@ -282,6 +282,7 @@ interface HUDOverlayProps {
   isAlertDismissed?: boolean;
   onDismissAlert?: () => void;
   onRecheckHealth?: () => void;
+  onSwitchTo2D?: () => void;
 }
 
 export function HUDOverlay({
@@ -301,6 +302,7 @@ export function HUDOverlay({
   isAlertDismissed = false,
   onDismissAlert,
   onRecheckHealth,
+  onSwitchTo2D,
 }: HUDOverlayProps) {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [teamPanelOpen, setTeamPanelOpen] = useState(true);
@@ -336,7 +338,7 @@ export function HUDOverlay({
   // Task Dispatch Modal State
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [jobModalOpen, setJobModalOpen] = useState(false);
-  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero' | 'clara'>('all');
+  const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero' | 'scout'>('all');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('stark_ai_trends_2026');
   const [showCustomInput, setShowCustomInput] = useState(false);
   const [customPrompt, setCustomPrompt] = useState('');
@@ -940,6 +942,33 @@ export function HUDOverlay({
             <Briefcase size={14} color="#D4A373" />
             <span>Peluang Karir</span>
           </button>
+
+          {/* Mode 2D Eco Toggle Button */}
+          {onSwitchTo2D && (
+            <button
+              onClick={onSwitchTo2D}
+              style={{
+                background: 'rgba(244, 241, 234, 0.94)',
+                color: '#30343A',
+                border: '1px solid rgba(13, 148, 136, 0.4)',
+                borderRadius: '10px',
+                padding: '7px 14px',
+                fontSize: '12px',
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                cursor: 'pointer',
+                boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+                letterSpacing: '0.02em',
+                transition: 'all 0.2s ease',
+              }}
+              title="Beralih ke Dashboard 2D (Cepat, Ringan & Hemat Baterai)"
+            >
+              <Sliders size={14} color="#0D9488" />
+              <span>Mode 2D</span>
+            </button>
+          )}
 
           {/* Kirim Task Action Button (Shows Lock if guest, Send if logged in) */}
           <button
@@ -2092,7 +2121,7 @@ export function HUDOverlay({
                     { id: 'stark', label: '⚡ Stark (Writer)', icon: '⚡' },
                     { id: 'usagi', label: '🦊 Usagi (Dongeng)', icon: '🦊' },
                     { id: 'bayzero', label: '🛡️ Bay-Zero (Server & Audit)', icon: '🛡️' },
-                    { id: 'clara', label: '💼 Clara (Career-Ops)', icon: '💼' },
+                    { id: 'scout', label: '🎯 Scout (Career Intelligence)', icon: '🎯' },
                   ].map((tab) => {
                     const active = activeAgentTab === tab.id;
                     return (

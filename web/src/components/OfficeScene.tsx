@@ -17,6 +17,7 @@ import { WorkerId, ServicesHealthResponse } from '../types';
 import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
+  SCOUT_SEAT_ANCHOR,
   CLARA_STAND_ANCHOR,
 } from '../config/layoutAnchors';
 
@@ -64,6 +65,8 @@ export function OfficeScene({
     ? 'usagi'
     : characters.bayzero.isActive
     ? 'bayzero'
+    : characters.scout.isActive
+    ? 'scout'
     : null;
 
   const activeFocusPos: [number, number, number] = isHousekeepingActive
@@ -158,6 +161,23 @@ export function OfficeScene({
         actualState="Meeting"
         badgeLabelOverride="Meeting"
         dotColorOverride="#F59E0B"
+      />
+
+      {/* Scout: Central Table Career Intelligence Lead (Seated Opposite Bay-Zero) */}
+      <StylizedHumanoidCharacter
+        id="scout"
+        currentNode={currentNode}
+        action={characters.scout.isActive ? characters.scout.action : 'looking_monitor'}
+        targetPos={characters.scout.isActive ? characters.scout.targetPos : SCOUT_SEAT_ANCHOR.seatWorldPosition}
+        targetRotY={characters.scout.isActive ? characters.scout.targetRotY : SCOUT_SEAT_ANCHOR.seatWorldRotationY}
+        message={characters.scout.isActive ? message : undefined}
+        isActive={characters.scout.isActive}
+        isSeated={characters.scout.isActive ? characters.scout.isSeated : true}
+        socialRole={characters.scout.socialRole}
+        actualState={characters.scout.actualState}
+        ambientLabel={characters.scout.ambientLabel}
+        badgeLabelOverride={characters.scout.isActive ? undefined : 'Scouting'}
+        dotColorOverride={characters.scout.isActive ? undefined : '#0D9488'}
       />
 
       {/* 6. Floor Contact Shadows */}

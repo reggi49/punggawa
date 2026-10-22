@@ -225,7 +225,7 @@ def execute_graph_with_lock(task_payload: dict[str, Any]) -> dict[str, Any] | No
     schedule_id = task_payload.get("schedule_id") or input_data.get("schedule_id")
     task_type = task_payload.get("task_type") or input_data.get("task_type")
     is_job = str(task_type).lower() in ("job", "job_hunt", "job_ops", "career", "career_ops", "job_hunter")
-    agent_name = "Clara" if is_job else ("Usagi" if task_type == "dongeng" else "Stark")
+    agent_name = "Scout" if is_job else ("Usagi" if task_type == "dongeng" else "Stark")
     title = (
         task_payload.get("title")
         or input_data.get("topic")

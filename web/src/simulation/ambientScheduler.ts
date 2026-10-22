@@ -128,6 +128,24 @@ export class AmbientOfficeSimulator {
         socialRole: 'speaker',
         characterAction: 'casual_conversation',
       },
+      scout: {
+        id: 'scout',
+        actualState: 'Idle',
+        ambientActivity: 'LookingAtMonitor',
+        currentPosition: [...OFFICE_POIS.scout_desk.position],
+        targetPosition: [...OFFICE_POIS.scout_desk.position],
+        targetRotationY: OFFICE_POIS.scout_desk.rotationY,
+        isSeated: true,
+        pathQueue: [],
+        destinationPOI: OFFICE_POIS.scout_desk,
+        activityStartTime: now,
+        activityDuration: 24000,
+        cooldowns: { social: now + 60000, coffee: 0, server: 0, easel: 0, lounge: 0 },
+        recentActivities: ['LookingAtMonitor'],
+        socialPartnerId: null,
+        socialRole: null,
+        characterAction: 'looking_monitor',
+      },
     };
   }
 

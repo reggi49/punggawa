@@ -62,6 +62,32 @@ export const BAYZERO_SEAT_ANCHOR = {
   laptopLocalRotationY: MEETING_ZONE_CONFIG.bayZeroAngle,
 };
 
+// Scout World Seat Anchor (Identical to Meeting Chair 2, opposite Bay-Zero)
+const scAngle = MEETING_ZONE_CONFIG.bayZeroAngle + Math.PI;
+const scSin = Math.sin(scAngle);
+const scCos = Math.cos(scAngle);
+
+export const SCOUT_SEAT_ANCHOR = {
+  localChairPosition: [
+    scSin * MEETING_ZONE_CONFIG.chairRadius,
+    0,
+    scCos * MEETING_ZONE_CONFIG.chairRadius,
+  ] as [number, number, number],
+  localChairRotationY: scAngle + Math.PI,
+  seatWorldPosition: [
+    MEETING_ZONE_CONFIG.center[0] + scSin * MEETING_ZONE_CONFIG.chairRadius,
+    0,
+    MEETING_ZONE_CONFIG.center[2] + scCos * MEETING_ZONE_CONFIG.chairRadius,
+  ] as [number, number, number],
+  seatWorldRotationY: scAngle + Math.PI,
+  laptopLocalPosition: [
+    scSin * 0.75,
+    MEETING_ZONE_CONFIG.tableHeight + 0.005,
+    scCos * 0.75,
+  ] as [number, number, number],
+  laptopLocalRotationY: scAngle,
+};
+
 // Clara World Position (Standing facing Bay-Zero in open meeting zone, no chair collision)
 export const CLARA_STAND_ANCHOR = {
   worldPosition: [-0.95, 0, 0.70] as [number, number, number],
@@ -79,6 +105,12 @@ export const WORKSTATION_ANCHORS = {
     deskRotationY: 0,
     seatWorldPosition: BAYZERO_SEAT_ANCHOR.seatWorldPosition,
     seatWorldRotationY: BAYZERO_SEAT_ANCHOR.seatWorldRotationY,
+  },
+  scout: {
+    deskPosition: MEETING_ZONE_CONFIG.center,
+    deskRotationY: 0,
+    seatWorldPosition: SCOUT_SEAT_ANCHOR.seatWorldPosition,
+    seatWorldRotationY: SCOUT_SEAT_ANCHOR.seatWorldRotationY,
   },
   clara: {
     deskPosition: MEETING_ZONE_CONFIG.center,

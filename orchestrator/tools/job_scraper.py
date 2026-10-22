@@ -44,6 +44,39 @@ def clean_html_text(raw_html: str) -> str:
     return text
 
 
+def detect_ats_vendor(url: str, raw_html: str = "") -> str:
+    """Mendeteksi platform ATS (Applicant Tracking System) dari URL dan DOM."""
+    url_lower = url.lower()
+    html_lower = raw_html[:5000].lower() if raw_html else ""
+
+    if "ashbyhq.com" in url_lower or "ashby" in html_lower:
+        return "Ashby"
+    if "greenhouse.io" in url_lower or "grnh.se" in url_lower or "greenhouse" in html_lower:
+        return "Greenhouse"
+    if "lever.co" in url_lower or "lever" in html_lower:
+        return "Lever"
+    if "myworkdayjobs.com" in url_lower or "workday" in url_lower:
+        return "Workday"
+    if "smartrecruiters.com" in url_lower:
+        return "SmartRecruiters"
+    if "workable.com" in url_lower:
+        return "Workable"
+    if "bamboohr.com" in url_lower:
+        return "BambooHR"
+    if "rippling.com" in url_lower:
+        return "Rippling"
+    if "recruitee.com" in url_lower:
+        return "Recruitee"
+    if "remoteok.com" in url_lower:
+        return "RemoteOK Board"
+    if "linkedin.com" in url_lower:
+        return "LinkedIn Jobs"
+    if "indeed.com" in url_lower:
+        return "Indeed"
+
+    return "Custom / Career Portal"
+
+
 def fetch_job_from_url(url: str) -> dict[str, Any]:
     """Mengambil dan mengekstrak deskripsi pekerjaan dari sebuah URL."""
     logger.info(f"Mengambil konten lowongan dari URL: {url}")
@@ -105,6 +138,7 @@ def fetch_job_from_url(url: str) -> dict[str, Any]:
     return {
         "url": url,
         "title": title.strip() or "Job Posting",
+        "ats_vendor": detect_ats_vendor(url, raw_html),
         "raw_text": description_text,
     }
 
@@ -164,3 +198,4 @@ def generate_job_hash(company: str, title: str, url: str) -> str:
     """Menghasilkan ID unik untuk lowongan kerja."""
     key = f"{company.strip().lower()}:{title.strip().lower()}:{url.strip()}"
     return f"job_{hashlib.md5(key.encode('utf-8')).hexdigest()[:12]}"
+

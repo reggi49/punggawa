@@ -17,6 +17,13 @@ import {
   Sparkles,
   ChevronRight,
   RefreshCw,
+  Clock,
+  Layers,
+  Award,
+  Send,
+  Mail,
+  Sliders,
+  TrendingUp,
 } from 'lucide-react';
 
 export interface JobOpportunity {
@@ -27,7 +34,9 @@ export interface JobOpportunity {
   location: string | null;
   work_mode: string | null;
   salary_range: string | null;
+  ats_vendor: string | null;
   fit_score: number;
+  job_quality_score: number;
   fit_reasoning: string;
   is_active: boolean;
   status: string;
@@ -36,8 +45,23 @@ export interface JobOpportunity {
   updated_at: string;
 }
 
+export interface SkillGapItem {
+  skill: string;
+  status: 'matched' | 'missing';
+  importance?: 'high' | 'medium' | 'low';
+  estimated_learning?: string;
+}
+
 export interface JobDetail extends JobOpportunity {
   job_description: string;
+  ats_vendor: string;
+  job_quality_score: number;
+  quality_breakdown: {
+    company_maturity?: string;
+    stability_rating?: string;
+    culture_summary?: string;
+  };
+  skill_gap_analysis: SkillGapItem[];
   evaluation_report: {
     A_role_summary?: string;
     B_fit_score?: number;
@@ -53,15 +77,22 @@ export interface JobDetail extends JobOpportunity {
   };
   tailored_cover_letter: string | null;
   tailored_cv_points: string[] | null;
-  interview_star_prep: Array<{
-    question: string;
-    competency_tested?: string;
-    situation: string;
-    task: string;
-    action: string;
-    result: string;
-    reflection: string;
-  }> | null;
+  interview_pack: {
+    company_research?: string;
+    tech_stack_breakdown?: string[];
+    salary_negotiation_notes?: string;
+    likely_questions?: string[];
+    star_scenarios?: Array<{
+      question: string;
+      competency_tested?: string;
+      situation: string;
+      task: string;
+      action: string;
+      result: string;
+      reflection: string;
+    }>;
+  } | null;
+  follow_up_draft: string | null;
 }
 
 interface CareerOpsModalProps {
@@ -82,7 +113,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
   const [detailLoading, setDetailLoading] = useState<boolean>(false);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<'cover_letter' | 'report' | 'star_prep'>('cover_letter');
+  const [activeTab, setActiveTab] = useState<'cover_letter' | 'skill_gap' | 'interview_pack' | 'follow_up' | 'report'>('cover_letter');
 
   const fetchJobs = async () => {
     setLoading(true);
@@ -178,12 +209,12 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
       <div
         style={{
           width: '100%',
-          maxWidth: '1180px',
-          height: '88vh',
+          maxWidth: '1240px',
+          height: '90vh',
           background: '#FAF8F5',
           borderRadius: '20px',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
-          border: '1px solid rgba(212, 163, 115, 0.35)',
+          border: '1px solid rgba(13, 148, 136, 0.35)',
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
@@ -194,7 +225,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
         <div
           style={{
             padding: '16px 24px',
-            background: 'linear-gradient(135deg, #2D3748, #354A60)',
+            background: 'linear-gradient(135deg, #111827, #134E4A)',
             color: '#FFFFFF',
             display: 'flex',
             alignItems: 'center',
@@ -208,36 +239,36 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                 width: '38px',
                 height: '38px',
                 borderRadius: '10px',
-                background: 'rgba(212, 163, 115, 0.25)',
-                border: '1px solid #D4A373',
+                background: 'rgba(13, 148, 136, 0.25)',
+                border: '1px solid #14B8A6',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
               }}
             >
-              <Briefcase size={20} color="#F59E0B" />
+              <Briefcase size={20} color="#2DD4BF" />
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 800, letterSpacing: '0.01em' }}>
-                  Punggawa Career-Ops Command Center
+                  Scout • Career Intelligence Command Center
                 </h2>
                 <span
                   style={{
-                    background: 'rgba(212, 163, 115, 0.3)',
-                    color: '#FDE68A',
+                    background: 'rgba(20, 184, 166, 0.2)',
+                    color: '#5EEAD4',
                     fontSize: '11px',
                     fontWeight: 800,
                     padding: '2px 8px',
                     borderRadius: '6px',
-                    border: '1px solid rgba(245, 158, 11, 0.4)',
+                    border: '1px solid rgba(45, 212, 191, 0.4)',
                   }}
                 >
-                  Agent: Clara
+                  Agent: Scout
                 </span>
               </div>
               <p style={{ margin: '2px 0 0 0', fontSize: '12px', color: '#CBD5E1' }}>
-                Matriks Evaluasi A–H • Fit Scoring (1–5) • Drafter-Reviewer Cover Letter • STAR+R Prep
+                Dual Scoring (Fit & Quality) • ATS Intelligence • Skill Gap Heatmap • Full Interview Pack & Follow-Up
               </p>
             </div>
           </div>
@@ -249,8 +280,8 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                 onOpenDispatch();
               }}
               style={{
-                background: '#D4A373',
-                color: '#1E293B',
+                background: '#0D9488',
+                color: '#FFFFFF',
                 border: 'none',
                 borderRadius: '10px',
                 padding: '7px 14px',
@@ -298,12 +329,12 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
           </div>
         </div>
 
-        {/* Modal Body: Split View (List 35% | Detail 65%) */}
+        {/* Modal Body: Split View (List 33% | Detail 67%) */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
           {/* Left Column: Job List */}
           <div
             style={{
-              width: '360px',
+              width: '380px',
               borderRight: '1px solid rgba(48, 52, 58, 0.12)',
               display: 'flex',
               flexDirection: 'column',
@@ -322,9 +353,10 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
             >
               {[
                 { id: 'all', label: 'Semua' },
-                { id: 'high_fit', label: '⭐ Skor >= 4' },
+                { id: 'high_fit', label: '⭐ Fit >= 4' },
                 { id: 'shortlisted', label: 'Shortlist' },
-                { id: 'applied', label: 'Dilamar' },
+                { id: 'submitted', label: 'Dilamar' },
+                { id: 'interview_technical', label: 'Interview' },
               ].map((f) => (
                 <button
                   key={f.id}
@@ -332,8 +364,8 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                   style={{
                     padding: '4px 10px',
                     borderRadius: '6px',
-                    border: statusFilter === f.id ? '1px solid #354A60' : '1px solid rgba(48, 52, 58, 0.15)',
-                    background: statusFilter === f.id ? '#354A60' : 'rgba(255, 255, 255, 0.7)',
+                    border: statusFilter === f.id ? '1px solid #0D9488' : '1px solid rgba(48, 52, 58, 0.15)',
+                    background: statusFilter === f.id ? '#0D9488' : 'rgba(255, 255, 255, 0.7)',
                     color: statusFilter === f.id ? '#FFFFFF' : '#30343A',
                     fontSize: '11px',
                     fontWeight: statusFilter === f.id ? 700 : 500,
@@ -359,7 +391,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     Belum ada lowongan terdaftar
                   </p>
                   <p style={{ fontSize: '12px', color: '#64748B', margin: '4px 0 14px' }}>
-                    Kirim link loker pertama Anda ke Clara untuk dievaluasi.
+                    Kirim link lowongan kerja pertama ke Scout untuk dianalisis.
                   </p>
                   <button
                     onClick={() => {
@@ -367,7 +399,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                       onOpenDispatch();
                     }}
                     style={{
-                      background: '#354A60',
+                      background: '#0D9488',
                       color: '#FFF',
                       border: 'none',
                       borderRadius: '8px',
@@ -377,7 +409,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                       cursor: 'pointer',
                     }}
                   >
-                    + Tambah Loker
+                    + Analisis Loker
                   </button>
                 </div>
               ) : (
@@ -393,8 +425,8 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         padding: '12px',
                         marginBottom: '8px',
                         borderRadius: '12px',
-                        background: isSelected ? 'rgba(53, 74, 96, 0.1)' : '#FFFFFF',
-                        border: isSelected ? '1.5px solid #354A60' : '1px solid rgba(48, 52, 58, 0.1)',
+                        background: isSelected ? 'rgba(13, 148, 136, 0.1)' : '#FFFFFF',
+                        border: isSelected ? '1.5px solid #0D9488' : '1px solid rgba(48, 52, 58, 0.1)',
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
                       }}
@@ -403,21 +435,37 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', textTransform: 'uppercase' }}>
                           {j.company_name}
                         </span>
-                        <div
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '3px',
-                            background: isHighFit ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
-                            color: isHighFit ? '#059669' : '#D97706',
-                            padding: '2px 6px',
-                            borderRadius: '6px',
-                            fontSize: '11px',
-                            fontWeight: 800,
-                          }}
-                        >
-                          <Star size={11} fill={isHighFit ? '#059669' : '#D97706'} />
-                          <span>{j.fit_score}/5</span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {/* ATS Badge */}
+                          <span
+                            style={{
+                              background: '#F1F5F9',
+                              color: '#475569',
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              fontSize: '10px',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {j.ats_vendor || 'ATS'}
+                          </span>
+                          {/* Fit Score Badge */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              background: isHighFit ? 'rgba(16, 185, 129, 0.15)' : 'rgba(245, 158, 11, 0.15)',
+                              color: isHighFit ? '#059669' : '#D97706',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              fontSize: '10.5px',
+                              fontWeight: 800,
+                            }}
+                          >
+                            <Star size={10} fill={isHighFit ? '#059669' : '#D97706'} />
+                            <span>{j.fit_score}/5</span>
+                          </div>
                         </div>
                       </div>
 
@@ -425,11 +473,11 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         {j.role_title}
                       </div>
 
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: '#64748B' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#64748B' }}>
                         <span>🌐 {j.work_mode || 'Remote'}</span>
-                        {j.salary_range && j.salary_range !== 'Tidak Disebutkan' && (
-                          <span>💵 {j.salary_range}</span>
-                        )}
+                        <span style={{ background: 'rgba(59, 130, 246, 0.1)', color: '#2563EB', padding: '1px 6px', borderRadius: '4px', fontWeight: 700 }}>
+                          {j.status}
+                        </span>
                       </div>
                     </div>
                   );
@@ -442,11 +490,11 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#FFFFFF', overflow: 'hidden' }}>
             {detailLoading ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
-                Memuat detail evaluasi & draf lamaran...
+                Memuat intelligence loker & interview pack...
               </div>
             ) : !jobDetail ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8' }}>
-                Pilih lowongan di sebelah kiri untuk melihat hasil kurasi Career-Ops.
+                Pilih lowongan di sebelah kiri untuk melihat evaluasi Career Intelligence Scout.
               </div>
             ) : (
               <>
@@ -458,20 +506,31 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         <span style={{ fontSize: '13px', fontWeight: 700, color: '#64748B' }}>
                           {jobDetail.company_name}
                         </span>
-                        {jobDetail.location && (
-                          <span style={{ fontSize: '12px', color: '#94A3B8' }}>• {jobDetail.location}</span>
-                        )}
+                        {/* ATS Tag */}
+                        <span
+                          style={{
+                            fontSize: '11px',
+                            fontWeight: 800,
+                            padding: '2px 8px',
+                            borderRadius: '6px',
+                            background: '#E0F2FE',
+                            color: '#0284C7',
+                          }}
+                        >
+                          ATS: {jobDetail.ats_vendor || 'Direct'}
+                        </span>
+                        {/* Active Tag */}
                         <span
                           style={{
                             fontSize: '11px',
                             fontWeight: 700,
-                            padding: '1px 8px',
-                            borderRadius: '12px',
+                            padding: '2px 8px',
+                            borderRadius: '6px',
                             background: jobDetail.is_active ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
                             color: jobDetail.is_active ? '#059669' : '#DC2626',
                           }}
                         >
-                          {jobDetail.is_active ? '✓ Loker Aktif (Block G)' : '⚠️ Terdeteksi Kadaluarsa'}
+                          {jobDetail.is_active ? '✓ Loker Aktif (Block G)' : '⚠️ Kadaluarsa'}
                         </span>
                       </div>
                       <h1 style={{ margin: 0, fontSize: '20px', fontWeight: 800, color: '#1E293B' }}>
@@ -480,6 +539,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {/* Granular Application Lifecycle Status Dropdown */}
                       <select
                         value={jobDetail.status}
                         onChange={(e) => handleUpdateStatus(jobDetail.id, e.target.value)}
@@ -494,11 +554,18 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                           cursor: 'pointer',
                         }}
                       >
-                        <option value="evaluated">Status: Dievaluasi</option>
-                        <option value="shortlisted">Status: Shortlist ⭐</option>
-                        <option value="applied">Status: Sudah Dilamar 🚀</option>
-                        <option value="interviewing">Status: Wawancara 🎙️</option>
-                        <option value="archived">Status: Arsip 📁</option>
+                        <option value="evaluated">Status: Evaluated 📋</option>
+                        <option value="shortlisted">Status: Shortlisted ⭐</option>
+                        <option value="tailored">Status: Tailored ✍️</option>
+                        <option value="ready_to_apply">Status: Ready to Apply 🚀</option>
+                        <option value="submitted">Status: Submitted / Dilamar 📨</option>
+                        <option value="assessment">Status: Assessment / Test 💻</option>
+                        <option value="interview_hr">Status: HR Interview 🎙️</option>
+                        <option value="interview_technical">Status: Technical Interview 🧠</option>
+                        <option value="offer">Status: Offer Received 🎉</option>
+                        <option value="accepted">Status: Accepted / Hired 🏆</option>
+                        <option value="rejected">Status: Rejected ❌</option>
+                        <option value="ghosted">Status: Ghosted (No Reply) 👻</option>
                       </select>
 
                       <a
@@ -511,7 +578,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                           gap: '4px',
                           padding: '6px 12px',
                           borderRadius: '8px',
-                          background: '#354A60',
+                          background: '#0D9488',
                           color: '#FFFFFF',
                           fontSize: '12px',
                           fontWeight: 700,
@@ -524,34 +591,46 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Fit Score Banner */}
+                  {/* Dual Scoring Banner (Fit Score vs Job Quality Score) */}
                   <div
                     style={{
                       marginTop: '14px',
-                      padding: '10px 14px',
-                      borderRadius: '10px',
-                      background: jobDetail.fit_score >= 4 ? 'rgba(16, 185, 129, 0.08)' : 'rgba(245, 158, 11, 0.08)',
-                      border: `1px solid ${jobDetail.fit_score >= 4 ? 'rgba(16, 185, 129, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
-                      display: 'flex',
-                      alignItems: 'center',
+                      display: 'grid',
+                      gridTemplateColumns: 'auto auto 1fr',
                       gap: '12px',
+                      alignItems: 'center',
                     }}
                   >
+                    {/* Fit Score */}
                     <div
                       style={{
-                        padding: '4px 8px',
-                        borderRadius: '6px',
+                        padding: '6px 12px',
+                        borderRadius: '8px',
                         background: jobDetail.fit_score >= 4 ? '#10B981' : '#F59E0B',
                         color: '#FFF',
-                        fontSize: '13px',
+                        fontSize: '12px',
                         fontWeight: 900,
-                        whiteSpace: 'nowrap',
                       }}
                     >
                       FIT SCORE: {jobDetail.fit_score}/5
                     </div>
-                    <div style={{ fontSize: '12.5px', color: '#334155', lineHeight: 1.4 }}>
-                      <strong>Alasan Kecocokan:</strong> {jobDetail.fit_reasoning}
+
+                    {/* Job Quality Score */}
+                    <div
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '8px',
+                        background: (jobDetail.job_quality_score || 3) >= 4 ? '#0D9488' : '#64748B',
+                        color: '#FFF',
+                        fontSize: '12px',
+                        fontWeight: 900,
+                      }}
+                    >
+                      JOB QUALITY: {jobDetail.job_quality_score || 3}/5
+                    </div>
+
+                    <div style={{ fontSize: '12px', color: '#475569', lineHeight: 1.4 }}>
+                      <strong>Analisis Scout:</strong> {jobDetail.fit_reasoning}
                     </div>
                   </div>
                 </div>
@@ -563,12 +642,15 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     borderBottom: '1px solid rgba(48, 52, 58, 0.1)',
                     padding: '0 24px',
                     background: '#FAF8F5',
+                    overflowX: 'auto',
                   }}
                 >
                   {[
                     { id: 'cover_letter', label: '✍️ Tailored Cover Letter & CV' },
-                    { id: 'report', label: '📊 Matriks Evaluasi A–H' },
-                    { id: 'star_prep', label: '🎯 STAR+R Interview Prep' },
+                    { id: 'skill_gap', label: '🔥 Skill Gap Heatmap' },
+                    { id: 'interview_pack', label: '🎯 Interview Pack & Gaji' },
+                    { id: 'follow_up', label: '📨 Follow-Up Email' },
+                    { id: 'report', label: '📊 Laporan Matriks A–H' },
                   ].map((tab) => {
                     const active = activeTab === tab.id;
                     return (
@@ -578,13 +660,14 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         style={{
                           padding: '12px 16px',
                           border: 'none',
-                          borderBottom: active ? '2.5px solid #354A60' : '2.5px solid transparent',
+                          borderBottom: active ? '2.5px solid #0D9488' : '2.5px solid transparent',
                           background: 'none',
-                          color: active ? '#1E293B' : '#64748B',
-                          fontSize: '13px',
+                          color: active ? '#0F766E' : '#64748B',
+                          fontSize: '12.5px',
                           fontWeight: active ? 800 : 600,
                           cursor: 'pointer',
                           transition: 'all 0.15s ease',
+                          whiteSpace: 'nowrap',
                         }}
                       >
                         {tab.label}
@@ -660,8 +743,8 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                                 style={{
                                   padding: '10px 14px',
                                   borderRadius: '8px',
-                                  background: 'rgba(53, 74, 96, 0.05)',
-                                  border: '1px solid rgba(53, 74, 96, 0.12)',
+                                  background: 'rgba(13, 148, 136, 0.05)',
+                                  border: '1px solid rgba(13, 148, 136, 0.15)',
                                   fontSize: '12.5px',
                                   color: '#1E293B',
                                   lineHeight: 1.4,
@@ -676,10 +759,216 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     </div>
                   )}
 
-                  {/* TAB 2: MATRIKS EVALUASI A-H */}
+                  {/* TAB 2: SKILL GAP HEATMAP WITH ESTIMATED LEARNING TIME */}
+                  {activeTab === 'skill_gap' && (
+                    <div>
+                      <div style={{ marginBottom: '14px' }}>
+                        <h3 style={{ margin: 0, fontSize: '15px', fontWeight: 800, color: '#1E293B' }}>
+                          Skill Gap Heatmap & Actionable Learning Roadmap
+                        </h3>
+                        <p style={{ margin: '4px 0 0', fontSize: '12px', color: '#64748B' }}>
+                          Analisis keselarasan skill dan estimasi waktu yang dibutuhkan untuk menutup kekurangan teknis.
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {jobDetail.skill_gap_analysis && jobDetail.skill_gap_analysis.length > 0 ? (
+                          jobDetail.skill_gap_analysis.map((item, idx) => {
+                            const isMatch = item.status === 'matched';
+                            return (
+                              <div
+                                key={idx}
+                                style={{
+                                  padding: '12px 16px',
+                                  borderRadius: '10px',
+                                  background: isMatch ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)',
+                                  border: `1px solid ${isMatch ? 'rgba(16, 185, 129, 0.25)' : 'rgba(239, 68, 68, 0.25)'}`,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <span style={{ fontSize: '16px' }}>{isMatch ? '✅' : '❌'}</span>
+                                  <div>
+                                    <div style={{ fontSize: '13px', fontWeight: 800, color: '#1E293B' }}>
+                                      {item.skill}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#64748B' }}>
+                                      Prioritas: {item.importance || 'Medium'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  {isMatch ? (
+                                    <span style={{ background: '#10B981', color: '#FFF', fontSize: '11px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px' }}>
+                                      Dikuasai di CV
+                                    </span>
+                                  ) : (
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                      <Clock size={12} color="#DC2626" />
+                                      <span style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#DC2626', fontSize: '11px', fontWeight: 800, padding: '3px 8px', borderRadius: '6px' }}>
+                                        Est. Belajar: {item.estimated_learning || '2 minggu'}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div style={{ padding: '20px', color: '#64748B' }}>
+                            Data skill gap tidak tersedia.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* TAB 3: COMPREHENSIVE INTERVIEW PACK */}
+                  {activeTab === 'interview_pack' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                      {/* Company Research */}
+                      {jobDetail.interview_pack?.company_research && (
+                        <div style={{ padding: '16px', borderRadius: '12px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                          <h4 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 800, color: '#0F766E' }}>
+                            🏢 RISIK & PRODUK PERUSAHAAN (COMPANY DEEP DIVE)
+                          </h4>
+                          <div style={{ fontSize: '13px', color: '#1E293B', lineHeight: 1.5 }}>
+                            {jobDetail.interview_pack.company_research}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Salary Negotiation Strategy */}
+                      {jobDetail.interview_pack?.salary_negotiation_notes && (
+                        <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(245, 158, 11, 0.08)', border: '1px solid rgba(245, 158, 11, 0.25)' }}>
+                          <h4 style={{ margin: '0 0 6px', fontSize: '13px', fontWeight: 800, color: '#D97706' }}>
+                            💵 STRATEGI & TAKTIK NEGOSIASI GAJI
+                          </h4>
+                          <div style={{ fontSize: '12.5px', color: '#1E293B', lineHeight: 1.5 }}>
+                            {jobDetail.interview_pack.salary_negotiation_notes}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Likely Questions */}
+                      {jobDetail.interview_pack?.likely_questions && jobDetail.interview_pack.likely_questions.length > 0 && (
+                        <div>
+                          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 800, color: '#1E293B' }}>
+                            🎯 PREDIKSI PERTANYAAN TEKNIS & KULTURAL:
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                            {jobDetail.interview_pack.likely_questions.map((q, i) => (
+                              <div key={i} style={{ padding: '10px 14px', borderRadius: '8px', background: '#F1F5F9', fontSize: '12.5px', color: '#1E293B' }}>
+                                <strong>Q{i + 1}:</strong> {q}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* STAR+R Scenarios */}
+                      {jobDetail.interview_pack?.star_scenarios && jobDetail.interview_pack.star_scenarios.length > 0 && (
+                        <div>
+                          <h4 style={{ margin: '0 0 8px', fontSize: '13px', fontWeight: 800, color: '#1E293B' }}>
+                            🌟 SKENARIO JAWABAN STAR+R:
+                          </h4>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            {jobDetail.interview_pack.star_scenarios.map((prep, idx) => (
+                              <div key={idx} style={{ padding: '14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
+                                <div style={{ fontSize: '13px', fontWeight: 800, color: '#0F766E', marginBottom: '6px' }}>
+                                  {prep.question}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11.5px', marginBottom: '6px' }}>
+                                  <div style={{ background: '#FFF', padding: '6px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                                    <strong>Situation:</strong> {prep.situation}
+                                  </div>
+                                  <div style={{ background: '#FFF', padding: '6px', borderRadius: '4px', border: '1px solid #E2E8F0' }}>
+                                    <strong>Task:</strong> {prep.task}
+                                  </div>
+                                </div>
+                                <div style={{ background: '#FFF', padding: '6px', borderRadius: '4px', border: '1px solid #E2E8F0', fontSize: '11.5px', marginBottom: '6px' }}>
+                                  <strong>Action:</strong> {prep.action}
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '11.5px' }}>
+                                  <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '6px', borderRadius: '4px' }}>
+                                    <strong>Result:</strong> {prep.result}
+                                  </div>
+                                  <div style={{ background: 'rgba(13, 148, 136, 0.08)', padding: '6px', borderRadius: '4px' }}>
+                                    <strong>Reflection:</strong> {prep.reflection}
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 4: AUTOMATED FOLLOW-UP EMAIL */}
+                  {activeTab === 'follow_up' && (
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                        <div>
+                          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 800, color: '#1E293B' }}>
+                            Draf Email Follow-Up Otomatis (Jika 7–14 Hari Tanpa Respon)
+                          </h3>
+                          <p style={{ margin: '2px 0 0', fontSize: '11.5px', color: '#64748B' }}>
+                            Kirim ke HR/Hiring Manager untuk menanyakan kelanjutan proses aplikasi secara profesional.
+                          </p>
+                        </div>
+                        {jobDetail.follow_up_draft && (
+                          <button
+                            onClick={() => handleCopy(jobDetail.follow_up_draft!, 'fu')}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '5px',
+                              padding: '5px 10px',
+                              borderRadius: '6px',
+                              border: '1px solid rgba(48, 52, 58, 0.2)',
+                              background: '#FFF',
+                              fontSize: '11.5px',
+                              fontWeight: 700,
+                              color: '#334155',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            {copiedKey === 'fu' ? <Check size={13} color="#10B981" /> : <Copy size={13} />}
+                            <span>{copiedKey === 'fu' ? 'Tersalin!' : 'Salin Follow-Up'}</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {jobDetail.follow_up_draft ? (
+                        <div
+                          style={{
+                            padding: '16px',
+                            borderRadius: '12px',
+                            background: '#F8FAFC',
+                            border: '1px solid #E2E8F0',
+                            whiteSpace: 'pre-wrap',
+                            fontSize: '13px',
+                            lineHeight: 1.6,
+                            color: '#1E293B',
+                          }}
+                        >
+                          {jobDetail.follow_up_draft}
+                        </div>
+                      ) : (
+                        <div style={{ padding: '20px', color: '#94A3B8', fontSize: '13px' }}>
+                          Draf follow-up otomatis siap digunakan setelah lowongan disubmit.
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* TAB 5: MATRIKS EVALUASI A-H LENGKAP */}
                   {activeTab === 'report' && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      {/* Summary & Mission */}
                       <div style={{ padding: '14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
                         <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '4px' }}>
                           A - ROLE SUMMARY & CORE MISSION
@@ -689,36 +978,6 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Skills Matching */}
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                        <div style={{ padding: '14px', borderRadius: '10px', background: 'rgba(16, 185, 129, 0.06)', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#059669', marginBottom: '6px' }}>
-                            ✓ KEAHLIAN YANG COCOK (MATCHING SKILLS)
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                            {(jobDetail.evaluation_report?.C_skills_match?.matching_skills || []).map((s, i) => (
-                              <span key={i} style={{ background: '#10B981', color: '#FFF', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-
-                        <div style={{ padding: '14px', borderRadius: '10px', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.2)' }}>
-                          <div style={{ fontSize: '11px', fontWeight: 800, color: '#DC2626', marginBottom: '6px' }}>
-                            ⚠️ SKILL GAP (PERLU DIPELAJARI / DIANTISIPASI)
-                          </div>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                            {(jobDetail.evaluation_report?.C_skills_match?.missing_skills || []).map((s, i) => (
-                              <span key={i} style={{ background: 'rgba(239, 68, 68, 0.15)', color: '#DC2626', fontSize: '11px', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
-                                {s}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Compensation & Red Flags */}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                         <div style={{ padding: '14px', borderRadius: '10px', background: '#F8FAFC', border: '1px solid #E2E8F0' }}>
                           <div style={{ fontSize: '11px', fontWeight: 800, color: '#64748B', marginBottom: '4px' }}>
@@ -738,52 +997,6 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                           </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* TAB 3: STAR+R INTERVIEW PREP */}
-                  {activeTab === 'star_prep' && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                      {jobDetail.interview_star_prep && jobDetail.interview_star_prep.length > 0 ? (
-                        jobDetail.interview_star_prep.map((prep, idx) => (
-                          <div
-                            key={idx}
-                            style={{
-                              padding: '16px',
-                              borderRadius: '12px',
-                              background: '#F8FAFC',
-                              border: '1px solid #E2E8F0',
-                            }}
-                          >
-                            <div style={{ fontSize: '14px', fontWeight: 800, color: '#1E293B', marginBottom: '8px' }}>
-                              Q{idx + 1}: {prep.question}
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px', marginBottom: '6px' }}>
-                              <div style={{ background: '#FFF', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
-                                <strong>Situation:</strong> {prep.situation}
-                              </div>
-                              <div style={{ background: '#FFF', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0' }}>
-                                <strong>Task:</strong> {prep.task}
-                              </div>
-                            </div>
-                            <div style={{ background: '#FFF', padding: '8px', borderRadius: '6px', border: '1px solid #E2E8F0', fontSize: '12px', marginBottom: '6px' }}>
-                              <strong>Action:</strong> {prep.action}
-                            </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', fontSize: '12px' }}>
-                              <div style={{ background: 'rgba(16, 185, 129, 0.08)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(16, 185, 129, 0.2)' }}>
-                                <strong>Result:</strong> {prep.result}
-                              </div>
-                              <div style={{ background: 'rgba(53, 74, 96, 0.08)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(53, 74, 96, 0.2)' }}>
-                                <strong>Reflection:</strong> {prep.reflection}
-                              </div>
-                            </div>
-                          </div>
-                        ))
-                      ) : (
-                        <div style={{ padding: '20px', color: '#94A3B8', fontSize: '13px' }}>
-                          Materi latihan STAR+R otomatis dibuat untuk lowongan dengan Fit Score minimal 4/5.
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

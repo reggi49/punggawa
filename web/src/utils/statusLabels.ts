@@ -21,7 +21,7 @@ export interface HumanStatusConfig {
   badgeBg: string;
   description: string;
   icon: string;
-  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'team';
+  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout' | 'team';
 }
 
 export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
@@ -208,32 +208,32 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
   ingest_job_node: {
     label: 'Analisis Target Loker 📋',
     action: 'walk_to_desk',
-    color: '#D4A373',
-    glowColor: '#F59E0B',
-    badgeBg: 'rgba(212, 163, 115, 0.25)',
-    description: 'Clara memuat URL lowongan dan master profil karir kandidat.',
+    color: '#0D9488',
+    glowColor: '#14B8A6',
+    badgeBg: 'rgba(13, 148, 136, 0.25)',
+    description: 'Scout memuat URL lowongan dan master profil karir kandidat.',
     icon: '📋',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   fetch_job_node: {
-    label: 'Scouting Loker & Riset 🌐',
+    label: 'Scouting Loker & ATS Detection 🌐',
     action: 'searching_archive',
     color: '#06b6d4',
     glowColor: '#0891b2',
     badgeBg: 'rgba(6, 182, 212, 0.25)',
-    description: 'Clara mengekstrak detail kualifikasi, deskripsi pekerjaan, dan info perusahaan.',
+    description: 'Scout mengekstrak detail kualifikasi, platform ATS, dan info perusahaan.',
     icon: '🌐',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   evaluate_fit_node: {
-    label: 'Evaluasi Matriks A-H 🧠',
+    label: 'Dual-Scoring & Skill Gap Heatmap 🧠',
     action: 'inspecting_sop',
     color: '#f59e0b',
     glowColor: '#d97706',
     badgeBg: 'rgba(245, 158, 11, 0.25)',
-    description: 'Clara menghitung Fit Score (1-5), red flags, dan Block G keaktifan loker.',
+    description: 'Scout menghitung Fit Score, Job Quality Score, estimasi waktu belajar skill gap, dan Block G.',
     icon: '🧠',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   draft_application_node: {
     label: 'Drafter: Tailoring Cover Letter ✍️',
@@ -241,9 +241,9 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     color: '#10b981',
     glowColor: '#059669',
     badgeBg: 'rgba(16, 185, 129, 0.25)',
-    description: 'Clara menyusun Cover Letter dan CV points yang dipersonalisasi sesuai lowongan.',
+    description: 'Scout menyusun Cover Letter dan CV points yang dipersonalisasi sesuai lowongan.',
     icon: '✍️',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   review_critique_node: {
     label: 'Reviewer: Audit Anti-Halusinasi 🔍',
@@ -251,29 +251,29 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     color: '#a855f7',
     glowColor: '#9333ea',
     badgeBg: 'rgba(168, 85, 247, 0.25)',
-    description: 'Clara menguji draf terhadap CV asli untuk mencegah klaim berlebih/fiktif.',
+    description: 'Scout menguji draf terhadap CV asli untuk mencegah klaim berlebih/fiktif.',
     icon: '🔍',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   generate_prep_node: {
-    label: 'STAR+R Interview Prep 🎯',
+    label: 'Interview Pack & Salary Strategy 🎯',
     action: 'intense_typing',
     color: '#ec4899',
     glowColor: '#db2777',
     badgeBg: 'rgba(236, 72, 153, 0.25)',
-    description: 'Clara menyusun skenario latihan wawancara STAR+R berdasarkan posisi target.',
+    description: 'Scout menyusun riset perusahaan, pertanyaan prediksi, STAR+R, dan taktik negosiasi gaji.',
     icon: '🎯',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   save_job_node: {
-    label: 'Menyimpan ke Database 💾',
+    label: 'Menyimpan ke Knowledge Memory 💾',
     action: 'walk_to_desk',
     color: '#3b82f6',
     glowColor: '#2563eb',
     badgeBg: 'rgba(59, 130, 246, 0.25)',
-    description: 'Menyimpan hasil kurasi, skor, dan materi aplikasi ke PostgreSQL.',
+    description: 'Menyimpan hasil kurasi, skor, dan intelijen perusahaan ke PostgreSQL.',
     icon: '💾',
-    responsibleWorker: 'clara',
+    responsibleWorker: 'scout',
   },
   complete_node: {
     label: 'Misi Selesai Gemilang ✨',
