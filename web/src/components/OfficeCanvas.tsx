@@ -32,6 +32,25 @@ export function OfficeCanvas({
   healthData,
   onCharacterStatesChange,
 }: OfficeCanvasProps) {
+  // Disable OrbitControls whenever any modal is open
+  const [isModalActive, setIsModalActive] = React.useState(() => {
+    if (typeof document !== 'undefined') {
+      return document.body.classList.contains('punggawa-modal-active');
+    }
+    return false;
+  });
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const updateModalState = () => {
+      setIsModalActive(document.body.classList.contains('punggawa-modal-active'));
+    };
+    updateModalState();
+    const observer = new MutationObserver(updateModalState);
+    observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
       className="canvas-container-root"
@@ -113,6 +132,7 @@ export function OfficeCanvas({
         {/* Isometric-like orbit with comfortable tilt */}
         <OrbitControls
           makeDefault
+          enabled={!isModalActive}
           target={[0, 0.6, 0]}
           maxPolarAngle={Math.PI / 2.25}
           minPolarAngle={Math.PI / 10}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Briefcase,
   X,
@@ -160,6 +161,17 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
     }
   }, [selectedJobId]);
 
+  useEffect(() => {
+    if (isOpen) {
+      document.body.classList.add('punggawa-modal-active');
+    } else {
+      document.body.classList.remove('punggawa-modal-active');
+    }
+    return () => {
+      document.body.classList.remove('punggawa-modal-active');
+    };
+  }, [isOpen]);
+
   const handleCopy = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -192,25 +204,41 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
     return j.status === statusFilter;
   });
 
-  return (
+  return createPortal(
     <div
+      className="punggawa-portal-modal-backdrop"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onWheel={(e) => e.stopPropagation()}
+      onTouchMove={(e) => e.stopPropagation()}
+      onPointerDown={(e) => e.stopPropagation()}
       style={{
         position: 'fixed',
         inset: 0,
-        zIndex: 99999,
-        background: 'rgba(23, 26, 31, 0.75)',
-        backdropFilter: 'blur(8px)',
+        zIndex: 999999,
+        pointerEvents: 'auto',
+        background: 'rgba(23, 26, 31, 0.78)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '20px',
+        padding: '16px',
+        boxSizing: 'border-box',
       }}
     >
       <div
+        className="career-ops-modal-card"
+        onClick={(e) => e.stopPropagation()}
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
         style={{
           width: '100%',
           maxWidth: '1240px',
           height: '90vh',
+          maxHeight: '90vh',
           background: '#FAF8F5',
           borderRadius: '20px',
           boxShadow: '0 25px 60px rgba(0, 0, 0, 0.45)',
@@ -218,6 +246,8 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
+          pointerEvents: 'auto',
+          position: 'relative',
           fontFamily: "'Plus Jakarta Sans', system-ui, -apple-system, sans-serif",
         }}
       >
@@ -330,15 +360,27 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
         </div>
 
         {/* Modal Body: Split View (List 33% | Detail 67%) */}
-        <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        <div
+          className="career-ops-split-view"
+          style={{
+            display: 'flex',
+            flex: 1,
+            minHeight: 0,
+            overflow: 'hidden',
+          }}
+        >
           {/* Left Column: Job List */}
           <div
+            className="career-ops-left-col"
             style={{
               width: '380px',
+              minWidth: '320px',
               borderRight: '1px solid rgba(48, 52, 58, 0.12)',
               display: 'flex',
               flexDirection: 'column',
+              minHeight: 0,
               background: '#F4F1EA',
+              overflow: 'hidden',
             }}
           >
             {/* Filter Bar */}
@@ -349,6 +391,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                 display: 'flex',
                 gap: '6px',
                 overflowX: 'auto',
+                flexShrink: 0,
               }}
             >
               {[
@@ -379,7 +422,17 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
             </div>
 
             {/* List Container */}
-            <div style={{ flex: 1, overflowY: 'auto', padding: '10px' }}>
+            <div
+              style={{
+                flex: 1,
+                minHeight: 0,
+                overflowY: 'auto',
+                WebkitOverflowScrolling: 'touch',
+                padding: '10px',
+              }}
+              onWheel={(e) => e.stopPropagation()}
+              onTouchMove={(e) => e.stopPropagation()}
+            >
               {loading && jobs.length === 0 ? (
                 <div style={{ padding: '30px', textAlign: 'center', color: '#64748B', fontSize: '13px' }}>
                   Memuat data lowongan...
@@ -487,7 +540,17 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
           </div>
 
           {/* Right Column: In-Depth Job Details */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#FFFFFF', overflow: 'hidden' }}>
+          <div
+            style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              minWidth: 0,
+              minHeight: 0,
+              background: '#FFFFFF',
+              overflow: 'hidden',
+            }}
+          >
             {detailLoading ? (
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748B' }}>
                 Memuat intelligence loker & interview pack...
@@ -499,7 +562,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
             ) : (
               <>
                 {/* Header Lowongan */}
-                <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(48, 52, 58, 0.1)' }}>
+                <div style={{ padding: '18px 24px', borderBottom: '1px solid rgba(48, 52, 58, 0.1)', flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                     <div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
@@ -643,6 +706,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                     padding: '0 24px',
                     background: '#FAF8F5',
                     overflowX: 'auto',
+                    flexShrink: 0,
                   }}
                 >
                   {[
@@ -677,7 +741,17 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
                 </div>
 
                 {/* Tab Content Area */}
-                <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minHeight: 0,
+                    overflowY: 'auto',
+                    WebkitOverflowScrolling: 'touch',
+                    padding: '20px 24px',
+                  }}
+                  onWheel={(e) => e.stopPropagation()}
+                  onTouchMove={(e) => e.stopPropagation()}
+                >
                   {/* TAB 1: COVER LETTER & CV BULLET POINTS */}
                   {activeTab === 'cover_letter' && (
                     <div>
@@ -1005,6 +1079,7 @@ export const CareerOpsModal: React.FC<CareerOpsModalProps> = ({
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
