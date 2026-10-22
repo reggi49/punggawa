@@ -32,7 +32,27 @@ try:
 except Exception:
     httpx = None
 
+try:
+    from googlenewsdecoder import gnewsdecoder
+except Exception:
+    gnewsdecoder = None
+
 MIN_CONTENT_LEN = 200
+
+
+def _resolve_url(url: str) -> str:
+    """Jika URL berasal dari Google News RSS (news.google.com/rss/articles/...), decode ke URL sumber asli."""
+    if "news.google.com" in url.lower():
+        if gnewsdecoder is not None:
+            try:
+                res = gnewsdecoder(url)
+                if isinstance(res, dict) and res.get("decoded_url"):
+                    decoded = res["decoded_url"]
+                    logger.info(f"🔄 [GNews Decoder] Berhasil resolve URL asli: {decoded}")
+                    return decoded
+            except Exception as e:
+                logger.warning(f"Gagal mendecode Google News URL '{url}': {e}")
+    return url
 
 
 def _extract_text(page, url: str) -> str:
@@ -89,9 +109,9 @@ def _fetch_fast(url: str):
             try:
                 return Fetcher.get(url)
             except Exception as e:
-                logger.debug(f"Fetcher.get error: {e}")
+                logger.warning(f"Fetcher.get error for {url}: {e}")
         except Exception as e:
-            logger.debug(f"Fetcher.get error: {e}")
+            logger.warning(f"Fetcher.get error for {url}: {e}")
 
     # 2. Fallback ke curl_cffi dengan browser TLS impersonation
     if curl_requests is not None and Selector is not None:
@@ -107,8 +127,10 @@ def _fetch_fast(url: str):
             )
             if resp.status_code == 200 and resp.text:
                 return Selector(resp.text)
+            else:
+                logger.warning(f"curl_cffi fetch returned status {resp.status_code} for {url}")
         except Exception as e:
-            logger.debug(f"curl_cffi fallback error for {url}: {e}")
+            logger.warning(f"curl_cffi fallback error for {url}: {e}")
 
     # 3. Fallback ke httpx standar
     if httpx is not None and Selector is not None:
@@ -121,8 +143,10 @@ def _fetch_fast(url: str):
             )
             if resp.status_code == 200 and resp.text:
                 return Selector(resp.text)
+            else:
+                logger.warning(f"httpx fetch returned status {resp.status_code} for {url}")
         except Exception as e:
-            logger.debug(f"httpx fallback error for {url}: {e}")
+            logger.warning(f"httpx fallback error for {url}: {e}")
 
     return None
 
@@ -149,6 +173,7 @@ def _fetch_stealth(url: str):
 def scrape_data(target_urls: str | list[str]) -> tuple[str, str]:
     """
     Scrape seluruh target URL dengan dual-layer fetcher.
+    Mendukung decode URL Google News RSS secara otomatis.
     Mengembalikan (combined_text, url_references).
     """
     if isinstance(target_urls, str):
@@ -158,14 +183,16 @@ def scrape_data(target_urls: str | list[str]) -> tuple[str, str]:
 
     combined_clean_text = ""
     url_references = ""
+    failed_details = []
 
     logger.info(f"🔗 [SCRAPER] Memproses {len(url_list)} sumber URL...")
 
     if Fetcher is None and StealthyFetcher is None and curl_requests is None and httpx is None:
         raise RuntimeError("Tidak ada engine HTTP fetcher yang terpasang (scrapling/curl_cffi/httpx).")
 
-    for i, url in enumerate(url_list):
+    for i, raw_url in enumerate(url_list):
         idx = i + 1
+        url = _resolve_url(raw_url)
         try:
             # Layer 1: Fast HTTP
             page = _fetch_fast(url)
@@ -186,15 +213,19 @@ def scrape_data(target_urls: str | list[str]) -> tuple[str, str]:
                 url_references += f"- {url}\n"
                 logger.info(f"✅ Scrape {idx} sukses ({len(clean_text)} karakter): {url}")
             else:
+                err_msg = f"URL {idx} ({url}): Konten kosong atau terblokir WAF/Cloudflare ({len(clean_text.strip())} karakter)"
+                failed_details.append(err_msg)
                 logger.warning(f"⚠️ Scrape {idx} kosong/terblokir: {url}")
 
         except Exception as e:
+            err_msg = f"URL {idx} ({url}): Error fetch ({e})"
+            failed_details.append(err_msg)
             logger.error(f"❌ Scrape {idx} error: {e} | URL: {url}")
 
     if not combined_clean_text:
+        detail_str = "; ".join(failed_details) if failed_details else "Tidak ada respons konten"
         raise ValueError(
-            f"Semua target scraping gagal ({len(url_list)} URL). "
-            "Periksa koneksi internet atau validitas URL target."
+            f"Semua target scraping gagal ({len(url_list)} URL). Detail: {detail_str}"
         )
 
     return combined_clean_text, url_references

@@ -194,11 +194,23 @@ def scrape_node(state: AgentState) -> dict[str, Any]:
             "error": None,
         }
     except Exception as exc:
-        logger.error(f"Scrape gagal: {exc}", exc_info=True)
+        logger.warning(f"Scrape URL eksternal gagal: {exc}. Mengaktifkan fallback pengetahuan AI internal.")
+        topic = (
+            state.get("input_data", {}).get("topic")
+            or state.get("input_data", {}).get("query")
+            or "Topik Terkini"
+        )
+        fallback_content = (
+            f"Catatan Referensi: Akses URL eksternal gagal ({exc}).\n"
+            f"Gunakan pemahaman analitis mendalam dan pengetahuan AI komprehensif mengenai: '{topic}'."
+        )
         return {
-            "status": "failed",
-            "error": f"ScrapeError: {str(exc)}",
-            "execution_logs": [f"[{timestamp}] Scrape failed: {str(exc)}"],
+            "scraped_content": fallback_content,
+            "url_references": f"- Pengetahuan Analisis Internal AI (Fallback dari {target_urls})\n",
+            "execution_logs": [
+                f"[{timestamp}] Scrape warning: {str(exc)}. Beralih ke fallback pengetahuan AI internal."
+            ],
+            "error": None,
         }
 
 
