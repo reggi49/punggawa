@@ -124,6 +124,29 @@ class Settings(BaseSettings):
         description="Opsional session cookie untuk trigger notification CMS",
     )
 
+    # HITL (Human-in-the-Loop) & Telegram Alert Settings
+    TELEGRAM_BOT_TOKEN: str = Field(
+        "",
+        description="Telegram bot token for HITL notifications",
+    )
+    TELEGRAM_CHAT_ID: str = Field(
+        "",
+        description="Telegram chat ID for HITL notifications",
+    )
+    BROWSER_DEBUGGER_BASE_URL: str = Field(
+        "http://localhost:3000/debugger",
+        description="Browser debugger base URL for human intervention",
+    )
+    # Browserless CDP Connection Settings
+    BROWSERLESS_TOKEN: str = Field(
+        "punggawa_super_secret_token_123",
+        description="Token autentikasi Browserless",
+    )
+    BROWSERLESS_WS_URL: str = Field(
+        "ws://127.0.0.1:3000",
+        description="Base WebSocket URL container Browserless",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

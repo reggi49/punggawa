@@ -760,6 +760,62 @@ async def update_job_status(job_id: str, payload: dict[str, Any]):
         raise HTTPException(status_code=500, detail=str(exc))
 
 
+@app.post("/api/jobs/{job_id}/resume")
+async def resume_job_task(job_id: str, payload: dict[str, Any] | None = None):
+    """
+    Melanjutkan kembali task lowongan kerja yang dijeda oleh Human-in-the-Loop (HITL).
+    Dipanggil setelah operator manusia menyelesaikan CAPTCHA atau login wall pada browser debugger.
+    """
+    logger.info(f"Menerima sinyal resume HITL untuk job_id={job_id}")
+
+    # 1. Update status di PostgreSQL jika data lowongan ada
+    from orchestrator.connections import postgres_pool, redis_client
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    """
+                    UPDATE job_opportunities
+                    SET status = 'evaluating',
+                        updated_at = NOW()
+                    WHERE id = %s;
+                    """,
+                    (job_id,),
+                )
+                conn.commit()
+    except Exception as exc:
+        logger.warning(f"Catatan DB untuk resume job {job_id}: {exc}")
+
+    # 2. Kirim SSE event bahwa task telah dilanjutkan
+    event_payload = {
+        "thread_id": f"job-{job_id}",
+        "node": "fetch_job_node",
+        "status": "running",
+        "worker_id": "clara",
+        "message": f"Sinyal resume HITL diterima. Clara melanjutkan kembali ekstraksi job {job_id}...",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "details": {
+            "job_id": job_id,
+            "resumed": True,
+            "action": "resume_hitl",
+        },
+    }
+
+    if redis_client:
+        try:
+            redis_client.publish(settings.EVENT_CHANNEL, json.dumps(event_payload))
+            # Simpan key penanda resume agar worker LangGraph yang menunggu bisa mendeteksi
+            redis_client.set(f"job:hitl:resume:{job_id}", "true", ex=1800)
+        except Exception as exc:
+            logger.warning(f"Gagal publish event resume ke Redis: {exc}")
+
+    return {
+        "status": "RESUMED",
+        "job_id": job_id,
+        "message": f"Task job {job_id} berhasil dilanjutkan kembali dari jeda HITL.",
+    }
+
+
 @app.get("/api/career/profile")
 async def get_career_profile_endpoint():
     """Mengembalikan profil dan preferensi karir kandidat saat ini."""

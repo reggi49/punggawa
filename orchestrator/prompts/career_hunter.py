@@ -70,12 +70,8 @@ def _call_gemini_or_ollama(prompt: str) -> str:
     if gemini_api_key:
         genai.configure(api_key=gemini_api_key)
         gemini_models = [
-            "gemini-3.8-flash",
-            "gemini-3.7-flash",
-            "gemini-3.6-flash",
-            "gemini-3.5-flash",
-            "gemini-3.1-flash-lite",
-            "gemini-flash-latest",
+            "gemini-2.5-flash",
+            "gemini-2.5-pro",
         ]
 
         for model_name in gemini_models:

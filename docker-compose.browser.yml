@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  browserless:
+    image: ghcr.io/browserless/chromium:latest
+    container_name: punggawa-browserless
+    restart: unless-stopped
+    ports:
+      # Kunci hanya ke localhost VPS agar debugger tidak terekspos ke internet publik
+      - "127.0.0.1:3000:3000"
+    environment:
+      - CONCURRENT=1               # Batasi 1-2 instance agar hemat RAM VPS
+      - TOKEN=punggawa_super_secret_token_123
+      - KEEP_ALIVE=true
+      - DATA_DIR=/data/profile
+      - TIMEOUT=120000             # 2 menit timeout navigasi
+    volumes:
+      # Simpan cookies & session agar persistent di host VPS
+      - ./data/browser_profile:/data/profile
+    shm_size: '2gb'                # Krusial agar Chromium tidak crash Out-Of-Memory

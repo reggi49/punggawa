@@ -108,7 +108,18 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
     # 2. Jika ada URL langsung, scrape URL tersebut
     if url and url.startswith("http"):
         try:
-            scraped = fetch_job_from_url(url)
+            scraped = fetch_job_from_url(url, job_id=task_id)
+            if scraped.get("hitl_triggered"):
+                blocker = scraped.get("blocker_type", "UNKNOWN_BLOCKER")
+                logger.warning(f"[{task_id}] Clara dijeda karena butuh intervensi manusia: {blocker}")
+                return {
+                    "status": "PAUSED_HITL",
+                    "error": f"Task dijeda: Terdeteksi {blocker}. Membutuhkan intervensi pengguna.",
+                    "execution_logs": [
+                        f"[{timestamp}] 🚨 HITL TRIGGERED: Terdeteksi {blocker}. Notifikasi bantuan dikirim. Task dijeda."
+                    ],
+                }
+
             text = scraped.get("raw_text", "")
             ats = scraped.get("ats_vendor") or state.get("ats_vendor") or "Direct / Unknown"
             if len(text) < 100:
@@ -190,6 +201,13 @@ def evaluate_fit_node(state: JobAgentState) -> dict[str, Any]:
         ],
         "error": None,
     }
+
+
+def route_after_fetch(state: JobAgentState) -> Literal["evaluate_fit_node", "complete_node"]:
+    """Conditional Edge: Memilih rute setelah fetch. Jika HITL terpicu atau scrape gagal, langsung ke complete_node."""
+    if state.get("status") in ["PAUSED_HITL", "failed"] or state.get("error"):
+        return "complete_node"
+    return "evaluate_fit_node"
 
 
 def route_after_evaluation(state: JobAgentState) -> Literal["draft_application_node", "save_job_node", "complete_node"]:
@@ -388,6 +406,21 @@ def save_job_node(state: JobAgentState) -> dict[str, Any]:
 
 def complete_node(state: JobAgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    # Periksa jika task sedang dijeda untuk Human-in-the-Loop (HITL)
+    if state.get("status") == "PAUSED_HITL":
+        logger.info(f"[{task_id}] Job pipeline memasuki status PAUSED_HITL.")
+        return {
+            "status": "PAUSED_HITL",
+            "result": {
+                "job_id": state.get("task_id"),
+                "status": "PAUSED_HITL",
+                "summary": state.get("error", "Task dijeda untuk intervensi manusia (HITL)."),
+            },
+            "execution_logs": [f"[{timestamp}] Job Task {task_id} dijeda (PAUSED_HITL). Menunggu sinyal resume."],
+        }
+
     status = "completed" if not state.get("error") else "failed"
     company = state.get("company_name", "Unknown")
     role = state.get("role_title", "Job")
@@ -396,7 +429,6 @@ def complete_node(state: JobAgentState) -> dict[str, Any]:
     quality_score = eval_res.get("job_quality_score", 3)
     ats = state.get("ats_vendor", "Direct")
     saved_id = state.get("saved_job_id")
-    timestamp = datetime.now(timezone.utc).isoformat()
 
     summary = (
         f"Scout Career Intelligence Selesai: {company} - {role} "
@@ -438,7 +470,14 @@ def build_job_graph() -> StateGraph:
 
     workflow.set_entry_point("ingest_job_node")
     workflow.add_edge("ingest_job_node", "fetch_job_node")
-    workflow.add_edge("fetch_job_node", "evaluate_fit_node")
+    workflow.add_conditional_edges(
+        "fetch_job_node",
+        route_after_fetch,
+        {
+            "evaluate_fit_node": "evaluate_fit_node",
+            "complete_node": "complete_node",
+        },
+    )
 
     workflow.add_conditional_edges(
         "evaluate_fit_node",
