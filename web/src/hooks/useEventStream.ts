@@ -7,6 +7,7 @@ export interface LogEntry {
   node: string;
   status: string;
   message: string;
+  thread_id?: string;
   agent_name?: string;
   error?: string;
   result_url?: string;

@@ -29,6 +29,8 @@ import {
   Server,
   Trash2,
   Briefcase,
+  Code2,
+  Bug,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
@@ -406,8 +408,9 @@ export function HUDOverlay({
       // Jika event terbaru berstatus failed atau node kegagalan:
       if (l.status === 'failed' || l.node === 'failed_node') {
         // Pengecualian khusus Uptime Alert: Jika sistem microservice saat ini sudah normal (!isDegraded),
+        // atau jika pesan ini tentang service down yang kini sudah solved,
         // maka alert service down sebelumnya sudah SOLVED dan tidak boleh mem-block Bay-Zero lagi!
-        if (l.node === 'uptime_alert' && !isDegraded) {
+        if ((l.node === 'uptime_alert' || (l.message && l.message.includes('Peringatan Service Down'))) && !isDegraded) {
           continue;
         }
         map[matchedId] = (l as any).error || l.message || 'Task error';
@@ -1335,9 +1338,11 @@ export function HUDOverlay({
             {(['stark', 'bayzero', 'usagi'] as WorkerId[]).map((wId) => {
               const prof = WORKER_PROFILES[wId];
               const visual = characterStates?.[wId];
+              const isUptimeAlertOutdated =
+                (currentNode === 'uptime_alert' || (message && message.includes('Peringatan Service Down'))) && !isDegraded;
               const agentFailure =
                 latestAgentFailures[wId] ||
-                (status === 'failed' && humanStatus.responsibleWorker === wId && !(currentNode === 'uptime_alert' && !isDegraded) ? message : null);
+                (status === 'failed' && humanStatus.responsibleWorker === wId && !isUptimeAlertOutdated ? message : null);
               const hasFailed = Boolean(agentFailure);
 
               const actualState: ActualAgentState = hasFailed
@@ -1908,13 +1913,13 @@ export function HUDOverlay({
                       )}
                     </div>
 
-                    {/* Expanded error reason / stacktrace */}
+                    {/* Expanded error reason / stacktrace & Admin Technical Debug */}
                     {isExpanded && errorDetail && (
                       <div
                         style={{
                           marginTop: '6px',
-                          padding: '8px 12px',
-                          borderRadius: '6px',
+                          padding: '10px 12px',
+                          borderRadius: '8px',
                           background: 'rgba(239, 68, 68, 0.08)',
                           border: '1px solid rgba(239, 68, 68, 0.25)',
                           color: '#B91C1C',
@@ -1922,12 +1927,15 @@ export function HUDOverlay({
                           lineHeight: 1.45,
                           whiteSpace: 'pre-wrap',
                           wordBreak: 'break-word',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px',
                         }}
                       >
                         <div
                           style={{
                             fontWeight: 800,
-                            marginBottom: '4px',
+                            marginBottom: '2px',
                             display: 'flex',
                             alignItems: 'center',
                             gap: '5px',
@@ -1936,7 +1944,131 @@ export function HUDOverlay({
                           <AlertCircle size={12} />
                           <span>ALASAN KEGAGALAN LENGKAP:</span>
                         </div>
-                        <code>{errorDetail}</code>
+                        <code style={{ fontSize: '11px', color: '#991B1B' }}>{errorDetail}</code>
+
+                        {/* Admin Technical Diagnostics Inspector */}
+                        {authToken ? (
+                          <div
+                            style={{
+                              marginTop: '8px',
+                              padding: '8px 10px',
+                              borderRadius: '6px',
+                              background: 'rgba(30, 41, 59, 0.95)',
+                              border: '1px solid rgba(59, 130, 246, 0.35)',
+                              color: '#F8FAFC',
+                              fontSize: '10.5px',
+                              boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                marginBottom: '6px',
+                                paddingBottom: '4px',
+                                borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                              }}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#38BDF8', fontWeight: 800 }}>
+                                <Bug size={12} />
+                                <span>DIAGNOSTIK TEKNIS (ADMIN AKTIF)</span>
+                              </div>
+                              <span style={{ fontSize: '9.5px', color: '#94A3B8', fontFamily: 'monospace' }}>
+                                ID: {log.id}
+                              </span>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 10px', fontSize: '10.5px' }}>
+                              <span style={{ color: '#94A3B8', fontWeight: 600 }}>Tingkat Pipeline:</span>
+                              <span style={{ color: '#FCD34D', fontFamily: 'monospace', fontWeight: 700 }}>
+                                {log.details?.original_node || log.node}
+                              </span>
+
+                              <span style={{ color: '#94A3B8', fontWeight: 600 }}>Thread ID:</span>
+                              <span style={{ color: '#E2E8F0', fontFamily: 'monospace' }}>
+                                {log.thread_id || '-'}
+                              </span>
+
+                              <span style={{ color: '#94A3B8', fontWeight: 600 }}>Aktor Agen:</span>
+                              <span style={{ color: '#E2E8F0' }}>
+                                {log.agent_name || actor.name}
+                              </span>
+
+                              {log.details?.task_id && (
+                                <>
+                                  <span style={{ color: '#94A3B8', fontWeight: 600 }}>Task ID:</span>
+                                  <span style={{ color: '#E2E8F0', fontFamily: 'monospace' }}>
+                                    {log.details.task_id}
+                                  </span>
+                                </>
+                              )}
+
+                              {log.details?.video_id && (
+                                <>
+                                  <span style={{ color: '#94A3B8', fontWeight: 600 }}>Video ID:</span>
+                                  <span style={{ color: '#67E8F9', fontFamily: 'monospace', fontWeight: 700 }}>
+                                    {log.details.video_id}
+                                  </span>
+                                </>
+                              )}
+
+                              {log.details?.query && (
+                                <>
+                                  <span style={{ color: '#94A3B8', fontWeight: 600 }}>Target Query:</span>
+                                  <span style={{ color: '#E2E8F0' }}>{log.details.query}</span>
+                                </>
+                              )}
+                            </div>
+
+                            {/* Raw Details JSON */}
+                            {log.details && Object.keys(log.details).length > 0 && (
+                              <details style={{ marginTop: '8px' }}>
+                                <summary
+                                  style={{
+                                    cursor: 'pointer',
+                                    color: '#93C5FD',
+                                    fontWeight: 700,
+                                    fontSize: '10px',
+                                    userSelect: 'none',
+                                    outline: 'none',
+                                  }}
+                                >
+                                  ▶ Raw Payload / Details JSON
+                                </summary>
+                                <pre
+                                  style={{
+                                    marginTop: '4px',
+                                    padding: '6px',
+                                    background: 'rgba(15, 23, 42, 0.85)',
+                                    borderRadius: '4px',
+                                    overflowX: 'auto',
+                                    fontSize: '9.5px',
+                                    color: '#A7F3D0',
+                                    maxHeight: '120px',
+                                  }}
+                                >
+                                  {JSON.stringify(log.details, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
+                        ) : (
+                          <div
+                            style={{
+                              marginTop: '4px',
+                              fontSize: '10px',
+                              color: '#6B7280',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              fontStyle: 'italic',
+                            }}
+                          >
+                            <Lock size={10} />
+                            <span>Masuk dengan Password Admin (di kanan atas) untuk melihat detail teknis & node pipeline.</span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -3149,7 +3281,7 @@ export function HUDOverlay({
                           <div
                             style={{
                               marginTop: '4px',
-                              padding: '8px 12px',
+                              padding: '10px 12px',
                               borderRadius: '8px',
                               background: 'rgba(239, 68, 68, 0.08)',
                               border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -3158,6 +3290,9 @@ export function HUDOverlay({
                               lineHeight: 1.45,
                               whiteSpace: 'pre-wrap',
                               wordBreak: 'break-word',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '6px',
                             }}
                           >
                             <div
@@ -3172,7 +3307,121 @@ export function HUDOverlay({
                               <AlertCircle size={12} />
                               <span>DETAIL KESALAHAN EKSEKUSI:</span>
                             </div>
-                            <code>{sched.error_message}</code>
+                            <code style={{ fontSize: '11px', color: '#991B1B' }}>{sched.error_message}</code>
+
+                            {/* Admin Technical Diagnostics Inspector for Schedule */}
+                            {authToken ? (
+                              <div
+                                style={{
+                                  marginTop: '6px',
+                                  padding: '8px 10px',
+                                  borderRadius: '6px',
+                                  background: 'rgba(30, 41, 59, 0.95)',
+                                  border: '1px solid rgba(59, 130, 246, 0.35)',
+                                  color: '#F8FAFC',
+                                  fontSize: '10.5px',
+                                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: '6px',
+                                    paddingBottom: '4px',
+                                    borderBottom: '1px solid rgba(255, 255, 255, 0.12)',
+                                  }}
+                                >
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px', color: '#38BDF8', fontWeight: 800 }}>
+                                    <Bug size={12} />
+                                    <span>DIAGNOSTIK TEKNIS JADWAL (ADMIN AKTIF)</span>
+                                  </div>
+                                  <span style={{ fontSize: '9.5px', color: '#94A3B8', fontFamily: 'monospace' }}>
+                                    ID: {sched.id}
+                                  </span>
+                                </div>
+
+                                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '4px 10px', fontSize: '10.5px' }}>
+                                  <span style={{ color: '#94A3B8', fontWeight: 600 }}>Tipe Konten:</span>
+                                  <span style={{ color: '#FCD34D', fontFamily: 'monospace', fontWeight: 700 }}>
+                                    {sched.task_type || '-'}
+                                  </span>
+
+                                  <span style={{ color: '#94A3B8', fontWeight: 600 }}>Aktor Agen:</span>
+                                  <span style={{ color: '#E2E8F0' }}>
+                                    {sched.agent_name || '-'}
+                                  </span>
+
+                                  {sched.payload?.input_data?.video_id && (
+                                    <>
+                                      <span style={{ color: '#94A3B8', fontWeight: 600 }}>Video ID:</span>
+                                      <span style={{ color: '#67E8F9', fontFamily: 'monospace', fontWeight: 700 }}>
+                                        {sched.payload.input_data.video_id}
+                                      </span>
+                                    </>
+                                  )}
+
+                                  {sched.payload?.input_data?.urls && (
+                                    <>
+                                      <span style={{ color: '#94A3B8', fontWeight: 600 }}>Input URLs:</span>
+                                      <span style={{ color: '#E2E8F0', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {Array.isArray(sched.payload.input_data.urls)
+                                          ? sched.payload.input_data.urls.join(', ')
+                                          : String(sched.payload.input_data.urls)}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+
+                                {/* Raw Payload JSON */}
+                                {sched.payload && (
+                                  <details style={{ marginTop: '8px' }}>
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        color: '#93C5FD',
+                                        fontWeight: 700,
+                                        fontSize: '10px',
+                                        userSelect: 'none',
+                                        outline: 'none',
+                                      }}
+                                    >
+                                      ▶ Raw Schedule Payload JSON
+                                    </summary>
+                                    <pre
+                                      style={{
+                                        marginTop: '4px',
+                                        padding: '6px',
+                                        background: 'rgba(15, 23, 42, 0.85)',
+                                        borderRadius: '4px',
+                                        overflowX: 'auto',
+                                        fontSize: '9.5px',
+                                        color: '#A7F3D0',
+                                        maxHeight: '120px',
+                                      }}
+                                    >
+                                      {JSON.stringify(sched.payload, null, 2)}
+                                    </pre>
+                                  </details>
+                                )}
+                              </div>
+                            ) : (
+                              <div
+                                style={{
+                                  marginTop: '4px',
+                                  fontSize: '10px',
+                                  color: '#6B7280',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontStyle: 'italic',
+                                }}
+                              >
+                                <Lock size={10} />
+                                <span>Masuk dengan Password Admin untuk melihat detail payload teknis.</span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>

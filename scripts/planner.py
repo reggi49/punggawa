@@ -403,12 +403,14 @@ def fetch_candidate_for_usagi(existing_topics: set[str]) -> tuple[str, str, dict
         for ch_id in settings.DONGENG_TARGET_CHANNELS:
             vids = list_channel_videos(ch_id, max_results=10)
             for v in vids:
-                v_id = str(v.get("id") or v.get("video_id") or "").strip().lower()
-                v_title = str(v.get("title") or "").strip().lower()
-                if v_id and v_id not in existing_topics and v_title not in existing_topics:
+                v_id = str(v.get("id") or v.get("video_id") or "").strip()
+                v_title = str(v.get("title") or "").strip()
+                v_id_key = v_id.lower()
+                v_title_key = v_title.lower()
+                if v_id and v_id_key not in existing_topics and v_title_key not in existing_topics:
                     title = v.get("title") or f"Dongeng Anak {v_id}"
-                    existing_topics.add(v_id)
-                    existing_topics.add(v_title)
+                    existing_topics.add(v_id_key)
+                    existing_topics.add(v_title_key)
                     input_data = {
                         "video_id": v_id,
                         "query": title,
