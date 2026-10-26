@@ -31,6 +31,8 @@ import {
   Briefcase,
   Code2,
   Bug,
+  RotateCcw,
+  Archive,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
@@ -374,7 +376,8 @@ export function HUDOverlay({
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [schedulesList, setSchedulesList] = useState<any[]>([]);
   const [isLoadingSchedules, setIsLoadingSchedules] = useState(false);
-  const [scheduleFilter, setScheduleFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'failed'>('all');
+  const [scheduleFilter, setScheduleFilter] = useState<'all' | 'pending' | 'in_progress' | 'completed' | 'failed' | 'discarded'>('all');
+  const [scheduleDaysFilter, setScheduleDaysFilter] = useState<'7days' | '14days' | 'all'>('7days');
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [expandedSchedErrorId, setExpandedSchedErrorId] = useState<string | null>(null);
   const [scheduleActionMsg, setScheduleActionMsg] = useState<string | null>(null);
@@ -419,18 +422,41 @@ export function HUDOverlay({
     return map;
   }, [logs, isDegraded]);
 
-  // Filtered schedules list based on selected tab
+  // Filtered schedules list based on selected tab and days window
   const filteredSchedules = useMemo(() => {
-    if (scheduleFilter === 'all') return schedulesList;
-    return schedulesList.filter((s) => s.status === scheduleFilter);
-  }, [schedulesList, scheduleFilter]);
+    let list = schedulesList;
+    if (scheduleFilter === 'all') {
+      list = list.filter((s) => s.status !== 'discarded');
+    } else {
+      list = list.filter((s) => s.status === scheduleFilter);
+    }
+
+    if (scheduleDaysFilter !== 'all') {
+      const days = scheduleDaysFilter === '7days' ? 7 : 14;
+      const now = new Date().getTime();
+      const windowMs = days * 24 * 60 * 60 * 1000;
+      list = list.filter((s) => {
+        if (!s.scheduled_at) return true;
+        const schedTime = new Date(s.scheduled_at).getTime();
+        // Mencakup tugas dari [now - windowMs] sampai [now + windowMs]
+        return schedTime >= (now - windowMs) && schedTime <= (now + windowMs);
+      });
+    }
+
+    return list;
+  }, [schedulesList, scheduleFilter, scheduleDaysFilter]);
 
   // Count per status category for tab badges
   const scheduleCounts = useMemo(() => {
-    const counts = { all: schedulesList.length, pending: 0, in_progress: 0, completed: 0, failed: 0 };
+    const counts = { all: 0, pending: 0, in_progress: 0, completed: 0, failed: 0, discarded: 0 };
     for (const s of schedulesList) {
-      if (s.status in counts) {
-        counts[s.status as keyof typeof counts]++;
+      if (s.status === 'discarded') {
+        counts.discarded++;
+      } else {
+        counts.all++;
+        if (s.status in counts) {
+          counts[s.status as keyof typeof counts]++;
+        }
       }
     }
     return counts;
@@ -456,7 +482,8 @@ export function HUDOverlay({
   const fetchSchedules = async () => {
     setIsLoadingSchedules(true);
     try {
-      const res = await fetch('/api/schedules?limit=30');
+      // Ambil hingga 150 item termasuk discarded agar tab Recycle Bin dan filter terisi lengkap
+      const res = await fetch('/api/schedules?limit=150&include_discarded=true');
       if (res.ok) {
         const data = await res.json();
         setSchedulesList(data.schedules || []);
@@ -526,26 +553,87 @@ export function HUDOverlay({
     }
   };
 
-  const handleDeleteSchedule = async (schedId: string, title: string) => {
-    if (!confirm(`Hapus jadwal berikut dari antrean?\n"${title}"`)) return;
-    setScheduleActionMsg(`Menghapus jadwal ${schedId}...`);
+  const handleDeleteSchedule = async (schedId: string, title: string, permanent: boolean = false) => {
+    const actionLabel = permanent ? 'hapus PERMANEN' : 'pindahkan ke Recycle Bin';
+    if (!confirm(`Apakah Anda yakin ingin ${actionLabel} jadwal berikut?\n"${title}"`)) return;
+    setScheduleActionMsg(`Memproses ${schedId}...`);
     try {
-      const res = await fetch(`/api/schedules/${schedId}?force=true`, {
+      const res = await fetch(`/api/schedules/${schedId}?force=true&permanent=${permanent}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken || ''}`,
         },
       });
       if (res.ok) {
-        setScheduleActionMsg('✅ Jadwal berhasil dihapus!');
-        setSchedulesList((prev) => prev.filter((s) => s.id !== schedId));
-        setTimeout(() => setScheduleActionMsg(null), 3000);
+        if (permanent) {
+          setScheduleActionMsg('🗑️ Jadwal berhasil dihapus secara permanen!');
+          setSchedulesList((prev) => prev.filter((s) => s.id !== schedId));
+        } else {
+          setScheduleActionMsg('📦 Jadwal dipindahkan ke Recycle Bin & di-blacklist dari planner.');
+          // Update status lokal menjadi discarded
+          setSchedulesList((prev) =>
+            prev.map((s) => (s.id === schedId ? { ...s, status: 'discarded' } : s))
+          );
+        }
+        setTimeout(() => setScheduleActionMsg(null), 3500);
       } else if (res.status === 401) {
         setScheduleActionMsg('❌ Memerlukan login pengelola untuk menghapus jadwal.');
         setTimeout(() => setScheduleActionMsg(null), 3000);
       } else {
         const err = await res.json().catch(() => ({}));
         setScheduleActionMsg(`❌ Gagal: ${err.detail || 'Tidak dapat menghapus jadwal'}`);
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      }
+    } catch (err: any) {
+      setScheduleActionMsg(`❌ Gagal: ${err.message}`);
+      setTimeout(() => setScheduleActionMsg(null), 3000);
+    }
+  };
+
+  const handleRestoreSchedule = async (schedId: string, title: string) => {
+    setScheduleActionMsg(`Memulihkan jadwal ${schedId}...`);
+    try {
+      const res = await fetch(`/api/schedules/${schedId}/restore`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken || ''}`,
+        },
+      });
+      if (res.ok) {
+        setScheduleActionMsg(`♻️ Jadwal "${title.slice(0, 30)}..." berhasil dipulihkan ke antrean!`);
+        setSchedulesList((prev) =>
+          prev.map((s) => (s.id === schedId ? { ...s, status: 'pending', error_message: null } : s))
+        );
+        setTimeout(() => setScheduleActionMsg(null), 3500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setScheduleActionMsg(`❌ Gagal memulihkan: ${err.detail || 'Terjadi kesalahan'}`);
+        setTimeout(() => setScheduleActionMsg(null), 3000);
+      }
+    } catch (err: any) {
+      setScheduleActionMsg(`❌ Gagal: ${err.message}`);
+      setTimeout(() => setScheduleActionMsg(null), 3000);
+    }
+  };
+
+  const handleEmptyTrash = async () => {
+    if (!confirm('Apakah Anda yakin ingin MENGOSONGKAN SELURUH Recycle Bin secara permanen?')) return;
+    setScheduleActionMsg('Mengosongkan Recycle Bin...');
+    try {
+      const res = await fetch('/api/schedules/trash/empty', {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${authToken || ''}`,
+        },
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setScheduleActionMsg(`🧹 ${data.message}`);
+        setSchedulesList((prev) => prev.filter((s) => s.status !== 'discarded'));
+        setTimeout(() => setScheduleActionMsg(null), 3500);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setScheduleActionMsg(`❌ Gagal: ${err.detail || 'Tidak dapat mengosongkan sampah'}`);
         setTimeout(() => setScheduleActionMsg(null), 3000);
       }
     } catch (err: any) {
@@ -2867,50 +2955,132 @@ export function HUDOverlay({
               </div>
             )}
 
-            {/* Filter Tabs */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-              {[
-                { id: 'all', label: 'Semua', count: scheduleCounts.all },
-                { id: 'pending', label: '⏳ Pending', count: scheduleCounts.pending },
-                { id: 'in_progress', label: '⚡ Berjalan', count: scheduleCounts.in_progress },
-                { id: 'completed', label: '✅ Selesai', count: scheduleCounts.completed },
-                { id: 'failed', label: '❌ Gagal', count: scheduleCounts.failed },
-              ].map((tab) => {
-                const active = scheduleFilter === tab.id;
-                return (
+            {/* Filter Tabs & Time Window Selector */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                {[
+                  { id: 'all', label: 'Semua', count: scheduleCounts.all },
+                  { id: 'pending', label: '⏳ Pending', count: scheduleCounts.pending },
+                  { id: 'in_progress', label: '⚡ Berjalan', count: scheduleCounts.in_progress },
+                  { id: 'completed', label: '✅ Selesai', count: scheduleCounts.completed },
+                  { id: 'failed', label: '❌ Gagal', count: scheduleCounts.failed },
+                  { id: 'discarded', label: '🗑️ Sampah', count: scheduleCounts.discarded },
+                ].map((tab) => {
+                  const active = scheduleFilter === tab.id;
+                  const isTrash = tab.id === 'discarded';
+                  return (
+                    <button
+                      key={tab.id}
+                      type="button"
+                      onClick={() => setScheduleFilter(tab.id as any)}
+                      style={{
+                        padding: '6px 11px',
+                        borderRadius: '8px',
+                        border: active
+                          ? isTrash
+                            ? '1.5px solid #DC2626'
+                            : '1.5px solid #354A60'
+                          : '1px solid rgba(48, 52, 58, 0.12)',
+                        background: active
+                          ? isTrash
+                            ? '#DC2626'
+                            : '#354A60'
+                          : isTrash
+                          ? 'rgba(254, 242, 242, 0.7)'
+                          : 'rgba(255, 255, 255, 0.8)',
+                        color: active ? '#ffffff' : isTrash ? '#B91C1C' : '#30343A',
+                        fontSize: '11.5px',
+                        fontWeight: active ? 800 : 600,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                      }}
+                    >
+                      <span>{tab.label}</span>
+                      <span
+                        style={{
+                          padding: '1px 5px',
+                          borderRadius: '10px',
+                          fontSize: '10px',
+                          background: active
+                            ? 'rgba(255, 255, 255, 0.25)'
+                            : isTrash
+                            ? 'rgba(239, 68, 68, 0.15)'
+                            : 'rgba(48, 52, 58, 0.08)',
+                          color: active ? '#ffffff' : isTrash ? '#DC2626' : '#64748B',
+                        }}
+                      >
+                        {tab.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Time Window (Rentang Waktu Tampilan) & Empty Trash Action */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {scheduleFilter === 'discarded' && scheduleCounts.discarded > 0 && authToken && (
                   <button
-                    key={tab.id}
                     type="button"
-                    onClick={() => setScheduleFilter(tab.id as any)}
+                    onClick={handleEmptyTrash}
                     style={{
-                      padding: '6px 12px',
+                      background: 'rgba(239, 68, 68, 0.15)',
+                      border: '1px solid rgba(239, 68, 68, 0.35)',
+                      color: '#DC2626',
                       borderRadius: '8px',
-                      border: active ? '1.5px solid #354A60' : '1px solid rgba(48, 52, 58, 0.12)',
-                      background: active ? '#354A60' : 'rgba(255, 255, 255, 0.8)',
-                      color: active ? '#ffffff' : '#30343A',
-                      fontSize: '11.5px',
-                      fontWeight: active ? 800 : 600,
+                      padding: '5px 10px',
+                      fontSize: '11px',
+                      fontWeight: 800,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
-                      gap: '6px',
+                      gap: '4px',
                     }}
                   >
-                    <span>{tab.label}</span>
-                    <span
-                      style={{
-                        padding: '1px 5px',
-                        borderRadius: '10px',
-                        fontSize: '10px',
-                        background: active ? 'rgba(255, 255, 255, 0.25)' : 'rgba(48, 52, 58, 0.08)',
-                        color: active ? '#ffffff' : '#64748B',
-                      }}
-                    >
-                      {tab.count}
-                    </span>
+                    <Trash2 size={12} />
+                    <span>Kosongkan Sampah</span>
                   </button>
-                );
-              })}
+                )}
+
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    background: 'rgba(244, 241, 234, 0.9)',
+                    padding: '3px 6px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(48, 52, 58, 0.1)',
+                    fontSize: '11px',
+                  }}
+                >
+                  <span style={{ color: '#8A8A82', fontWeight: 600, fontSize: '10.5px' }}>Rentang:</span>
+                  {(['7days', '14days', 'all'] as const).map((mode) => {
+                    const sel = scheduleDaysFilter === mode;
+                    const label = mode === '7days' ? '±7 Hari' : mode === '14days' ? '±14 Hari' : 'Semua';
+                    return (
+                      <button
+                        key={mode}
+                        type="button"
+                        onClick={() => setScheduleDaysFilter(mode)}
+                        style={{
+                          background: sel ? '#354A60' : 'transparent',
+                          color: sel ? '#ffffff' : '#475569',
+                          border: 'none',
+                          borderRadius: '5px',
+                          padding: '2px 7px',
+                          fontSize: '10.5px',
+                          fontWeight: sel ? 800 : 500,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             {/* Schedules Table */}
@@ -2971,6 +3141,7 @@ export function HUDOverlay({
                     const isCompleted = sched.status === 'completed';
                     const isInProgress = sched.status === 'in_progress';
                     const isPending = sched.status === 'pending';
+                    const isDiscarded = sched.status === 'discarded';
                     const isErrorExpanded = expandedSchedErrorId === sched.id;
 
                     return (
@@ -2978,7 +3149,9 @@ export function HUDOverlay({
                         key={sched.id}
                         style={{
                           borderBottom: '1px solid rgba(48, 52, 58, 0.06)',
-                          background: isFailed
+                          background: isDiscarded
+                            ? 'rgba(241, 245, 249, 0.7)'
+                            : isFailed
                             ? 'rgba(254, 242, 242, 0.6)'
                             : isCompleted
                             ? 'rgba(240, 253, 244, 0.6)'
@@ -2989,6 +3162,7 @@ export function HUDOverlay({
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '6px',
+                          opacity: isDiscarded ? 0.8 : 1,
                         }}
                       >
                         <div
@@ -3010,14 +3184,18 @@ export function HUDOverlay({
                                 fontSize: '10px',
                                 fontWeight: 800,
                                 textTransform: 'uppercase',
-                                background: isFailed
+                                background: isDiscarded
+                                  ? 'rgba(100, 116, 139, 0.18)'
+                                  : isFailed
                                   ? 'rgba(239, 68, 68, 0.18)'
                                   : isCompleted
                                   ? 'rgba(16, 185, 129, 0.18)'
                                   : isInProgress
                                   ? 'rgba(59, 130, 246, 0.18)'
                                   : 'rgba(245, 158, 11, 0.18)',
-                                color: isFailed
+                                color: isDiscarded
+                                  ? '#475569'
+                                  : isFailed
                                   ? '#DC2626'
                                   : isCompleted
                                   ? '#059669'
@@ -3025,7 +3203,9 @@ export function HUDOverlay({
                                   ? '#2563EB'
                                   : '#D97706',
                                 border: `1px solid ${
-                                  isFailed
+                                  isDiscarded
+                                    ? 'rgba(100, 116, 139, 0.35)'
+                                    : isFailed
                                     ? 'rgba(239, 68, 68, 0.35)'
                                     : isCompleted
                                     ? 'rgba(16, 185, 129, 0.35)'
@@ -3035,7 +3215,9 @@ export function HUDOverlay({
                                 }`,
                               }}
                             >
-                              {isFailed
+                              {isDiscarded
+                                ? '🗑️ Sampah'
+                                : isFailed
                                 ? '❌ Gagal'
                                 : isCompleted
                                 ? '✅ Selesai'
@@ -3092,6 +3274,50 @@ export function HUDOverlay({
 
                           {/* Observability / Action Button */}
                           <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '6px' }}>
+                            {isDiscarded && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRestoreSchedule(sched.id, sched.title)}
+                                  title="Pulihkan jadwal ini kembali ke status pending"
+                                  style={{
+                                    background: 'rgba(16, 185, 129, 0.15)',
+                                    border: '1px solid rgba(16, 185, 129, 0.35)',
+                                    color: '#059669',
+                                    borderRadius: '6px',
+                                    padding: '4px 8px',
+                                    fontSize: '11px',
+                                    fontWeight: 700,
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                  }}
+                                >
+                                  <RotateCcw size={11} />
+                                  <span>Pulihkan</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title, true)}
+                                  title="Hapus permanen dari database"
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.12)',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    color: '#DC2626',
+                                    borderRadius: '6px',
+                                    padding: '4px 7px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
+                            )}
+
                             {isCompleted && (
                               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
                                 {sched.result_url && (
@@ -3115,8 +3341,8 @@ export function HUDOverlay({
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                  title="Hapus riwayat jadwal selesai ini"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title, false)}
+                                  title="Pindahkan riwayat jadwal selesai ini ke Recycle Bin"
                                   style={{
                                     background: 'rgba(100, 116, 139, 0.12)',
                                     border: '1px solid rgba(100, 116, 139, 0.25)',
@@ -3180,8 +3406,8 @@ export function HUDOverlay({
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                  title="Hapus jadwal gagal ini dari daftar"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title, false)}
+                                  title="Pindahkan jadwal gagal ini ke Recycle Bin (blacklist dari auto-planner)"
                                   style={{
                                     background: 'rgba(100, 116, 139, 0.12)',
                                     border: '1px solid rgba(100, 116, 139, 0.25)',
@@ -3229,8 +3455,8 @@ export function HUDOverlay({
                                 )}
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                  title="Hapus jadwal ini dari antrean"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title, false)}
+                                  title="Tolak dan pindahkan ke Recycle Bin (jangan pernah jadwalkan lagi)"
                                   style={{
                                     background: 'rgba(239, 68, 68, 0.12)',
                                     border: '1px solid rgba(239, 68, 68, 0.25)',
@@ -3255,8 +3481,8 @@ export function HUDOverlay({
                                 </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
-                                  title="Batalkan / hapus jadwal ini jika menggantung"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title, false)}
+                                  title="Batalkan / pindahkan jadwal ini ke Recycle Bin"
                                   style={{
                                     background: 'rgba(239, 68, 68, 0.12)',
                                     border: '1px solid rgba(239, 68, 68, 0.25)',

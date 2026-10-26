@@ -491,11 +491,25 @@ async def dispatch_task(req: DispatchRequest, request: Request):
 # =========================================================================
 
 @app.get("/api/schedules")
-async def get_schedules(limit: int = 20, status: str | None = None):
-    """Mengambil daftar jadwal konten dari PostgreSQL content_schedules."""
+async def get_schedules(
+    limit: int = 50,
+    status: str | None = None,
+    include_discarded: bool = False,
+    days: int | None = None,
+):
+    """
+    Mengambil daftar jadwal konten dari PostgreSQL content_schedules.
+    Mendukung filter status ('all', 'pending', 'in_progress', 'completed', 'failed', 'discarded')
+    dan pembatasan rentang waktu hari (days).
+    """
     try:
         from scripts.planner import list_editorial_schedules
-        schedules = list_editorial_schedules(limit=limit, status=status)
+        schedules = list_editorial_schedules(
+            limit=limit,
+            status=status,
+            include_discarded=include_discarded or (status == "discarded"),
+            days_window=days,
+        )
         return {"success": True, "count": len(schedules), "schedules": schedules}
     except Exception as exc:
         logger.error(f"Error fetching schedules: {exc}", exc_info=True)
@@ -641,9 +655,15 @@ async def cleanup_duplicate_schedules_endpoint(request: Request):
 
 @app.delete("/api/schedules/{schedule_id}")
 async def delete_schedule(schedule_id: str, request: Request):
-    """Menghapus jadwal konten tertentu dari kalender editorial."""
+    """
+    Menghapus jadwal konten tertentu dari kalender editorial.
+    - Default: Soft-delete ke Recycle Bin (status: 'discarded').
+    - permanent=true: Hapus data secara permanen dari database.
+    """
     try:
         force = request.query_params.get("force", "").lower() in ("1", "true", "yes")
+        permanent = request.query_params.get("permanent", "").lower() in ("1", "true", "yes")
+
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
                 cur.execute("SELECT status, started_at FROM content_schedules WHERE id = %s;", (schedule_id,))
@@ -662,17 +682,55 @@ async def delete_schedule(schedule_id: str, request: Request):
                             )
 
         from scripts.planner import delete_editorial_schedule
-        deleted = delete_editorial_schedule(schedule_id)
+        deleted = delete_editorial_schedule(schedule_id, permanent=permanent)
         if not deleted:
             raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan atau sudah dihapus.")
 
-        logger.info(f"Schedule '{schedule_id}' deleted successfully.")
-        return {"success": True, "message": f"Jadwal '{schedule_id}' berhasil dihapus."}
+        msg = "dihapus permanen" if permanent else "dipindahkan ke Recycle Bin"
+        logger.info(f"Schedule '{schedule_id}' {msg} successfully.")
+        return {"success": True, "message": f"Jadwal '{schedule_id}' berhasil {msg}."}
     except HTTPException:
         raise
     except Exception as exc:
         logger.error(f"Error deleting schedule {schedule_id}: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Gagal menghapus jadwal: {str(exc)}")
+
+
+@app.post("/api/schedules/{schedule_id}/restore")
+async def restore_schedule(schedule_id: str, request: Request):
+    """Memulihkan jadwal dari Recycle Bin kembali ke status pending."""
+    try:
+        from scripts.planner import restore_editorial_schedule
+        restored = restore_editorial_schedule(schedule_id)
+        if not restored:
+            raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan di Recycle Bin atau status bukan discarded.")
+
+        logger.info(f"Schedule '{schedule_id}' restored from Recycle Bin.")
+        return {"success": True, "message": f"Jadwal '{schedule_id}' berhasil dipulihkan ke antrean."}
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.error(f"Error restoring schedule {schedule_id}: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal memulihkan jadwal: {str(exc)}")
+
+
+@app.delete("/api/schedules/trash/empty")
+async def empty_trash(request: Request):
+    """Mengosongkan Recycle Bin secara permanen."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
+    admin_pw = request.headers.get("X-Admin-Password")
+
+    if not verify_auth_token(token) and admin_pw != settings.ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Autentikasi pengelola diperlukan.")
+
+    try:
+        from scripts.planner import empty_trash_schedules
+        count = empty_trash_schedules()
+        return {"success": True, "message": f"Recycle Bin berhasil dikosongkan. {count} jadwal dihapus permanen.", "count": count}
+    except Exception as exc:
+        logger.error(f"Error emptying schedule trash: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal mengosongkan sampah: {str(exc)}")
 
 
 @app.get("/api/services/health")

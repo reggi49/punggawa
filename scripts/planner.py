@@ -97,19 +97,63 @@ def get_occupied_time_slots() -> set[str]:
     return occupied
 
 
-def delete_editorial_schedule(schedule_id: str) -> bool:
-    """Menghapus jadwal spesifik dari PostgreSQL content_schedules."""
+def delete_editorial_schedule(schedule_id: str, permanent: bool = False) -> bool:
+    """
+    Menghapus jadwal spesifik dari PostgreSQL content_schedules.
+    Jika permanent=False (default): Soft-delete dengan mengubah status menjadi 'discarded' (masuk Recycle Bin).
+    Jika permanent=True: Hapus data baris secara fisik dari database.
+    """
     try:
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("DELETE FROM content_schedules WHERE id = %s;", (schedule_id,))
+                if permanent:
+                    cur.execute("DELETE FROM content_schedules WHERE id = %s;", (schedule_id,))
+                    action_msg = "dihapus permanen"
+                else:
+                    cur.execute(
+                        "UPDATE content_schedules SET status = 'discarded', error_message = NULL WHERE id = %s;",
+                        (schedule_id,),
+                    )
+                    action_msg = "dipindahkan ke Recycle Bin (status: discarded)"
                 deleted = cur.rowcount > 0
                 if deleted:
-                    logger.info(f"🗑️ [Bay-Zero Planner] Jadwal '{schedule_id}' berhasil dihapus.")
+                    logger.info(f"🗑️ [Bay-Zero Planner] Jadwal '{schedule_id}' berhasil {action_msg}.")
                 return deleted
     except Exception as exc:
         logger.error(f"Gagal menghapus jadwal {schedule_id}: {exc}", exc_info=True)
         return False
+
+
+def restore_editorial_schedule(schedule_id: str) -> bool:
+    """Memulihkan jadwal dari Recycle Bin (status 'discarded' -> 'pending')."""
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE content_schedules SET status = 'pending', error_message = NULL WHERE id = %s AND status = 'discarded';",
+                    (schedule_id,),
+                )
+                restored = cur.rowcount > 0
+                if restored:
+                    logger.info(f"♻️ [Bay-Zero Planner] Jadwal '{schedule_id}' berhasil dipulihkan dari Recycle Bin.")
+                return restored
+    except Exception as exc:
+        logger.error(f"Gagal memulihkan jadwal {schedule_id}: {exc}", exc_info=True)
+        return False
+
+
+def empty_trash_schedules() -> int:
+    """Mengosongkan Recycle Bin: menghapus seluruh jadwal berstatus 'discarded' secara permanen."""
+    try:
+        with postgres_pool.connection() as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM content_schedules WHERE status = 'discarded';")
+                count = cur.rowcount
+                logger.info(f"🧹 [Bay-Zero Planner] Berhasil mengosongkan Recycle Bin: {count} jadwal dihapus.")
+                return count
+    except Exception as exc:
+        logger.error(f"Gagal mengosongkan Recycle Bin: {exc}", exc_info=True)
+        return 0
 
 
 def cleanup_duplicate_schedules() -> int:
@@ -677,8 +721,20 @@ def generate_weekly_editorial_plan(days_ahead: int = 7) -> list[dict[str, Any]]:
     return list_editorial_schedules(limit=days_ahead * 3, status="pending")
 
 
-def list_editorial_schedules(limit: int = 50, status: str | None = None) -> list[dict[str, Any]]:
-    """Mengambil daftar jadwal konten dari PostgreSQL content_schedules setelah auto-deduplikasi."""
+def list_editorial_schedules(
+    limit: int = 50,
+    status: str | None = None,
+    include_discarded: bool = False,
+    days_window: int | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Mengambil daftar jadwal konten dari PostgreSQL content_schedules setelah auto-deduplikasi.
+    
+    Filter:
+    - status: filter status tertentu ('pending', 'completed', 'in_progress', 'failed', 'discarded').
+    - include_discarded: jika False dan status bukan 'discarded', jadwal berstatus 'discarded' disembunyikan.
+    - days_window: membatasi rentang waktu (misal: 7 hari terakhir hingga 7 hari ke depan).
+    """
     # Selalu jalankan auto-cleanup terlebih dahulu agar data yang dikembalikan ke API 100% bebas duplikat!
     cleanup_duplicate_schedules()
 
@@ -686,11 +742,23 @@ def list_editorial_schedules(limit: int = 50, status: str | None = None) -> list
         SELECT id, agent_name, task_type, title, payload, scheduled_at, status, 
                started_at, completed_at, result_url, error_message, created_at
         FROM content_schedules
+        WHERE 1=1
     """
     params: list[Any] = []
-    if status:
-        query += " WHERE status = %s"
-        params.append(status)
+
+    if status and status.lower() != "all":
+        query += " AND status = %s"
+        params.append(status.lower())
+    elif not include_discarded:
+        query += " AND status != 'discarded'"
+
+    if days_window and days_window > 0:
+        # Batasi jendela waktu: [NOW - days_window] s/d [NOW + days_window]
+        query += """
+            AND scheduled_at >= (NOW() - INTERVAL '%s days')
+            AND scheduled_at <= (NOW() + INTERVAL '%s days')
+        """
+        params.extend([days_window, days_window])
 
     query += " ORDER BY scheduled_at ASC LIMIT %s;"
     params.append(limit)
