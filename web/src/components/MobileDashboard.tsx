@@ -33,6 +33,8 @@ interface MobileDashboardProps {
   message: string;
   details?: Record<string, any>;
   logs: LogEntry[];
+  loadingLogs?: boolean;
+  onRefreshLogs?: () => void;
   connected: boolean;
   characterStates?: Record<WorkerId, CharacterVisualState> | null;
   healthData?: ServicesHealthResponse | null;
@@ -51,6 +53,8 @@ export function MobileDashboard({
   message,
   details = {},
   logs,
+  loadingLogs = false,
+  onRefreshLogs,
   connected,
   characterStates,
   healthData,
@@ -658,35 +662,99 @@ export function MobileDashboard({
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8DA895' }}>
                 <Terminal size={14} />
-                <span style={{ fontWeight: 700 }}>Punggawa SSE Feed</span>
+                <span style={{ fontWeight: 700 }}>Punggawa Agent Logs</span>
               </div>
-              <span style={{ fontSize: '10px', color: '#7A8291' }}>{logs.length} events</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '10px', color: '#7A8291' }}>{logs.length} entri</span>
+                {onRefreshLogs && (
+                  <button
+                    onClick={onRefreshLogs}
+                    disabled={loadingLogs}
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.1)',
+                      border: 'none',
+                      borderRadius: '6px',
+                      color: '#E0E4EC',
+                      padding: '3px 8px',
+                      fontSize: '10px',
+                      cursor: loadingLogs ? 'wait' : 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <RotateCcw size={10} className={loadingLogs ? 'spin' : ''} />
+                    <span>{loadingLogs ? 'Sync...' : 'Sync'}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             {logs.length === 0 ? (
               <div style={{ color: '#6A7282', textAlign: 'center', padding: '24px 0' }}>
-                Belum ada aktivitas baru tercatat...
+                {loadingLogs ? 'Sedang memuat riwayat log dari database...' : 'Belum ada aktivitas baru tercatat...'}
               </div>
             ) : (
-              logs.map((log, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    padding: '6px 0',
-                    borderBottom: '1px dashed rgba(255, 255, 255, 0.05)',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', color: '#7E8696', fontSize: '9.5px' }}>
-                    <span style={{ color: log.status === 'failed' ? '#D98078' : '#C49A6C' }}>
-                      [{log.node || 'EVENT'}]
-                    </span>
-                    <span>{log.time ? new Date(log.time).toLocaleTimeString() : ''}</span>
+              logs.map((log) => {
+                const isFailed = log.status === 'failed' || log.node === 'failed_node';
+                const isCompleted = log.status === 'completed' || log.node === 'publish_node';
+                const agent = (log.agent_name || (log.details && log.details.agent_name) || '').toLowerCase();
+                let agentBadge = '🤖 Squad';
+                if (agent.includes('stark')) agentBadge = '⚡ Stark';
+                else if (agent.includes('usagi')) agentBadge = '🦊 Usagi';
+                else if (agent.includes('bay') || agent.includes('zero')) agentBadge = '🔍 Bay-Zero';
+                else if (agent.includes('clara') || agent.includes('scout')) agentBadge = '🎯 Clara';
+                else if (agent.includes('janitor')) agentBadge = '🧹 Janitor';
+
+                return (
+                  <div
+                    key={log.id}
+                    style={{
+                      padding: '8px 0',
+                      borderBottom: '1px dashed rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7E8696', fontSize: '10px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontWeight: 700, color: '#A0AEC0' }}>{agentBadge}</span>
+                        <span
+                          style={{
+                            color: isFailed ? '#F87171' : isCompleted ? '#34D399' : '#C49A6C',
+                            fontSize: '9.5px',
+                          }}
+                        >
+                          [{log.node || 'EVENT'}]
+                        </span>
+                      </div>
+                      <span style={{ fontFamily: 'monospace', color: '#7A8291' }}>
+                        {log.time || (log.timestamp ? new Date(log.timestamp).toLocaleTimeString() : '')}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        color: isFailed ? '#FCA5A5' : '#E0E4EC',
+                        marginTop: '3px',
+                        fontSize: '11px',
+                        wordBreak: 'break-word',
+                      }}
+                    >
+                      {log.message}
+                    </div>
+                    {log.result_url && (
+                      <div style={{ marginTop: '2px', fontSize: '10px' }}>
+                        <a
+                          href={log.result_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ color: '#60A5FA', textDecoration: 'underline' }}
+                        >
+                          🔗 Buka Hasil: {log.result_url.substring(0, 45)}...
+                        </a>
+                      </div>
+                    )}
                   </div>
-                  <div style={{ color: log.status === 'failed' ? '#F87171' : '#E0E4EC', marginTop: '2px' }}>
-                    {log.message}
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         )}

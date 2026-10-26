@@ -348,17 +348,48 @@ def cmd_cleanup(args):
 
 
 def cmd_plan(args):
-    """Mengelola kalender editorial mingguan Bay-Zero Planner."""
-    from scripts.planner import generate_weekly_editorial_plan, list_editorial_schedules, print_schedules_table
+    """Mengelola kalender editorial mingguan Bay-Zero Planner & Anti-Idle Rebalancer."""
+    from scripts.planner import (
+        generate_weekly_editorial_plan,
+        rebalance_and_replenish_schedules,
+        scan_and_audit_schedules,
+        list_editorial_schedules,
+        print_schedules_table,
+    )
     from orchestrator.connections import postgres_pool
+    days = getattr(args, "days", 7) or 7
+    limit = getattr(args, "limit", 25) or 25
     try:
-        if getattr(args, "generate_week", False):
-            print("🧠 [Bay-Zero Planner] Membuat jadwal konten baru untuk 7 hari ke depan...")
-            generate_weekly_editorial_plan()
-            schedules = list_editorial_schedules(limit=getattr(args, "limit", 20))
+        if getattr(args, "scan", False):
+            audit = scan_and_audit_schedules(days_ahead=days)
+            print(f"\n🔍 [Bay-Zero Schedule Audit] Tanggal Audit: {audit['audit_date']}")
+            print("=" * 80)
+            for agent, agent_days in audit["agents"].items():
+                print(f"\n👤 Agen: {agent}")
+                for d in agent_days:
+                    icon = "✅" if d["is_covered"] else "❌ KOSONG (IDLE!)"
+                    t_info = f" -> {d['task_title'][:35]}" if d["task_title"] else ""
+                    print(f"   {d['date']} ({d['day_name'][:3]}): {icon:<15} [{d['status']}]{t_info}")
+            print("=" * 80 + "\n")
+        elif getattr(args, "rebalance", False):
+            print("🛡️ [Bay-Zero Rebalancer] Memindai, memajukan jadwal (fast-forward), dan mengisi slot kosong...")
+            res = rebalance_and_replenish_schedules(days_ahead=days)
+            print(f"⏩ Tugas dimajukan (Fast-Forward): {len(res['pulled_forward'])}")
+            for p in res['pulled_forward']:
+                print(f"   ↳ {p['agent_name']}: '{p['title'][:35]}' dimajukan dari {p['old_date']} -> {p['new_date']}")
+            print(f"✨ Tugas baru (Replenish): {len(res['replenished'])}")
+            for r in res['replenished']:
+                print(f"   ↳ {r['agent_name']}: '{r['title'][:35]}' dijadwalkan pada {r['date']}")
+            schedules = list_editorial_schedules(limit=limit)
+            print_schedules_table(schedules)
+        elif getattr(args, "generate_week", False):
+            print("🧠 [Bay-Zero Planner] Menyelaraskan dan melengkapi jadwal konten untuk 7 hari ke depan...")
+            res = rebalance_and_replenish_schedules(days_ahead=days)
+            print(f"✨ Tugas baru dijadwalkan: {len(res['replenished'])}, dimajukan: {len(res['pulled_forward'])}")
+            schedules = list_editorial_schedules(limit=limit)
             print_schedules_table(schedules)
         else:
-            schedules = list_editorial_schedules(limit=getattr(args, "limit", 20))
+            schedules = list_editorial_schedules(limit=limit)
             print_schedules_table(schedules)
     finally:
         try:
@@ -474,9 +505,12 @@ def main():
 
     # Subcommand: plan
     p_plan = subparsers.add_parser("plan", help="Kalender editorial dan otomasi jadwal konten (Bay-Zero Planner)")
-    p_plan.add_argument("--generate-week", action="store_true", help="Buat jadwal otomatis 7 hari ke depan (Stark & Usagi)")
+    p_plan.add_argument("--rebalance", action="store_true", help="Pindai dan selaraskan jadwal (Fast-Forward & Replenish agar 0 agen nganggur)")
+    p_plan.add_argument("--scan", action="store_true", help="Audit status keterisian jadwal seluruh agen hari ini dan 7 hari ke depan")
+    p_plan.add_argument("--generate-week", action="store_true", help="Buat/lengkapi jadwal otomatis 7 hari ke depan (Stark & Usagi)")
+    p_plan.add_argument("--days", "-d", type=int, default=7, help="Horizon perencanaan dalam hari (default: 7)")
     p_plan.add_argument("--list", action="store_true", help="Tampilkan daftar jadwal editorial saat ini")
-    p_plan.add_argument("--limit", type=int, default=20, help="Jumlah baris jadwal yang ditampilkan (default: 20)")
+    p_plan.add_argument("--limit", type=int, default=25, help="Jumlah baris jadwal yang ditampilkan (default: 25)")
     p_plan.set_defaults(func=cmd_plan)
 
     # Subcommand: health

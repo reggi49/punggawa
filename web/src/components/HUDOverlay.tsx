@@ -283,6 +283,8 @@ interface HUDOverlayProps {
   onDismissAlert?: () => void;
   onRecheckHealth?: () => void;
   onSwitchTo2D?: () => void;
+  loadingLogs?: boolean;
+  onRefreshLogs?: () => void;
 }
 
 export function HUDOverlay({
@@ -303,12 +305,29 @@ export function HUDOverlay({
   onDismissAlert,
   onRecheckHealth,
   onSwitchTo2D,
+  loadingLogs = false,
+  onRefreshLogs,
 }: HUDOverlayProps) {
   const [terminalOpen, setTerminalOpen] = useState(false);
   const [teamPanelOpen, setTeamPanelOpen] = useState(true);
   const [stagePanelOpen, setStagePanelOpen] = useState(true);
   const [immersiveMode, setImmersiveMode] = useState(false);
   const [servicesModalOpen, setServicesModalOpen] = useState(false);
+  const [logAgentFilter, setLogAgentFilter] = useState<string>('all');
+
+  // Filter logs per agent
+  const filteredLogs = useMemo(() => {
+    if (logAgentFilter === 'all') return logs;
+    return logs.filter((log) => {
+      const rawActor = (log.agent_name || (log.details && log.details.agent_name) || '').toLowerCase();
+      if (logAgentFilter === 'stark') return rawActor.includes('stark');
+      if (logAgentFilter === 'usagi') return rawActor.includes('usagi');
+      if (logAgentFilter === 'bayzero') return rawActor.includes('bay') || rawActor.includes('zero');
+      if (logAgentFilter === 'clara') return rawActor.includes('clara') || rawActor.includes('scout') || rawActor.includes('job');
+      if (logAgentFilter === 'janitor') return rawActor.includes('janitor') || rawActor.includes('droid');
+      return true;
+    });
+  }, [logs, logAgentFilter]);
 
   // Authentication State
   const [authToken, setAuthToken] = useState<string | null>(() => {
@@ -1513,12 +1532,74 @@ export function HUDOverlay({
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Terminal size={15} color="#354A60" />
             <span style={{ fontSize: '12px', fontWeight: 800, letterSpacing: '0.04em' }}>
-              LIVE AGENT LOG STREAM ({logs.length})
+              LIVE AGENT LOG STREAM ({filteredLogs.length}{filteredLogs.length !== logs.length ? `/${logs.length}` : ''})
+            </span>
+            <span style={{ fontSize: '10px', color: '#8A8A82', marginLeft: '4px' }}>
+              • Persisten
             </span>
           </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#8A8A82' }}>
-            <span style={{ fontSize: '11px' }}>{terminalOpen ? 'Collapse' : 'Expand'}</span>
-            {terminalOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+
+          <div
+            style={{ display: 'flex', alignItems: 'center', gap: '10px' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Filter Agen */}
+            <select
+              value={logAgentFilter}
+              onChange={(e) => setLogAgentFilter(e.target.value)}
+              style={{
+                fontSize: '11px',
+                padding: '2px 8px',
+                borderRadius: '6px',
+                border: '1px solid rgba(48, 52, 58, 0.2)',
+                background: '#FFF',
+                color: '#30343A',
+                cursor: 'pointer',
+              }}
+            >
+              <option value="all">Semua Agen</option>
+              <option value="stark">⚡ Stark (Tech)</option>
+              <option value="usagi">🦊 Usagi (Dongeng)</option>
+              <option value="bayzero">🔍 Bay-Zero (SRE)</option>
+              <option value="clara">🎯 Clara (Career)</option>
+              <option value="janitor">🧹 Janitor</option>
+            </select>
+
+            {/* Sync Button */}
+            {onRefreshLogs && (
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRefreshLogs();
+                }}
+                disabled={loadingLogs}
+                title="Muat ulang log dari database PostgreSQL"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '2px 8px',
+                  fontSize: '10.5px',
+                  fontWeight: 600,
+                  borderRadius: '6px',
+                  border: '1px solid rgba(53, 74, 96, 0.3)',
+                  background: 'rgba(53, 74, 96, 0.08)',
+                  color: '#354A60',
+                  cursor: loadingLogs ? 'wait' : 'pointer',
+                }}
+              >
+                <RefreshCw size={11} className={loadingLogs ? 'spin' : ''} />
+                <span>{loadingLogs ? 'Sync...' : 'Sync'}</span>
+              </button>
+            )}
+
+            <div
+              onClick={() => setTerminalOpen(!terminalOpen)}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', color: '#8A8A82', cursor: 'pointer' }}
+            >
+              <span style={{ fontSize: '11px' }}>{terminalOpen ? 'Collapse' : 'Expand'}</span>
+              {terminalOpen ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+            </div>
           </div>
         </div>
 
@@ -1537,12 +1618,12 @@ export function HUDOverlay({
               background: 'rgba(244, 241, 234, 0.95)',
             }}
           >
-            {logs.length === 0 ? (
+            {filteredLogs.length === 0 ? (
               <div style={{ color: '#8A8A82', fontStyle: 'italic', padding: '10px 0' }}>
-                Menunggu stream event dari Redis channel 'agent:events'...
+                {loadingLogs ? 'Sedang memuat riwayat log dari database...' : 'Belum ada event log yang sesuai dengan filter.'}
               </div>
             ) : (
-              logs.map((log) => {
+              filteredLogs.map((log) => {
                 const conf = getHumanStatus(log.node);
                 const isFailed = log.status === 'failed' || log.node === 'failed_node';
                 const isCompleted = log.status === 'completed' || log.node === 'publish_node';

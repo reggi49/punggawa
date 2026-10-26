@@ -310,6 +310,15 @@ def execute_graph_with_lock(task_payload: dict[str, Any]) -> dict[str, Any] | No
             else:
                 _handle_task_success(schedule_id, thread_id, agent_name, title, final_state)
 
+            # Auto-rebalance Bay-Zero: Jika task terjadwal selesai (terutama jika selesai lebih cepat),
+            # segera pindai dan majukan tugas berikutnya agar hari depan tidak pernah nganggur.
+            if schedule_id:
+                try:
+                    from scripts.planner import rebalance_and_replenish_schedules
+                    rebalance_and_replenish_schedules(days_ahead=7)
+                except Exception as reb_err:
+                    logger.warning(f"Auto-rebalance error setelah task '{thread_id}': {reb_err}")
+
             logger.info(
                 f"Selesai memproses thread_id '{thread_id}'. Status akhir: {final_state.get('status')}"
             )
@@ -353,6 +362,10 @@ def run_worker():
     last_schedule_check_timestamp = 0.0
     SCHEDULE_CHECK_INTERVAL_SECONDS = 60.0
 
+    # Inisialisasi timer Anti-Idle Rebalancer Bay-Zero (setiap 300 detik / 5 menit)
+    last_rebalance_timestamp = 0.0
+    REBALANCE_INTERVAL_SECONDS = 300.0
+
     # Inisialisasi timer uptime health check microservice (setiap 3600 detik / 1 jam)
     last_uptime_check_timestamp = 0.0
     UPTIME_CHECK_INTERVAL_SECONDS = 3600.0
@@ -373,6 +386,15 @@ def run_worker():
                         )
                 except Exception as s_err:
                     logger.warning(f"Error checking due schedules: {s_err}")
+
+            # 1b. Anti-Idle Rebalancer & Auto-Replenish Bay-Zero (setiap 5 menit / 300 detik)
+            if now - last_rebalance_timestamp >= REBALANCE_INTERVAL_SECONDS:
+                last_rebalance_timestamp = now
+                try:
+                    from scripts.planner import rebalance_and_replenish_schedules
+                    rebalance_and_replenish_schedules(days_ahead=7)
+                except Exception as r_err:
+                    logger.warning(f"Error running periodic Anti-Idle rebalance: {r_err}")
 
             # 2. Auto-cleanup checkpoint PostgreSQL lama (> 3 hari) secara periodik
             if now - last_cleanup_timestamp >= CLEANUP_INTERVAL_SECONDS:

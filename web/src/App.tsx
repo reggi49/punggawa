@@ -19,6 +19,8 @@ export function App() {
     message,
     details,
     logs,
+    loadingLogs,
+    refreshLogs,
     connected,
     setSimulatedNode,
     reconnect,
@@ -52,6 +54,8 @@ export function App() {
         message={message}
         details={details}
         logs={logs}
+        loadingLogs={loadingLogs}
+        onRefreshLogs={refreshLogs}
         connected={connected}
         characterStates={characterStates}
         healthData={healthData}
@@ -92,6 +96,8 @@ export function App() {
         message={message}
         details={details}
         logs={logs}
+        loadingLogs={loadingLogs}
+        onRefreshLogs={refreshLogs}
         connected={connected}
         characterStates={characterStates}
         healthData={healthData}

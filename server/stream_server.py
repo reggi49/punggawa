@@ -168,23 +168,68 @@ async def health_check():
     return JSONResponse(content=health_status)
 
 
-@app.get("/api/events/recent")
-async def get_recent_events():
-    """Returns recent agent events cached in Redis list."""
-    if not async_redis_client:
-        return []
+@app.get("/api/logs")
+async def get_logs(
+    limit: int = 100,
+    agent: str | None = None,
+    date: str | None = None,
+    status: str | None = None,
+):
+    """
+    Mengambil riwayat log eksekusi agen yang tersimpan persisten di PostgreSQL.
+    Mendukung filter berdasarkan agent ('Stark', 'Usagi', 'Bay-Zero', 'Clara'),
+    tanggal (YYYY-MM-DD WIB), dan status.
+    """
     try:
-        raw_events = await async_redis_client.lrange("agent:events:recent", 0, 49)
-        parsed = []
-        for item in raw_events:
-            try:
-                parsed.append(json.loads(item))
-            except Exception:
-                continue
-        return parsed
+        from orchestrator.events import get_persisted_logs
+        logs = get_persisted_logs(limit=min(limit, 500), agent=agent, date=date, status=status)
+        return {
+            "success": True,
+            "count": len(logs),
+            "logs": logs,
+        }
     except Exception as exc:
-        logger.error(f"Failed to fetch recent events: {exc}")
-        return []
+        logger.error(f"Gagal mengambil logs persisten: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal mengambil log: {str(exc)}")
+
+
+@app.get("/api/events/recent")
+async def get_recent_events(limit: int = 50):
+    """Returns recent agent events cached in Redis list, falling back to PostgreSQL if Redis list is empty."""
+    parsed = []
+    if async_redis_client:
+        try:
+            raw_events = await async_redis_client.lrange("agent:events:recent", 0, limit - 1)
+            for item in raw_events:
+                try:
+                    parsed.append(json.loads(item))
+                except Exception:
+                    continue
+        except Exception as exc:
+            logger.warning(f"Failed to fetch recent events from Redis: {exc}")
+
+    if len(parsed) < 10:
+        try:
+            from orchestrator.events import get_persisted_logs
+            db_logs = get_persisted_logs(limit=limit)
+            for l in db_logs:
+                if not any(p.get("id") == l["id"] for p in parsed):
+                    parsed.append({
+                        "id": l["id"],
+                        "thread_id": l["thread_id"],
+                        "node": l["node"],
+                        "status": l["status"],
+                        "message": l["message"],
+                        "timestamp": l["timestamp"],
+                        "agent_name": l["agent_name"],
+                        "details": l["details"],
+                    })
+            parsed.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            parsed = parsed[:limit]
+        except Exception as exc:
+            logger.warning(f"Failed to supplement recent events from DB: {exc}")
+
+    return parsed
 
 
 async def sse_event_generator(request: Request) -> AsyncGenerator[str, None]:
@@ -474,12 +519,54 @@ async def generate_schedules(request: Request):
         schedules = list_editorial_schedules(limit=20)
         return {
             "success": True,
-            "message": f"Berhasil membuat {len(planned)} jadwal konten 7 hari ke depan.",
+            "message": f"Berhasil menyelaraskan {len(planned)} jadwal konten 7 hari ke depan.",
             "schedules": schedules,
         }
     except Exception as exc:
         logger.error(f"Error generating weekly plan: {exc}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Gagal generate jadwal: {str(exc)}")
+
+
+@app.post("/api/schedules/rebalance")
+async def rebalance_schedules(request: Request, days: int = 7):
+    """Memicu Bay-Zero Anti-Idle Rebalancer untuk memajukan tugas (Fast-Forward) dan menambah tugas baru (Replenish)."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
+    admin_pw = request.headers.get("X-Admin-Password")
+
+    if not verify_auth_token(token) and admin_pw != settings.ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Autentikasi pengelola diperlukan.")
+
+    try:
+        from scripts.planner import rebalance_and_replenish_schedules, list_editorial_schedules
+        result = rebalance_and_replenish_schedules(days_ahead=days)
+        schedules = list_editorial_schedules(limit=days * 3)
+        return {
+            "success": True,
+            "message": (
+                f"Penyelarasan Bay-Zero selesai: {len(result['pulled_forward'])} tugas dimajukan, "
+                f"{len(result['replenished'])} tugas baru ditambahkan."
+            ),
+            "pulled_forward": result["pulled_forward"],
+            "replenished": result["replenished"],
+            "coverage": result["coverage"],
+            "schedules": schedules,
+        }
+    except Exception as exc:
+        logger.error(f"Error rebalancing schedules: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal rebalance jadwal: {str(exc)}")
+
+
+@app.get("/api/schedules/audit")
+async def audit_schedules(days: int = 7):
+    """Audit non-destruktif keterisian jadwal seluruh agen hari ini dan hari-hari mendatang."""
+    try:
+        from scripts.planner import scan_and_audit_schedules
+        report = scan_and_audit_schedules(days_ahead=days)
+        return {"success": True, "report": report}
+    except Exception as exc:
+        logger.error(f"Error auditing schedules: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal audit jadwal: {str(exc)}")
 
 
 @app.post("/api/schedules/{schedule_id}/trigger")

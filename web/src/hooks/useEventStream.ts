@@ -11,6 +11,10 @@ export interface LogEntry {
   error?: string;
   result_url?: string;
   details?: Record<string, any>;
+  timestamp?: string;
+  created_at?: string;
+  date?: string;
+  display_time?: string;
 }
 
 export function useEventStream(endpoint: string = '/api/stream') {
@@ -20,11 +24,48 @@ export function useEventStream(endpoint: string = '/api/stream') {
   const [message, setMessage] = useState<string>('Kantor virtual siap. Menunggu tugas dari antrean.');
   const [details, setDetails] = useState<Record<string, any>>({});
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [loadingLogs, setLoadingLogs] = useState<boolean>(false);
   const [connected, setConnected] = useState<boolean>(false);
   const [lastHeartbeat, setLastHeartbeat] = useState<number>(Date.now());
 
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+
+  // Ambil riwayat log eksekusi dari database PostgreSQL agar persisten di setiap sesi & device
+  const fetchHistoricalLogs = useCallback(async () => {
+    setLoadingLogs(true);
+    try {
+      const res = await fetch('/api/logs?limit=100');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && Array.isArray(data.logs)) {
+          setLogs(data.logs.map((item: any) => ({
+            id: item.id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            time: item.time || (item.timestamp ? new Date(item.timestamp).toLocaleTimeString('id-ID', { hour12: false }) : '-'),
+            node: item.node || 'UNKNOWN',
+            status: item.status || 'info',
+            message: item.message || '',
+            agent_name: item.agent_name,
+            error: item.error || item.details?.error,
+            result_url: item.result_url || item.details?.result_url || item.details?.url,
+            details: item.details,
+            timestamp: item.timestamp || item.created_at,
+            created_at: item.created_at,
+            date: item.date,
+            display_time: item.display_time,
+          })));
+        }
+      }
+    } catch (err) {
+      console.warn('[useEventStream] Gagal memuat riwayat log persisten:', err);
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHistoricalLogs();
+  }, [fetchHistoricalLogs]);
 
   const connect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -81,10 +122,16 @@ export function useEventStream(endpoint: string = '/api/stream') {
             setDetails(payload.details);
           }
 
-          // Catat ke terminal log (maks 100 entri)
+          // Jangan catat event IDLE rutin ke daftar log agar tidak membanjiri riwayat pengerjaan tugas
+          if (payload.node === 'IDLE' && payload.status === 'idle') {
+            return;
+          }
+
+          // Catat ke terminal log (maks 150 entri)
+          const logId = (payload as any).id || payload.details?.log_id || `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
           const nowStr = new Date().toLocaleTimeString('id-ID', { hour12: false });
           const newLog: LogEntry = {
-            id: `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+            id: logId,
             time: nowStr,
             node: payload.node || 'UNKNOWN',
             status: payload.status || 'info',
@@ -93,9 +140,15 @@ export function useEventStream(endpoint: string = '/api/stream') {
             error: (payload as any).error || payload.details?.error,
             result_url: (payload as any).result_url || payload.details?.result_url || payload.details?.url,
             details: payload.details,
+            timestamp: payload.timestamp || new Date().toISOString(),
           };
 
-          setLogs((prev) => [newLog, ...prev.slice(0, 99)]);
+          setLogs((prev) => {
+            if (prev.some((l) => l.id === newLog.id)) {
+              return prev;
+            }
+            return [newLog, ...prev.slice(0, 149)];
+          });
         } catch (err) {
           console.warn('[useEventStream] Failed to parse SSE payload:', err, event.data);
         }
@@ -146,7 +199,7 @@ export function useEventStream(endpoint: string = '/api/stream') {
         status: 'simulated',
         message: customMessage || `Simulated node transition to ${nodeName}`,
       },
-      ...prev.slice(0, 99),
+      ...prev.slice(0, 149),
     ]);
   };
 
@@ -157,6 +210,8 @@ export function useEventStream(endpoint: string = '/api/stream') {
     message,
     details,
     logs,
+    loadingLogs,
+    refreshLogs: fetchHistoricalLogs,
     connected,
     lastHeartbeat,
     setSimulatedNode,
