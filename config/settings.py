@@ -93,6 +93,7 @@ class Settings(BaseSettings):
     SECRET_KEY: str | None = Field(None, description="KodePintar Bearer secret key")
     USER_ID: str = Field("", description="KodePintar user ID")
     PEXELS_KEY: str | None = Field(None, description="Pexels API key for image search")
+    BRAVE_API_KEY: str | None = Field(None, description="Brave Search API key for multi-source research")
 
     # YouTube & Dongeng CMS Settings
     YOUTUBE_API_KEY: str = Field(
@@ -102,6 +103,10 @@ class Settings(BaseSettings):
     DONGENG_CMS_POST_URL: str = Field(
         "",
         description="Endpoint POST CMS Dongeng",
+    )
+    DONGENG_CMS_STORIES_URL: str = Field(
+        "https://bogorstore.com/agoose/api/posts/stories",
+        description="Endpoint POST Stories / Shorts CMS Dongeng",
     )
     DONGENG_CMS_SEARCH_URL: str = Field(
         "",

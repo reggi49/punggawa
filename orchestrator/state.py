@@ -44,6 +44,7 @@ class AgentState(TypedDict):
     # Pipeline Dongeng YouTube -> Bogorstore CMS Fields
     video_id: str | None
     video_metadata: dict[str, Any] | None
+    is_short: bool | None
     curation_result: dict[str, Any] | None    # {"skip": bool, "reason": "...", "title": "...", "category_id": "..."}
     thumbnail_path: str | None
     cms_post_result: dict[str, Any] | None

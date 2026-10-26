@@ -339,6 +339,8 @@ def fetch_candidate_for_stark(existing_topics: set[str]) -> tuple[str, str, dict
                 existing_topics.add(t)
                 existing_topics.add(u)
                 existing_topics.add(title.lower())
+                from orchestrator.tools.kodepintar_publisher import determine_article_category
+                cat = determine_article_category(title)
                 input_data = {
                     "query": title,
                     "topic": title,
@@ -346,7 +348,7 @@ def fetch_candidate_for_stark(existing_topics: set[str]) -> tuple[str, str, dict
                     "action": "trend-article",
                     "source": "gnews",
                     "target_urls": item.get("url", ""),
-                    "category": "technology",
+                    "category": cat,
                     "dry_run": False,
                 }
                 return title, "trend-article", input_data

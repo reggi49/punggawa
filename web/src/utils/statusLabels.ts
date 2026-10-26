@@ -75,6 +75,16 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     icon: '🚀',
     responsibleWorker: 'stark',
   },
+  enrich_sources_node: {
+    label: 'Riset Multi-Sumber 🔍',
+    action: 'searching_archive',
+    color: '#0ea5e9',
+    glowColor: '#0284c7',
+    badgeBg: 'rgba(14, 165, 233, 0.22)',
+    description: 'Mencari sumber referensi pembanding via Brave Search agar data kaya & objektif.',
+    icon: '🔍',
+    responsibleWorker: 'stark',
+  },
   scrape_node: {
     label: 'Riset & Jelajah Web 🌐',
     action: 'searching_archive',
@@ -143,6 +153,16 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     badgeBg: 'rgba(250, 204, 21, 0.22)',
     description: 'Bay-Zero memegang clipboard hologram untuk memvalidasi kelayakan SOP.',
     icon: '🔍',
+    responsibleWorker: 'bayzero',
+  },
+  uptime_alert: {
+    label: 'Inspeksi Server & Uptime 🩺',
+    action: 'inspecting_sop',
+    color: '#10b981',
+    glowColor: '#059669',
+    badgeBg: 'rgba(16, 185, 129, 0.22)',
+    description: 'Bay-Zero memantau ketersediaan endpoint microservice di server rack.',
+    icon: '🩺',
     responsibleWorker: 'bayzero',
   },
   await_approval: {

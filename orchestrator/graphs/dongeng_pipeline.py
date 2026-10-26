@@ -17,6 +17,7 @@ from orchestrator.tools.dongeng_publisher import (
     DongengPublishError,
     is_already_in_cms,
     post_to_cms,
+    post_story_to_cms,
 )
 from orchestrator.tools.dongeng_thumbnail import create_cms_thumbnail
 from orchestrator.tools.cms_notifier import trigger_post_notification
@@ -109,16 +110,19 @@ def ingest_node(state: AgentState) -> dict[str, Any]:
         }
 
     # 2. Deteksi YouTube Shorts
-    if is_short_video(video_id, dur):
-        skip_msg = f"Video dilewati karena terdeteksi sebagai YouTube Shorts ({dur}s)."
-        logger.info(f"[SKIP] {video_id}: {skip_msg}")
+    is_short = is_short_video(video_id, dur)
+    if is_short:
+        logger.info(f"⚡ [SHORTS DETECTED] Video '{video_id}' ({dur}s) terdeteksi sebagai YouTube Shorts. Dialihkan ke pipeline Stories/Shorts.")
         return {
-            "status": "completed",
+            "status": "processing",
             "task_type": "dongeng",
             "video_id": video_id,
             "video_metadata": info,
-            "curation_result": {"skip": True, "reason": "shorts", "title": title, "category_id": "0"},
-            "execution_logs": [f"[{timestamp}] Pre-filter skipped: {skip_msg}"],
+            "is_short": True,
+            "last_processed_by": settings.WORKER_ID,
+            "execution_logs": [
+                f"[{timestamp}] Task {task_id} ingested: YouTube Shorts detected ({dur}s). Routing to Stories/Shorts API."
+            ],
             "error": None,
         }
 
@@ -127,9 +131,10 @@ def ingest_node(state: AgentState) -> dict[str, Any]:
         "task_type": "dongeng",
         "video_id": video_id,
         "video_metadata": info,
+        "is_short": False,
         "last_processed_by": settings.WORKER_ID,
         "execution_logs": [
-            f"[{timestamp}] Task {task_id} ingested in Dongeng Pipeline. Video ID='{video_id}', Title='{title[:60]}'."
+            f"[{timestamp}] Task {task_id} ingested in Dongeng Pipeline (Regular Video, {dur}s). Video ID='{video_id}', Title='{title[:60]}'."
         ],
         "error": None,
     }
@@ -175,6 +180,25 @@ def curate_video_node(state: AgentState) -> dict[str, Any]:
     title = info.get("title", "")
     desc = info.get("description", "")
     timestamp = datetime.now(timezone.utc).isoformat()
+    is_short = state.get("is_short", False)
+
+    # Khusus YouTube Shorts: gunakan judul video langsung (bersihkan jika perlu), bypass kategori 1-7
+    if is_short:
+        clean_title = title.strip() or "Shorts Story"
+        logger.info(f"⚡ [SHORTS CURATION] Video '{video_id}' adalah Shorts. Title='{clean_title}'. Kurasi kategori dilewati.")
+        return {
+            "curation_result": {
+                "skip": False,
+                "reason": "YouTube Shorts / Stories",
+                "title": clean_title,
+                "category_id": "stories",
+                "category_name": "Stories",
+            },
+            "execution_logs": [
+                f"[{timestamp}] Shorts curation approved: Title='{clean_title}' (Stories format)."
+            ],
+            "error": None,
+        }
 
     logger.info(f"[{settings.WORKER_ID}] Curating video '{video_id}' with AI: '{title[:50]}'")
     curation = curate_dongeng_video(title, desc)
@@ -210,6 +234,16 @@ def thumbnail_portrait_node(state: AgentState) -> dict[str, Any]:
     curation = state.get("curation_result") or {}
     clean_title = curation.get("title", "Cerita Rakyat")
     timestamp = datetime.now(timezone.utc).isoformat()
+    is_short = state.get("is_short", False)
+
+    # Khusus YouTube Shorts: CMS menggunakan thumbnail resmi hqdefault, tidak perlu generate 200x300
+    if is_short:
+        logger.info(f"⚡ [SHORTS THUMBNAIL] Video '{video_id}' adalah Shorts. Bypass pembuatan thumbnail portrait 200x300 (menggunakan hqdefault YouTube).")
+        return {
+            "thumbnail_path": None,
+            "execution_logs": [f"[{timestamp}] Shorts thumbnail bypassed (menggunakan hqdefault YouTube)."],
+            "error": None,
+        }
 
     bg_url = get_best_youtube_bg(video_id)
     logger.info(f"[{settings.WORKER_ID}] Creating portrait thumbnail for '{video_id}' (Title: '{clean_title}')")
@@ -237,6 +271,8 @@ def sop_validator_node(state: AgentState) -> dict[str, Any]:
     video_id = state.get("video_id")
     curation = state.get("curation_result") or {}
     thumb_path = state.get("thumbnail_path")
+    info = state.get("video_metadata") or {}
+    is_short = state.get("is_short", False)
     timestamp = datetime.now(timezone.utc).isoformat()
 
     violations = []
@@ -244,11 +280,17 @@ def sop_validator_node(state: AgentState) -> dict[str, Any]:
         violations.append("video_id kosong.")
     if not curation.get("title"):
         violations.append("Judul dongeng kosong.")
-    cat_id = str(curation.get("category_id", ""))
-    if cat_id not in HARDCODED_CATEGORIES:
-        violations.append(f"Kategori '{cat_id}' tidak valid (wajib 1-7).")
-    if not thumb_path or not os.path.exists(thumb_path) or os.path.getsize(thumb_path) < 500:
-        violations.append("File thumbnail rusak atau tidak ada di disk.")
+
+    if is_short:
+        channel_id = (info.get("channel_id") or "").strip()
+        if not channel_id:
+            violations.append("channel_id kosong (wajib untuk Stories).")
+    else:
+        cat_id = str(curation.get("category_id", ""))
+        if cat_id not in HARDCODED_CATEGORIES:
+            violations.append(f"Kategori '{cat_id}' tidak valid (wajib 1-7).")
+        if not thumb_path or not os.path.exists(thumb_path) or os.path.getsize(thumb_path) < 500:
+            violations.append("File thumbnail rusak atau tidak ada di disk.")
 
     if violations:
         err_msg = "SOP_VIOLATIONS: " + " | ".join(violations)
@@ -259,9 +301,9 @@ def sop_validator_node(state: AgentState) -> dict[str, Any]:
             "execution_logs": [f"[{timestamp}] SOP Validation REJECTED: {err_msg}"],
         }
 
-    logger.info(f"✅ [SOP VALIDATOR] Task {task_id} lolos semua standar SOP.")
+    logger.info(f"✅ [SOP VALIDATOR] Task {task_id} lolos semua standar SOP ({'Shorts' if is_short else 'Regular'}).")
     return {
-        "execution_logs": [f"[{timestamp}] SOP Validation APPROVED all quality criteria."],
+        "execution_logs": [f"[{timestamp}] SOP Validation APPROVED all quality criteria ({'Shorts' if is_short else 'Regular'})."],
         "error": None,
     }
 
@@ -274,38 +316,60 @@ def publish_node(state: AgentState) -> dict[str, Any]:
     curation = state.get("curation_result") or {}
     thumb_path = state.get("thumbnail_path", "")
     input_data = state.get("input_data", {})
-    dry_run = input_data.get("dry_run", False) or not settings.DONGENG_CMS_POST_URL
+    is_short = state.get("is_short", False)
     timestamp = datetime.now(timezone.utc).isoformat()
 
     final_title = curation.get("title") or info.get("title", "")
     category_id = curation.get("category_id", "3")
 
     try:
-        post_resp = post_to_cms(
-            video_id=video_id,
-            info=info,
-            final_title=final_title,
-            category_id=category_id,
-            thumbnail_path=thumb_path,
-            dry_run=dry_run,
-        )
+        if is_short:
+            dry_run = input_data.get("dry_run", False) or not getattr(settings, "DONGENG_CMS_STORIES_URL", "")
+            channel_id = (info.get("channel_id") or "").strip()
+            post_resp = post_story_to_cms(
+                channel_id=channel_id,
+                title=final_title,
+                video_id=video_id,
+                thumbnail=None,
+                published=1,
+                dry_run=dry_run,
+            )
+            logger.info(f"🎉 [PUBLISH SUCCESS] Shorts '{video_id}' berhasil diterbitkan ke Stories CMS Bogorstore!")
+            return {
+                "cms_post_result": post_resp,
+                "status": "processing",
+                "execution_logs": [
+                    f"[{timestamp}] Published Shorts/Story to Bogorstore CMS. Title='{final_title}', Channel='{channel_id}'."
+                ],
+                "error": None,
+            }
+        else:
+            dry_run = input_data.get("dry_run", False) or not settings.DONGENG_CMS_POST_URL
+            post_resp = post_to_cms(
+                video_id=video_id,
+                info=info,
+                final_title=final_title,
+                category_id=category_id,
+                thumbnail_path=thumb_path,
+                dry_run=dry_run,
+            )
 
-        # Hapus thumbnail sementara jika berhasil
-        if thumb_path and os.path.exists(thumb_path) and not dry_run:
-            try:
-                os.remove(thumb_path)
-            except Exception:
-                pass
+            # Hapus thumbnail sementara jika berhasil
+            if thumb_path and os.path.exists(thumb_path) and not dry_run:
+                try:
+                    os.remove(thumb_path)
+                except Exception:
+                    pass
 
-        logger.info(f"🎉 [PUBLISH SUCCESS] Video '{video_id}' berhasil diterbitkan ke CMS Bogorstore!")
-        return {
-            "cms_post_result": post_resp,
-            "status": "processing",
-            "execution_logs": [
-                f"[{timestamp}] Published to Bogorstore CMS successfully. Title='{final_title}', Category={category_id}."
-            ],
-            "error": None,
-        }
+            logger.info(f"🎉 [PUBLISH SUCCESS] Video '{video_id}' berhasil diterbitkan ke CMS Bogorstore!")
+            return {
+                "cms_post_result": post_resp,
+                "status": "processing",
+                "execution_logs": [
+                    f"[{timestamp}] Published to Bogorstore CMS successfully. Title='{final_title}', Category={category_id}."
+                ],
+                "error": None,
+            }
 
     except Exception as exc:
         logger.error(f"Publish ke CMS Bogorstore gagal: {exc}")
@@ -329,6 +393,15 @@ def trigger_notification_node(state: AgentState) -> dict[str, Any]:
     if status == "failed" or is_notified:
         logger.info(f"⏭️ [NOTIFICATION SKIPPED] Status '{status}' atau is_notified={is_notified}.")
         return {"is_notified": is_notified}
+
+    # Guard 1b: Bypass untuk YouTube Shorts / Stories
+    if state.get("is_short"):
+        logger.info(f"⏭️ [NOTIFICATION SKIPPED] Video '{video_id}' adalah YouTube Shorts / Stories, push notification dilewati.")
+        return {
+            "is_notified": False,
+            "notification_status": "skipped_shorts",
+            "execution_logs": [f"[{timestamp}] Push notification dilewati (Tipe: Stories/Shorts)."],
+        }
 
     # Guard 2: Cek dry-run
     input_data = state.get("input_data", {})
@@ -369,18 +442,31 @@ def trigger_notification_node(state: AgentState) -> dict[str, Any]:
     curation = state.get("curation_result") or {}
     meta = state.get("video_metadata") or {}
     title = curation.get("title") or meta.get("title", f"Dongeng #{post_id}")
+    input_data = state.get("input_data", {})
+    notif_mode = input_data.get("notification_mode", "smart")
+    delay_min = input_data.get("notification_delay_minutes")
+    sched_time = input_data.get("notification_schedule_time")
 
-    logger.info(f"🔔 [NOTIFICATION] Mengirim trigger push notification untuk post_id={post_id} ('{title}')...")
+    logger.info(
+        f"🔔 [NOTIFICATION] Mengirim trigger push notification (mode: {notif_mode}) "
+        f"untuk post_id={post_id} ('{title}')..."
+    )
 
-    notify_res = trigger_post_notification(post_id)
+    notify_res = trigger_post_notification(
+        post_id=post_id,
+        mode=notif_mode,
+        delay_minutes=delay_min,
+        schedule_time=sched_time,
+    )
 
     if notify_res.get("success"):
-        logger.info(f"✨ [NOTIFICATION SUCCESS] Push notification untuk post #{post_id} berhasil dipicu!")
+        slot_desc = "mode: Smart Anti-Collision (target: 17:00 WIB / slot aman berikutnya)" if notif_mode == "smart" else f"mode: {notif_mode}"
+        logger.info(f"✨ [NOTIFICATION SUCCESS] Push notification untuk post #{post_id} berhasil didaftarkan ({slot_desc})!")
         return {
             "is_notified": True,
-            "notification_status": "sent",
+            "notification_status": "scheduled",
             "execution_logs": [
-                f"[{timestamp}] Push notification berhasil dikirim untuk post #{post_id}: '{title}'."
+                f"[{timestamp}] Push notification berhasil didaftarkan untuk post #{post_id} ('{title}') ({slot_desc})."
             ],
         }
     else:
@@ -408,12 +494,15 @@ def complete_node(state: AgentState) -> dict[str, Any]:
     error = state.get("error")
     timestamp = datetime.now(timezone.utc).isoformat()
 
+    is_short = state.get("is_short", False)
+    content_type_str = "SHORTS/STORY" if is_short else "REGULAR"
     summary_text = (
-        f"Dongeng Pipeline Selesai (Status: {status.upper()}). "
+        f"Dongeng Pipeline Selesai (Type: {content_type_str}, Status: {status.upper()}). "
         f"Video ID: {video_id or 'N/A'}. "
-        f"Title: {curation.get('title', 'N/A')}. "
-        f"Category: {curation.get('category_name', 'N/A')}."
+        f"Title: {curation.get('title', 'N/A')}."
     )
+    if not is_short:
+        summary_text += f" Category: {curation.get('category_name', 'N/A')}."
     if is_notified:
         summary_text += " Push notification terkirim."
     if error:

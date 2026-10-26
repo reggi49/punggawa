@@ -145,6 +145,15 @@ def poll_and_dispatch_due_schedules() -> int:
     try:
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
+                # 0. Auto-recovery: Pulihkan jadwal zombie yang menggantung in_progress lebih dari 30 menit (akibat worker restart/mati)
+                cur.execute(
+                    """
+                    UPDATE content_schedules
+                    SET status = 'failed', completed_at = NOW(), error_message = 'Task timeout: worker terhenti atau task menggantung saat in_progress (>30 menit).'
+                    WHERE status = 'in_progress' AND started_at < NOW() - INTERVAL '30 minutes';
+                    """
+                )
+
                 cur.execute(
                     """
                     SELECT id, agent_name, task_type, title, payload
@@ -469,6 +478,7 @@ def run_worker():
                                 "health": health_res,
                             },
                         )
+                        emit_idle_event("Kantor virtual siap. Seluruh microservice normal.")
                     last_uptime_status = current_status
                 except Exception as u_err:
                     logger.warning(f"Error running uptime health check: {u_err}")

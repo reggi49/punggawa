@@ -22,15 +22,36 @@ class TestCmsNotifier(unittest.TestCase):
         # Laravel sendnotification returns redirect (302) or 200 after redirect
         mock_resp = MagicMock()
         mock_resp.status_code = 302
+        mock_resp.url = "https://bogorstore.com/agoose/posts"
         mock_get.return_value = mock_resp
 
         res = trigger_post_notification(1106)
         self.assertTrue(res["success"])
         self.assertEqual(res["post_id"], 1106)
+        self.assertEqual(res["mode"], "smart")
         self.assertEqual(res["status_code"], 302)
         mock_get.assert_called_once()
         called_url = mock_get.call_args[0][0]
         self.assertIn("/posts/sendnotification/1106", called_url)
+        called_params = mock_get.call_args[1].get("params")
+        self.assertEqual(called_params, {"mode": "smart"})
+
+    @patch("requests.get")
+    def test_smart_anti_collision_parameters(self, mock_get):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.url = "https://bogorstore.com/agoose/posts"
+        mock_get.return_value = mock_resp
+
+        # Test delay mode
+        res_delay = trigger_post_notification(1106, mode="delay", delay_minutes=60)
+        self.assertTrue(res_delay["success"])
+        self.assertEqual(mock_get.call_args[1]["params"], {"mode": "delay", "delay": 60})
+
+        # Test specific time mode
+        res_specific = trigger_post_notification(1106, mode="specific", schedule_time="19:30")
+        self.assertTrue(res_specific["success"])
+        self.assertEqual(mock_get.call_args[1]["params"], {"mode": "specific", "time": "19:30"})
 
     @patch("requests.get")
     def test_cms_server_error(self, mock_get):
@@ -100,8 +121,13 @@ class TestCmsNotifier(unittest.TestCase):
         }
         res = trigger_notification_node(state)
         self.assertTrue(res.get("is_notified"))
-        self.assertEqual(res.get("notification_status"), "sent")
-        mock_trigger.assert_called_once_with(1106)
+        self.assertEqual(res.get("notification_status"), "scheduled")
+        mock_trigger.assert_called_once_with(
+            post_id=1106,
+            mode="smart",
+            delay_minutes=None,
+            schedule_time=None,
+        )
 
 
 if __name__ == "__main__":

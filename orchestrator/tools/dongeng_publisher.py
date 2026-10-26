@@ -146,3 +146,90 @@ def post_to_cms(
         logger.error(f"Error saat mengirim ke CMS Bogorstore: {exc}")
         raise
 
+
+def post_story_to_cms(
+    channel_id: str,
+    title: str,
+    video_id: str,
+    thumbnail: str | None = None,
+    published: int | bool = 1,
+    dry_run: bool = False,
+) -> dict[str, Any]:
+    """
+    Mengunggah konten Stories / Shorts YouTube ke CMS Bogorstore via JSON API.
+
+    Endpoint:
+        POST /api/posts/stories (atau alias /api/stories, /api/shorts)
+
+    Parameter:
+        - channel_id: String (Wajib)
+        - title: String (Wajib)
+        - videoId: String 11 digit ID atau video_url (Wajib)
+        - thumbnail: String URL opsional (jika kosong CMS auto-resolve ke hqdefault YouTube)
+        - published: int/bool (1 = aktif, 0 = draft). Default: 1
+    """
+    stories_url = getattr(settings, "DONGENG_CMS_STORIES_URL", "") or "https://bogorstore.com/agoose/api/posts/stories"
+
+    clean_video_id = str(video_id).strip()
+    pub_val = 1 if published in (1, True, "1") else 0
+
+    payload: dict[str, Any] = {
+        "channel_id": str(channel_id).strip(),
+        "title": str(title).strip(),
+        "videoId": clean_video_id,
+        "published": pub_val,
+    }
+    if thumbnail:
+        payload["thumbnail"] = str(thumbnail).strip()
+
+    if dry_run:
+        logger.info(f"🧪 [DRY-RUN] Akan POST Story/Short ke {stories_url}: {payload}")
+        return {
+            "status": "dry-run",
+            "id": clean_video_id,
+            "title": title,
+            "channel_id": channel_id,
+            "type": "story",
+            "success": True,
+            "data": payload,
+        }
+
+    headers = {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+
+    try:
+        logger.info(f"📤 [DONGENG-CMS] Mengunggah Story/Shorts '{clean_video_id}' ke {stories_url}...")
+        with httpx.Client(timeout=30.0) as client:
+            resp = client.post(stories_url, json=payload, headers=headers)
+
+        if resp.status_code in (200, 201):
+            logger.info("🎉 [DONGENG-CMS] Story / Short berhasil ditambahkan ke CMS!")
+            try:
+                res_data = resp.json()
+                if isinstance(res_data, dict):
+                    res_data.setdefault("success", True)
+                return res_data
+            except Exception:
+                return {"status": "success", "success": True, "status_code": resp.status_code, "text": resp.text[:200]}
+
+        raise DongengPublishError(
+            f"CMS Stories menolak request (HTTP {resp.status_code}): {resp.text[:300]}",
+            status_code=resp.status_code,
+            body=resp.text[:500],
+        )
+
+    except Exception as exc:
+        logger.error(f"Error saat mengirim Story ke CMS Bogorstore: {exc}")
+        raise
+
+
+__all__ = [
+    "HARDCODED_CATEGORIES",
+    "DongengPublishError",
+    "is_already_in_cms",
+    "post_to_cms",
+    "post_story_to_cms",
+]
+

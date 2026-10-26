@@ -1,6 +1,7 @@
 """Publisher client for KodePintar platform with retry handling and category mapping."""
 import logging
 import os
+import re
 import time
 import httpx
 from config.settings import settings
@@ -16,14 +17,70 @@ class PublishError(Exception):
 
 
 CATEGORY_MAP = {
+    # Games (6a7a8d0dfdc56a24e518eb03)
+    "games": "6a7a8d0dfdc56a24e518eb03",
+    "game": "6a7a8d0dfdc56a24e518eb03",
+    "gaming": "6a7a8d0dfdc56a24e518eb03",
+    "video game": "6a7a8d0dfdc56a24e518eb03",
+    "video games": "6a7a8d0dfdc56a24e518eb03",
+    "esports": "6a7a8d0dfdc56a24e518eb03",
+    "permainan": "6a7a8d0dfdc56a24e518eb03",
+
+    # Programming (635692a2dbac7bb9ad31f00d)
     "programming": "635692a2dbac7bb9ad31f00d",
+    "coding": "635692a2dbac7bb9ad31f00d",
+    "code": "635692a2dbac7bb9ad31f00d",
+    "developer": "635692a2dbac7bb9ad31f00d",
+    "software": "635692a2dbac7bb9ad31f00d",
+    "github": "635692a2dbac7bb9ad31f00d",
+    "open source": "635692a2dbac7bb9ad31f00d",
+    "pemrograman": "635692a2dbac7bb9ad31f00d",
+
+    # Technology (635693c8dbac7bb9ad31f00e)
     "technology": "635693c8dbac7bb9ad31f00e",
     "tech": "635693c8dbac7bb9ad31f00e",
+    "teknologi": "635693c8dbac7bb9ad31f00e",
+    "hardware": "635693c8dbac7bb9ad31f00e",
+    "gadgets": "635693c8dbac7bb9ad31f00e",
+    "gadget": "635693c8dbac7bb9ad31f00e",
+    "ai": "635693c8dbac7bb9ad31f00e",
+    "artificial intelligence": "635693c8dbac7bb9ad31f00e",
+
+    # Internet of Things (6387239b2b0055b07adc11ec)
     "internet of things": "6387239b2b0055b07adc11ec",
     "iot": "6387239b2b0055b07adc11ec",
+    "smart home": "6387239b2b0055b07adc11ec",
+    "embedded": "6387239b2b0055b07adc11ec",
+
+    # Video (63a1841a2df5e4a9c714422b)
     "video": "63a1841a2df5e4a9c714422b",
-    "games": "6a7a8d0dfdc56a24e518eb03",
+    "multimedia": "63a1841a2df5e4a9c714422b",
+    "streaming": "63a1841a2df5e4a9c714422b",
 }
+
+# Regex heuristik untuk memvalidasi kategori secara deterministik
+GAME_PATTERNS = [
+    r"\b(game|games|gaming|gamer|gamers|gameplay)\b",
+    r"\b(bioware|electronic arts|mass effect|battlefront|dragon age)\b",
+    r"\b(playstation|ps4|ps5|xbox|nintendo|switch|steam|valve|epic games)\b",
+    r"\b(rpg|mmo|fps|esports|konsol|konsol game|cloud gaming)\b",
+    r"\b(ubisoft|blizzard|activision|bethesda|rockstar|gta)\b",
+    r"\bgamenya\b",
+]
+
+PROGRAMMING_PATTERNS = [
+    r"\b(github|repo|repositori|repository|open source)\b",
+    r"\b(python|golang|rust|typescript|javascript|c\+\+|swift|kotlin)\b",
+    r"\b(codebase|coding|compiler|framework|library|sdk|api|docker|kubernetes)\b",
+]
+
+IOT_PATTERNS = [
+    r"\b(iot|internet of things|esp32|arduino|raspberry pi|sensor|smart home|zigbee|matter)\b",
+]
+
+VIDEO_PATTERNS = [
+    r"\b(video2x|ffmpeg|upscale video|codec|davinci|streaming video)\b",
+]
 
 
 def resolve_category(category: str) -> str:
@@ -31,6 +88,59 @@ def resolve_category(category: str) -> str:
     if len(raw) == 24 and all(c in "0123456789abcdef" for c in raw):
         return raw
     return CATEGORY_MAP.get(raw, "635693c8dbac7bb9ad31f00e")
+
+
+def determine_article_category(
+    topic: str,
+    content: str = "",
+    llm_category: str = "",
+    default_category: str = "technology",
+) -> str:
+    """
+    Menentukan kategori artikel yang paling tepat secara cerdas:
+    1. Mengecek output eksplisit LLM jika valid dan spesifik.
+    2. Menggunakan analisis pola kata kunci kontekstual (Games, Programming, IoT, Video).
+    3. Mencegah false fallback ke 'technology' untuk artikel bertema video games/gaming studio/console.
+    """
+    llm_cat = (llm_category or "").lower().strip()
+    if llm_cat in CATEGORY_MAP:
+        if llm_cat in ("games", "game", "gaming", "video games", "video game", "esports"):
+            return "games"
+        if llm_cat in ("programming", "coding", "software", "developer"):
+            return "programming"
+        if llm_cat in ("iot", "internet of things"):
+            return "internet of things"
+        if llm_cat in ("video", "multimedia"):
+            return "video"
+
+    # Analisis teks judul & konten
+    search_corpus = f"{topic} {content[:1000]}".lower()
+
+    # Cek pola Games (Gaming, studio, console, RPG, dsb.)
+    for p in GAME_PATTERNS:
+        if re.search(p, search_corpus, flags=re.IGNORECASE):
+            return "games"
+
+    # Cek pola Programming (GitHub, coding, compiler, repo)
+    for p in PROGRAMMING_PATTERNS:
+        if re.search(p, search_corpus, flags=re.IGNORECASE):
+            return "programming"
+
+    # Cek pola IoT
+    for p in IOT_PATTERNS:
+        if re.search(p, search_corpus, flags=re.IGNORECASE):
+            return "internet of things"
+
+    # Cek pola Video
+    for p in VIDEO_PATTERNS:
+        if re.search(p, search_corpus, flags=re.IGNORECASE):
+            return "video"
+
+    # Jika LLM menyarankan teknologi atau fallback
+    if llm_cat and resolve_category(llm_cat) != "635693c8dbac7bb9ad31f00e":
+        return llm_cat
+
+    return default_category
 
 
 def publish_article(

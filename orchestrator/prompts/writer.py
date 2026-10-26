@@ -65,13 +65,24 @@ def get_id_prompt(topic: str, combined_clean_text: str, url_references: str) -> 
     {url_references}
 
     ========================
+    KLASIFIKASI KATEGORI (WAJIB AKURAT)
+    ========================
+    Pilih SATU kategori yang paling presisi untuk dimasukkan ke baris CATEGORY:
+    - "games": untuk video game, studio game (BioWare, EA, PlayStation, Xbox, Nintendo, Valve, Epic Games, Blizzard, dll), rilis game, industri game, konsol, cloud gaming, esports.
+    - "programming": untuk repositori GitHub, bahasa pemrograman, coding, compiler, framework, library, developer tools, arsitektur software.
+    - "technology": untuk teknologi umum, smartphone, chip/prosesor non-gaming, AI/LLM, cloud enterprise, gadget konsumen.
+    - "internet of things": untuk IoT, smart home, perangkat embedded, mikrokontroler, sensor.
+    - "video": untuk teknologi video editing, codec, streaming video, animasi, multimedia.
+
+    ========================
     FORMAT OUTPUT MUTLAK (SYSTEM RULES)
     ========================
-    1. JANGAN gunakan bintang/bold (**) pada baris TITLE, META_DESC, TAGS, dan IMAGE_PROMPT.
+    1. JANGAN gunakan bintang/bold (**) pada baris TITLE, CATEGORY, META_DESC, TAGS, dan IMAGE_PROMPT.
     2. META_DESC WAJIB berupa teks murni (plain text), 1-2 kalimat UTUH yang SELESAI, tanpa clickbait murahan.
 
     Keluarkan output dengan format persis seperti ini:
     TITLE: [Judul Artikel dengan STOPPING POWER]
+    CATEGORY: [games / programming / technology / internet of things / video]
     THUMB_TITLE: [Judul Gambar Sangat Singkat, Maks 40 Karakter]
     META_DESC: [Deskripsi SEO utuh]
     TAGS: [Tag1, Tag2, Tag3]
@@ -111,13 +122,24 @@ def get_en_prompt(topic: str, combined_clean_text: str, url_references: str, id_
     {url_references}
 
     ========================
+    CATEGORY CLASSIFICATION (MUST BE ACCURATE)
+    ========================
+    Select EXACTLY ONE category for the CATEGORY: line:
+    - "games": for video games, gaming studios (BioWare, EA, PlayStation, Xbox, Nintendo, Valve, Epic Games, Blizzard, etc.), game releases, gaming industry, consoles, cloud gaming, esports.
+    - "programming": for GitHub repositories, programming languages, coding, compilers, frameworks, libraries, developer tools, software engineering.
+    - "technology": for general technology, smartphones, consumer chips/hardware, AI/LLMs, cloud enterprise, gadgets.
+    - "internet of things": for IoT, smart home, embedded systems, microcontrollers, sensors.
+    - "video": for video editing tech, codecs, video streaming, animations, multimedia.
+
+    ========================
     STRICT OUTPUT FORMAT
     ========================
-    1. Do NOT use markdown bold (**) on TITLE, THUMB_TITLE, META_DESC, TAGS, or IMAGE lines.
+    1. Do NOT use markdown bold (**) on TITLE, CATEGORY, THUMB_TITLE, META_DESC, TAGS, or IMAGE lines.
     2. META_DESC must be 1-2 complete, engaging plain text sentences.
 
     OUTPUT FORMAT EXACTLY LIKE THIS:
     TITLE: [English Title with Stopping Power]
+    CATEGORY: [games / programming / technology / internet of things / video]
     THUMB_TITLE: [Concise Thumbnail Title, Max 40 Characters]
     META_DESC: [Complete SEO Description]
     TAGS: [Tag1, Tag2, Tag3]
@@ -171,6 +193,9 @@ def _parse_ai_output(raw_text: str, fallback_topic: str = "Technology") -> dict:
     title_match = re.search(r'TITLE:\s*(.*)', raw_text, re.IGNORECASE)
     title = title_match.group(1).replace('*', '').replace('"', '').replace('#', '').strip() if title_match else fallback_topic
 
+    category_match = re.search(r'CATEGORY:\s*(.*)', raw_text, re.IGNORECASE)
+    raw_category = category_match.group(1).replace('*', '').replace('"', '').replace('#', '').strip() if category_match else ""
+
     thumb_match = re.search(r'THUMB_TITLE:\s*(.*)', raw_text, re.IGNORECASE)
     thumb_title = thumb_match.group(1).replace('*', '').replace('"', '').replace('#', '').strip() if thumb_match else title
 
@@ -193,8 +218,12 @@ def _parse_ai_output(raw_text: str, fallback_topic: str = "Technology") -> dict:
     content = re.sub(r'\[REF\s*\d+\]', '', content, flags=re.IGNORECASE)
     content = re.sub(r'<pre>|</pre>|<code>|</code>', '', content, flags=re.IGNORECASE)
 
+    from orchestrator.tools.kodepintar_publisher import determine_article_category
+    category = determine_article_category(title, content, llm_category=raw_category)
+
     return {
         "title": title,
+        "category": category,
         "thumb_title": thumb_title,
         "meta_desc": meta_desc,
         "tags": tags,

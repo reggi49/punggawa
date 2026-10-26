@@ -16,6 +16,9 @@ DEFAULT_NOTIFICATION_BASE_URL = "https://bogorstore.com/agoose/posts/sendnotific
 def trigger_post_notification(
     post_id: str | int,
     session_cookie: str | None = None,
+    mode: str = "smart",
+    delay_minutes: int | None = None,
+    schedule_time: str | None = None,
     timeout: float = 12.0,
 ) -> dict[str, Any]:
     """
@@ -23,21 +26,23 @@ def trigger_post_notification(
     Memanggil route web Laravel cmsAgoose: GET /posts/sendnotification/{id}
     yang mendispatch NotificationJob (Google FCM v1 API).
 
+    Mendukung Smart Anti-Collision & Scheduling:
+        - mode="smart" (Default): Menjadwalkan ke jam utama (17:00:00 WIB) atau slot kosong
+          berikutnya (+2 jam ke 19:00, 21:00, atau 12:00 esok hari jika terdeteksi bentrok).
+        - mode="instant": Dikirimkan saat itu juga.
+        - mode="delay": Tunda selama delay_minutes (15, 30, 60, 120, 180 menit).
+        - mode="specific": Jadwalkan pada waktu spesifik (misal '19:30').
+
     Args:
         post_id: ID postingan di database CMS Bogorstore (wajib integer/numerik).
         session_cookie: Cookie session Laravel (opsional).
+        mode: Mode anti-bentrok/penjadwalan ('smart' | 'instant' | 'delay' | 'specific').
+        delay_minutes: Menit penundaan jika mode='delay'.
+        schedule_time: Format jam spesifik 'HH:MM' jika mode='specific'.
         timeout: Batas waktu request HTTP dalam detik.
 
     Returns:
-        dict dengan format:
-        {
-            "success": bool,
-            "post_id": int | str,
-            "status_code": int | None,
-            "target_url": str,
-            "message": str,
-            "error": str | None
-        }
+        dict dengan format hasil eksekusi.
     """
     clean_id = str(post_id).strip()
     if not clean_id or not clean_id.isdigit():
@@ -46,6 +51,7 @@ def trigger_post_notification(
         return {
             "success": False,
             "post_id": post_id,
+            "mode": mode,
             "status_code": None,
             "target_url": "",
             "message": err,
@@ -61,6 +67,15 @@ def trigger_post_notification(
     else:
         target_url = f"{base_url.rstrip('/')}/{clean_id}"
 
+    # Susun parameter Smart Anti-Collision untuk backend Laravel
+    params: dict[str, Any] = {}
+    if mode:
+        params["mode"] = mode
+    if delay_minutes is not None:
+        params["delay"] = int(delay_minutes)
+    if schedule_time:
+        params["time"] = str(schedule_time).strip()
+
     headers = {
         "User-Agent": "Punggawa-Notifier/1.0 (Automated Notification Trigger)",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
@@ -71,12 +86,13 @@ def trigger_post_notification(
     if cookie_str:
         headers["Cookie"] = cookie_str
 
-    logger.info(f"🔔 [CMS-NOTIFIER] Mengirim trigger push notification ke: {target_url}")
+    logger.info(f"🔔 [CMS-NOTIFIER] Mengirim trigger push notification ke: {target_url} (params: {params})")
 
     try:
         response = requests.get(
             target_url,
             headers=headers,
+            params=params,
             timeout=timeout,
             allow_redirects=True,
         )
@@ -87,13 +103,14 @@ def trigger_post_notification(
         is_success = response.status_code in (200, 301, 302, 303)
 
         if is_success:
-            msg = f"Push notification untuk post #{clean_id} berhasil dipicu (HTTP {response.status_code})."
+            msg = f"Push notification untuk post #{clean_id} berhasil dipicu (Mode: {mode.upper()}, HTTP {response.status_code})."
             logger.info(f"🎉 [CMS-NOTIFIER] {msg}")
             return {
                 "success": True,
                 "post_id": int(clean_id),
+                "mode": mode,
                 "status_code": response.status_code,
-                "target_url": target_url,
+                "target_url": response.url,
                 "message": msg,
                 "error": None,
             }
@@ -103,6 +120,7 @@ def trigger_post_notification(
             return {
                 "success": False,
                 "post_id": int(clean_id) if clean_id.isdigit() else clean_id,
+                "mode": mode,
                 "status_code": response.status_code,
                 "target_url": target_url,
                 "message": err,
@@ -115,6 +133,7 @@ def trigger_post_notification(
         return {
             "success": False,
             "post_id": clean_id,
+            "mode": mode,
             "status_code": None,
             "target_url": target_url,
             "message": err,
@@ -126,6 +145,7 @@ def trigger_post_notification(
         return {
             "success": False,
             "post_id": clean_id,
+            "mode": mode,
             "status_code": None,
             "target_url": target_url,
             "message": err,

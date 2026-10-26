@@ -377,30 +377,44 @@ export function HUDOverlay({
   const [expandedSchedErrorId, setExpandedSchedErrorId] = useState<string | null>(null);
   const [scheduleActionMsg, setScheduleActionMsg] = useState<string | null>(null);
 
-  // Failure tracking per agent from recent log events or current error node
+  // Failure tracking per agent: Hanya catat kegagalan jika event TERAKHIR agent tersebut memang masih berstatus gagal
   const latestAgentFailures = useMemo(() => {
     const map: Record<string, string> = {};
-    for (let i = logs.length - 1; i >= 0; i--) {
+    const seenAgents = new Set<WorkerId>();
+
+    // Telusuri logs dari yang PALING BARU (index 0) ke yang terlama
+    for (let i = 0; i < logs.length; i++) {
       const l = logs[i];
+      const aName = ((l as any).agent_name || (l as any).agent || '').toLowerCase();
+      let matchedId: WorkerId | null = null;
+      if (aName.includes('stark')) matchedId = 'stark';
+      else if (aName.includes('usagi')) matchedId = 'usagi';
+      else if (aName.includes('bay') || aName.includes('zero')) matchedId = 'bayzero';
+      else {
+        const conf = getHumanStatus(l.node);
+        if (conf.responsibleWorker && (conf.responsibleWorker as string) !== 'team') {
+          matchedId = conf.responsibleWorker as WorkerId;
+        }
+      }
+
+      if (!matchedId) continue;
+
+      // Jika agent ini sudah diperiksa event terbarunya, abaikan log historis sebelumnya
+      if (seenAgents.has(matchedId)) continue;
+      seenAgents.add(matchedId);
+
+      // Jika event terbaru berstatus failed atau node kegagalan:
       if (l.status === 'failed' || l.node === 'failed_node') {
-        const aName = ((l as any).agent_name || (l as any).agent || '').toLowerCase();
-        let matchedId: WorkerId | null = null;
-        if (aName.includes('stark')) matchedId = 'stark';
-        else if (aName.includes('usagi')) matchedId = 'usagi';
-        else if (aName.includes('bay') || aName.includes('zero')) matchedId = 'bayzero';
-        else {
-          const conf = getHumanStatus(l.node);
-          if (conf.responsibleWorker && (conf.responsibleWorker as string) !== 'team') {
-            matchedId = conf.responsibleWorker as WorkerId;
-          }
+        // Pengecualian khusus Uptime Alert: Jika sistem microservice saat ini sudah normal (!isDegraded),
+        // maka alert service down sebelumnya sudah SOLVED dan tidak boleh mem-block Bay-Zero lagi!
+        if (l.node === 'uptime_alert' && !isDegraded) {
+          continue;
         }
-        if (matchedId && !map[matchedId]) {
-          map[matchedId] = (l as any).error || l.message || 'Task error';
-        }
+        map[matchedId] = (l as any).error || l.message || 'Task error';
       }
     }
     return map;
-  }, [logs]);
+  }, [logs, isDegraded]);
 
   // Filtered schedules list based on selected tab
   const filteredSchedules = useMemo(() => {
@@ -513,7 +527,7 @@ export function HUDOverlay({
     if (!confirm(`Hapus jadwal berikut dari antrean?\n"${title}"`)) return;
     setScheduleActionMsg(`Menghapus jadwal ${schedId}...`);
     try {
-      const res = await fetch(`/api/schedules/${schedId}`, {
+      const res = await fetch(`/api/schedules/${schedId}?force=true`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${authToken || ''}`,
@@ -1323,7 +1337,7 @@ export function HUDOverlay({
               const visual = characterStates?.[wId];
               const agentFailure =
                 latestAgentFailures[wId] ||
-                (status === 'failed' && humanStatus.responsibleWorker === wId ? message : null);
+                (status === 'failed' && humanStatus.responsibleWorker === wId && !(currentNode === 'uptime_alert' && !isDegraded) ? message : null);
               const hasFailed = Boolean(agentFailure);
 
               const actualState: ActualAgentState = hasFailed
@@ -3103,9 +3117,29 @@ export function HUDOverlay({
                             )}
 
                             {isInProgress && (
-                              <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 700 }}>
-                                Berjalan...
-                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-end' }}>
+                                <span style={{ fontSize: '11px', color: '#2563EB', fontWeight: 700 }}>
+                                  Berjalan...
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDeleteSchedule(sched.id, sched.title)}
+                                  title="Batalkan / hapus jadwal ini jika menggantung"
+                                  style={{
+                                    background: 'rgba(239, 68, 68, 0.12)',
+                                    border: '1px solid rgba(239, 68, 68, 0.25)',
+                                    color: '#DC2626',
+                                    borderRadius: '6px',
+                                    padding: '4px 6px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                  }}
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>

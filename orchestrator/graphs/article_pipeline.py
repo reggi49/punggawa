@@ -13,7 +13,7 @@ from orchestrator.llm import llm_client
 from orchestrator.prompts.writer import generate_content, get_en_prompt, get_id_prompt, parse_json_output
 from orchestrator.state import AgentState
 from orchestrator.tools.image_generator import generate_dual_thumbnails
-from orchestrator.tools.kodepintar_publisher import PublishError, publish_article, resolve_category
+from orchestrator.tools.kodepintar_publisher import PublishError, publish_article, resolve_category, determine_article_category
 from orchestrator.tools.scraper import scrape_data
 from orchestrator.tools.google_news import get_google_news_topics
 from orchestrator.tools.github_trending import get_github_trending_weekly
@@ -155,9 +155,10 @@ def ingest_trend_node(state: AgentState) -> dict[str, Any]:
         news_src = top_item.get("source", "Google News")
 
         updates["target_urls"] = news_url
-        updates["category"] = input_data.get("category") or "technology"
+        detected_cat = determine_article_category(title, default_category=input_data.get("category") or "technology")
+        updates["category"] = detected_cat
         updates["execution_logs"] = [
-            f"[{timestamp}] Curated Google News topic '{title}' (Source: {news_src}). URL={news_url}"
+            f"[{timestamp}] Curated Google News topic '{title}' (Source: {news_src}, Category: {detected_cat}). URL={news_url}"
         ]
         new_input = dict(input_data)
         new_input["topic"] = title
@@ -166,6 +167,52 @@ def ingest_trend_node(state: AgentState) -> dict[str, Any]:
         updates["input_data"] = new_input
 
     return updates
+
+
+@agent_node_tracker("enrich_sources_node", "Mencari referensi pendukung multi-sumber via Brave Search")
+def enrich_sources_node(state: AgentState) -> dict[str, Any]:
+    """
+    Memastikan artikel memiliki minimal 2 sumber referensi agar lebih kaya, objektif, dan komprehensif.
+    Jika sumber kurang dari 2, mencari 1-2 artikel/sumber pendukung independen via Brave Search API.
+    """
+    task_id = state.get("task_id", "unknown")
+    target_urls = state.get("target_urls") or ""
+    input_data = state.get("input_data", {})
+    topic = input_data.get("query") or input_data.get("topic") or "Teknologi Terkini"
+    timestamp = datetime.now(timezone.utc).isoformat()
+
+    if isinstance(target_urls, str):
+        existing_urls = [u.strip() for u in target_urls.split(",") if u.strip()]
+    else:
+        existing_urls = [str(u).strip() for u in target_urls if str(u).strip()]
+
+    # Jika sumber kurang dari 2, cari sumber pendukung via Brave Search
+    if len(existing_urls) < 2 and topic:
+        primary_url = existing_urls[0] if existing_urls else ""
+        logger.info(f"[{settings.WORKER_ID}] Multi-source check: Sumber saat ini {len(existing_urls)}. Menjalankan Brave Search...")
+        try:
+            from orchestrator.tools.brave_search import find_related_sources
+            discovered = find_related_sources(primary_url=primary_url, topic=topic, max_sources=2)
+            if discovered:
+                added_urls = [d["url"] for d in discovered]
+                existing_urls.extend(added_urls)
+                domains = [d["domain"] for d in discovered]
+                logger.info(f"✅ [Multi-Source] Berhasil menemukan {len(added_urls)} sumber baru via Brave Search: {domains}")
+                return {
+                    "target_urls": ", ".join(existing_urls),
+                    "execution_logs": [
+                        f"[{timestamp}] Multi-source enrichment added {len(added_urls)} secondary sources ({', '.join(domains)}) via Brave Search."
+                    ],
+                    "error": None,
+                }
+        except Exception as exc:
+            logger.warning(f"Gagal melakukan multi-source enrichment via Brave Search: {exc}")
+
+    return {
+        "target_urls": ", ".join(existing_urls) if existing_urls else target_urls,
+        "execution_logs": [f"[{timestamp}] Multi-source verification complete ({len(existing_urls)} sources available)."],
+        "error": None,
+    }
 
 
 @agent_node_tracker("scrape_node", "Scraping referensi materi web")
@@ -262,11 +309,23 @@ def draft_node(state: AgentState) -> dict[str, Any]:
         data_en = dual_content["en"]
         translation_key = dual_content["translation_key"]
 
+        # Tentukan kategori final berdasarkan hasil analisis LLM dan konten artikel
+        final_category = (
+            data_id.get("category")
+            or determine_article_category(
+                topic,
+                data_id.get("content", ""),
+                default_category=state.get("category") or "technology",
+            )
+        )
+        logger.info(f"🎯 [KATEGORI FINAL] Artikel '{data_id.get('title')[:35]}' diklasifikasikan sebagai: '{final_category}'")
+
         logger.info(f"✅ Draft berhasil dibuat: ID='{data_id.get('title')}' | EN='{data_en.get('title')}'")
         return {
             "dual_content": dual_content,
+            "category": final_category,
             "execution_logs": [
-                f"[{timestamp}] Drafted dual content (ID: '{data_id.get('title')[:40]}...', EN: '{data_en.get('title')[:40]}...')."
+                f"[{timestamp}] Drafted dual content (ID: '{data_id.get('title')[:40]}...', EN: '{data_en.get('title')[:40]}...'). Category='{final_category}'."
             ],
             "error": None,
         }
@@ -505,6 +564,7 @@ def create_article_graph():
 
     workflow.add_node("ingest", ingest_node)
     workflow.add_node("ingest_trend", ingest_trend_node)
+    workflow.add_node("enrich_sources", enrich_sources_node)
     workflow.add_node("scrape", scrape_node)
     workflow.add_node("draft", draft_node)
     workflow.add_node("thumbnail", thumbnail_node)
@@ -516,7 +576,8 @@ def create_article_graph():
     workflow.add_edge(START, "ingest")
 
     workflow.add_conditional_edges("ingest", route_after_step, {"continue": "ingest_trend", "failed": "failed"})
-    workflow.add_conditional_edges("ingest_trend", route_after_step, {"continue": "scrape", "failed": "failed"})
+    workflow.add_conditional_edges("ingest_trend", route_after_step, {"continue": "enrich_sources", "failed": "failed"})
+    workflow.add_conditional_edges("enrich_sources", route_after_step, {"continue": "scrape", "failed": "failed"})
     workflow.add_conditional_edges("scrape", route_after_step, {"continue": "draft", "failed": "failed"})
     workflow.add_conditional_edges("draft", route_after_step, {"continue": "thumbnail", "failed": "failed"})
     workflow.add_conditional_edges("thumbnail", route_after_step, {"continue": "sop_validator", "failed": "failed"})

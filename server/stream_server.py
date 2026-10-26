@@ -643,15 +643,23 @@ async def cleanup_duplicate_schedules_endpoint(request: Request):
 async def delete_schedule(schedule_id: str, request: Request):
     """Menghapus jadwal konten tertentu dari kalender editorial."""
     try:
+        force = request.query_params.get("force", "").lower() in ("1", "true", "yes")
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT status FROM content_schedules WHERE id = %s;", (schedule_id,))
+                cur.execute("SELECT status, started_at FROM content_schedules WHERE id = %s;", (schedule_id,))
                 row = cur.fetchone()
                 if not row:
                     raise HTTPException(status_code=404, detail="Jadwal tidak ditemukan atau sudah dihapus.")
-                status = row[0]
-                if status == "in_progress":
-                    raise HTTPException(status_code=400, detail="Tidak dapat menghapus jadwal yang sedang berjalan.")
+                status, started_at = row
+                if status == "in_progress" and not force:
+                    # Izinkan hapus jika task in_progress sudah lebih dari 10 menit (indikasi stale/zombie task)
+                    if started_at:
+                        age_minutes = (datetime.now(timezone.utc) - started_at).total_seconds() / 60
+                        if age_minutes < 10:
+                            raise HTTPException(
+                                status_code=400,
+                                detail=f"Jadwal sedang berjalan ({int(age_minutes)} menit lalu). Tunggu selesai atau gunakan force=true.",
+                            )
 
         from scripts.planner import delete_editorial_schedule
         deleted = delete_editorial_schedule(schedule_id)
@@ -720,7 +728,7 @@ async def trigger_services_health_check():
             json.dumps(result),
         )
 
-    from orchestrator.events import emit_agent_event
+    from orchestrator.events import emit_agent_event, emit_idle_event
     overall_status = result.get("overall_status", "healthy")
     if overall_status == "degraded":
         down_services = [s["name"] for s in result.get("services", []) if s["status"] != "healthy"]
@@ -739,6 +747,7 @@ async def trigger_services_health_check():
             message="✅ Seluruh microservice normal kembali.",
             details={"agent_name": "Bay-Zero", "health": result},
         )
+        emit_idle_event("Kantor virtual siap. Seluruh microservice normal.")
 
     return result
 
