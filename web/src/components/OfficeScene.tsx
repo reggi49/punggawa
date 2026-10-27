@@ -17,6 +17,7 @@ import { WorkerId, ServicesHealthResponse } from '../types';
 import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
+  BAYZERO_KANBAN_ANCHOR,
   SCOUT_SEAT_ANCHOR,
 } from '../config/layoutAnchors';
 
@@ -132,20 +133,20 @@ export function OfficeScene({
         dotColorOverride={characters.usagi.isActive ? undefined : '#22C55E'}
       />
 
-      {/* Bay-Zero: Central Table SOP Auditor & Server Inspector */}
+      {/* Bay-Zero / Kang Bos: Kanban Whiteboard Lead Auditor & Server Inspector */}
       <StylizedHumanoidCharacter
         id="bayzero"
         currentNode={currentNode}
-        action={characters.bayzero.isActive ? characters.bayzero.action : 'casual_conversation'}
-        targetPos={characters.bayzero.isActive ? characters.bayzero.targetPos : BAYZERO_SEAT_ANCHOR.seatWorldPosition}
-        targetRotY={characters.bayzero.isActive ? characters.bayzero.targetRotY : BAYZERO_SEAT_ANCHOR.seatWorldRotationY}
+        action={isDegraded ? 'confused_scratch' : (characters.bayzero.isActive ? characters.bayzero.action : 'kanban_pacing')}
+        targetPos={isDegraded ? [5.0, 0, -0.45] : (characters.bayzero.isActive ? characters.bayzero.targetPos : BAYZERO_KANBAN_ANCHOR.position)}
+        targetRotY={isDegraded ? Math.PI / 2 : (characters.bayzero.isActive ? characters.bayzero.targetRotY : BAYZERO_KANBAN_ANCHOR.rotationY)}
         message={characters.bayzero.isActive ? message : undefined}
         isActive={characters.bayzero.isActive}
-        isSeated={characters.bayzero.isActive ? characters.bayzero.isSeated : true}
-        socialRole={characters.bayzero.isActive ? characters.bayzero.socialRole : 'listener'}
+        isSeated={false}
+        socialRole={characters.bayzero.socialRole}
         actualState={characters.bayzero.actualState}
         ambientLabel={characters.bayzero.ambientLabel}
-        badgeLabelOverride={isDegraded ? 'Investigasi Server ⚠️' : (characters.bayzero.isActive ? undefined : 'Meeting')}
+        badgeLabelOverride={isDegraded ? 'Investigasi Server ⚠️' : (characters.bayzero.isActive ? undefined : 'SOP Kanban')}
         dotColorOverride={isDegraded ? '#EF4444' : (characters.bayzero.isActive ? undefined : '#F59E0B')}
       />
 

@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { WorkerId, ActualAgentState, AmbientActivityType, CharacterAction } from '../types';
 import { AmbientOfficeSimulator, WorkerAmbientState } from './ambientScheduler';
 import { getHumanStatus } from '../utils/statusLabels';
-import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
+import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
 
 export interface CharacterVisualState {
   id: WorkerId;
@@ -131,16 +131,16 @@ export function useAmbientOffice(
         simulator.updateActualState('scout', 'Blocked', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('usagi', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
       } else if (isDongengPipeline) {
         simulator.updateActualState('usagi', 'Blocked', WORKSTATION_CONFIG.usagi.seatWorldPosition, WORKSTATION_CONFIG.usagi.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('stark', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
       } else {
         simulator.updateActualState('stark', 'Blocked', WORKSTATION_CONFIG.stark.seatWorldPosition, WORKSTATION_CONFIG.stark.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('usagi', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
       }
     } else if (isAwaitingApproval) {
@@ -149,21 +149,21 @@ export function useAmbientOffice(
         simulator.updateActualState('scout', 'Waiting', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('usagi', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
       } else if (isDongengPipeline) {
         simulator.updateActualState('usagi', 'Waiting', WORKSTATION_CONFIG.usagi.seatWorldPosition, WORKSTATION_CONFIG.usagi.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
       } else {
         simulator.updateActualState('stark', 'Waiting', WORKSTATION_CONFIG.stark.seatWorldPosition, WORKSTATION_CONFIG.stark.seatWorldRotationY, 'observing');
         simulator.updateActualState('usagi', 'Idle');
-        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
       }
     } else if (isSOPNode) {
-      // SOP Validation phase: Bay-Zero works at central table, active author waits
-      simulator.updateActualState('bayzero', 'Working', BAYZERO_SEAT_ANCHOR.seatWorldPosition, BAYZERO_SEAT_ANCHOR.seatWorldRotationY, 'inspecting_sop');
+      // SOP Validation phase: Bay-Zero actively inspects & paces at Kanban board
+      simulator.updateActualState('bayzero', 'Working', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
       if (isJobPipeline) {
         simulator.updateActualState('scout', 'Waiting', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
@@ -320,7 +320,11 @@ function buildVisualState(
       ambientLabel = 'Kembali ke Meja Kerja 🪑';
       break;
     case 'StandingIdle':
-      ambientLabel = isOutageBayZero ? 'Investigasi Server ⚠️' : 'Berdiri di Area Santai 🌿';
+      ambientLabel = isOutageBayZero
+        ? 'Investigasi Server ⚠️'
+        : id === 'bayzero'
+        ? 'Audit Kanban Board 📋'
+        : 'Berdiri di Area Santai 🌿';
       break;
     default:
       ambientLabel = 'Santai di Meja ☕';
@@ -347,6 +351,8 @@ function buildVisualState(
     amb.characterAction === 'searching_archive' ||
     amb.characterAction === 'walk_to_desk' ||
     amb.characterAction === 'visiting_coffee' ||
+    amb.characterAction === 'kanban_pacing' ||
+    id === 'bayzero' || // Kang Bos berdiri memimpin di depan Kanban board
     amb.ambientActivity === 'Walking' ||
     amb.ambientActivity === 'ReturningToDesk' ||
     amb.ambientActivity === 'StandingIdle' ||

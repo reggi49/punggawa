@@ -381,6 +381,81 @@ export function StylizedHumanoidCharacter({
       leftShoulder.rotation.x = -0.2;
       leftShoulder.rotation.z = 0.2;
       leftElbow.rotation.x = 0.3;
+    } else if (action === 'kanban_pacing') {
+      // Kang Bos berdiri di depan Kanban Board: Mondar-mandir (Pacing) & Nunjuk-nunjuk papan tulis
+      const paceSpeed = 0.85;
+      const paceCycle = t * paceSpeed;
+      const paceOffset = Math.sin(paceCycle) * 0.38; // Bergeser kiri-kanan sepanjang papan kanban
+      const paceVelocity = Math.cos(paceCycle); // Arah gerakan (+1 ke kanan, -1 ke kiri)
+      const walkCadence = t * 3.4;
+
+      // Translasi posisi lokal karakter mondar-mandir di depan papan
+      pelvis.position.x = THREE.MathUtils.lerp(pelvis.position.x, paceOffset, delta * 8);
+      // Bobbing naik-turun pinggul saat melangkah
+      pelvis.position.y = THREE.MathUtils.lerp(
+        pelvis.position.y,
+        0.88 + Math.abs(Math.sin(walkCadence)) * 0.035,
+        delta * 8
+      );
+
+      // Langkah kaki mondar-mandir (Walking Leg Cycle)
+      const isStepping = Math.abs(paceVelocity) > 0.25;
+      if (isStepping) {
+        leftHip.rotation.x = Math.sin(walkCadence) * 0.35 * Math.sign(paceVelocity);
+        rightHip.rotation.x = -Math.sin(walkCadence) * 0.35 * Math.sign(paceVelocity);
+        leftKnee.rotation.x = Math.max(0, -Math.sin(walkCadence)) * 0.45;
+        rightKnee.rotation.x = Math.max(0, Math.sin(walkCadence)) * 0.45;
+      } else {
+        leftHip.rotation.x = THREE.MathUtils.lerp(leftHip.rotation.x, 0, delta * 8);
+        rightHip.rotation.x = THREE.MathUtils.lerp(rightHip.rotation.x, 0, delta * 8);
+        leftKnee.rotation.x = THREE.MathUtils.lerp(leftKnee.rotation.x, 0, delta * 8);
+        rightKnee.rotation.x = THREE.MathUtils.lerp(rightKnee.rotation.x, 0, delta * 8);
+      }
+
+      // Dada sedikit memutar mengikuti arah langkah mondar-mandir
+      chest.rotation.y = THREE.MathUtils.lerp(chest.rotation.y, paceVelocity * 0.16, delta * 6);
+      chest.rotation.x = 0.04;
+
+      // Tangan Kanan: Nunjuk-nunjuk kartu & sticky notes di papan tulis dengan spidol / telunjuk
+      const pointCadence = t * 4.0;
+      const pointThrust = Math.sin(pointCadence) * 0.18 + (Math.sin(t * 11.0) > 0.4 ? 0.12 : 0);
+      rightShoulder.rotation.x = THREE.MathUtils.lerp(
+        rightShoulder.rotation.x,
+        -1.58 + Math.sin(t * 1.8) * 0.15,
+        delta * 8
+      );
+      rightShoulder.rotation.y = THREE.MathUtils.lerp(
+        rightShoulder.rotation.y,
+        -0.22 + paceOffset * 0.4,
+        delta * 8
+      );
+      rightShoulder.rotation.z = -0.12;
+      rightElbow.rotation.x = THREE.MathUtils.lerp(
+        rightElbow.rotation.x,
+        0.28 + pointThrust,
+        delta * 14
+      );
+
+      // Tangan Kiri: Memegang checklist board audit di samping dada
+      leftShoulder.rotation.x = THREE.MathUtils.lerp(leftShoulder.rotation.x, -0.75, delta * 8);
+      leftShoulder.rotation.z = 0.32;
+      leftElbow.rotation.x = THREE.MathUtils.lerp(
+        leftElbow.rotation.x,
+        1.25 + Math.sin(t * 1.6) * 0.08,
+        delta * 8
+      );
+
+      // Kepala: Menatap ke papan kanban, mengamati kartu-kartu tugas naik-turun dan menoleh
+      head.rotation.x = THREE.MathUtils.lerp(
+        head.rotation.x,
+        -0.12 + Math.sin(t * 1.5) * 0.06,
+        delta * 8
+      );
+      head.rotation.y = THREE.MathUtils.lerp(
+        head.rotation.y,
+        paceOffset * 0.35 + Math.sin(t * 2.2) * 0.1,
+        delta * 8
+      );
     } else if (action === 'inspecting_sop') {
       // Memegang clipboard audit & checklist
       head.rotation.x = 0.28 + Math.sin(t * 2) * 0.08;
@@ -561,10 +636,10 @@ export function StylizedHumanoidCharacter({
           showPill = true;
           dotColor = '#F59E0B';
           badgeLabel = 'Waiting';
-        } else if (ambientLabel && (action === 'idle_coffee' || action === 'casual_conversation' || action === 'searching_archive')) {
+        } else if (ambientLabel && (action === 'idle_coffee' || action === 'casual_conversation' || action === 'searching_archive' || action === 'kanban_pacing')) {
           showPill = true;
-          dotColor = action === 'casual_conversation' ? '#F59E0B' : '#38BDF8';
-          badgeLabel = action === 'casual_conversation' ? 'Meeting' : ambientLabel;
+          dotColor = action === 'kanban_pacing' ? '#F59E0B' : action === 'casual_conversation' ? '#F59E0B' : '#38BDF8';
+          badgeLabel = action === 'kanban_pacing' ? 'SOP Kanban' : action === 'casual_conversation' ? 'Meeting' : ambientLabel;
         }
 
         if (!showPill) return null;
@@ -837,8 +912,8 @@ export function StylizedHumanoidCharacter({
                 </mesh>
               </group>
 
-              {/* Clipboard saat Bay-Zero Inspeksi */}
-              {id === 'bayzero' && action === 'inspecting_sop' && (
+              {/* Clipboard saat Bay-Zero Inspeksi / Kanban Pacing */}
+              {id === 'bayzero' && (action === 'inspecting_sop' || action === 'kanban_pacing') && (
                 <mesh position={[0, -0.28, 0.12]} rotation={[0.4, 0, 0]}>
                   <RoundedBox radius={0.01} smoothness={2} args={[0.18, 0.26, 0.02]}>
                     <meshStandardMaterial
@@ -916,6 +991,22 @@ export function StylizedHumanoidCharacter({
                   <cylinderGeometry args={[0.008, 0.004, 0.16, 8]} />
                   <meshStandardMaterial color="#4A4A4A" roughness={0.4} />
                 </mesh>
+              )}
+
+              {/* Props Tangan Kanan: Whiteboard Marker saat Kanban Pacing & Nunjuk-nunjuk */}
+              {action === 'kanban_pacing' && (
+                <group position={[0, -0.28, 0.08]} rotation={[1.2, 0, 0]}>
+                  {/* Tabung Spidol Whiteboard */}
+                  <mesh castShadow>
+                    <cylinderGeometry args={[0.012, 0.012, 0.14, 10]} />
+                    <meshStandardMaterial color="#2563EB" roughness={0.3} metalness={0.2} />
+                  </mesh>
+                  {/* Ujung Tip Spidol */}
+                  <mesh position={[0, 0.075, 0]}>
+                    <coneGeometry args={[0.008, 0.025, 10]} />
+                    <meshStandardMaterial color="#1D4ED8" roughness={0.2} />
+                  </mesh>
+                </group>
               )}
             </group>
           </group>

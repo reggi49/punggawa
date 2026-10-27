@@ -185,6 +185,47 @@ def get_youtube_metadata(video_id: str) -> dict[str, Any] | None:
     return None
 
 
+def search_youtube_video(query: str) -> dict[str, Any] | None:
+    """
+    Mencari video YouTube berdasarkan query string (misal judul dongeng).
+    Mengembalikan dict metadata lengkap termasuk key 'video_id', atau None jika tidak ditemukan.
+    """
+    api_key = settings.YOUTUBE_API_KEY
+    if not query or not query.strip():
+        return None
+
+    clean_query = query.strip()
+
+    # 1. Coba via YouTube Data API v3 jika API Key tersedia
+    if api_key:
+        try:
+            with httpx.Client(timeout=12.0) as client:
+                res = client.get(
+                    f"{YT_API}/search",
+                    params={
+                        "part": "snippet",
+                        "q": clean_query,
+                        "type": "video",
+                        "maxResults": 3,
+                        "relevanceLanguage": "id",
+                        "key": api_key,
+                    },
+                )
+                if res.status_code == 200:
+                    items = res.json().get("items", [])
+                    for it in items:
+                        vid = it.get("id", {}).get("videoId")
+                        if vid:
+                            meta = get_youtube_metadata(vid)
+                            if meta:
+                                meta["video_id"] = vid
+                                return meta
+        except Exception as exc:
+            logger.warning(f"search_youtube_video API gagal untuk '{clean_query}': {exc}")
+
+    return None
+
+
 def list_channel_videos(
     channel_id: str,
     max_results: int = 10,

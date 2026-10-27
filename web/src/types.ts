@@ -91,6 +91,7 @@ export type CharacterAction =
   | 'intense_typing'
   | 'drawing_canvas'
   | 'inspecting_sop'
+  | 'kanban_pacing'
   | 'success_celebration'
   | 'confused_scratch'
   | 'observing'
@@ -150,8 +151,8 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
     color: '#8DA895',
     glowColor: '#30343A',
     badgeBg: 'rgba(141, 168, 149, 0.15)',
-    deskPosition: BAYZERO_SEAT_ANCHOR.seatWorldPosition,
-    seatRotation: BAYZERO_SEAT_ANCHOR.seatWorldRotationY,
+    deskPosition: [-3.55, 0, -2.55],
+    seatRotation: 3.49,
   },
   scout: {
     id: 'scout',

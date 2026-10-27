@@ -93,9 +93,9 @@ export function CurvedUltrawideMonitor({
     if (screenMatRef.current) {
       if (isWorking) {
         // Dynamic RGB rainbow cycle + vivid screen flicker
-        const hue = (t * 0.75 + 0.3) % 1.0;
-        const color = new THREE.Color().setHSL(hue, 1.0, 0.55);
-        const flicker = 0.65 + Math.sin(t * 16.0) * 0.22 + (Math.sin(t * 35.0) > 0.6 ? 0.25 : 0);
+        const hue = (t * 0.95 + 0.3) % 1.0;
+        const color = new THREE.Color().setHSL(hue, 1.0, 0.6);
+        const flicker = 2.2 + Math.sin(t * 22.0) * 0.7 + (Math.sin(t * 43.0) > 0.4 ? 0.8 : 0);
         screenMatRef.current.emissive.copy(color);
         screenMatRef.current.emissiveIntensity = flicker;
         if (rgbLightRef.current) {
@@ -103,11 +103,15 @@ export function CurvedUltrawideMonitor({
           rgbLightRef.current.intensity = flicker * 0.6;
         }
       } else {
-        screenMatRef.current.emissive.set(emissiveColor);
-        screenMatRef.current.emissiveIntensity = emissiveIntensity;
+        // Continuous ambient cyber scanline pulse & subtle flicker even in idle
+        const idlePulse = 1.35 + Math.sin(t * 6.0) * 0.4 + (Math.sin(t * 19.0) > 0.6 ? 0.35 : 0);
+        const idleHue = (0.42 + Math.sin(t * 0.5) * 0.06) % 1.0; // Shifting between green and cyan
+        const idleColor = new THREE.Color().setHSL(idleHue, 0.85, 0.55);
+        screenMatRef.current.emissive.copy(idleColor);
+        screenMatRef.current.emissiveIntensity = idlePulse;
         if (rgbLightRef.current) {
-          rgbLightRef.current.intensity = 0.15;
-          rgbLightRef.current.color.set(emissiveColor);
+          rgbLightRef.current.intensity = idlePulse * 0.35;
+          rgbLightRef.current.color.copy(idleColor);
         }
       }
     }
@@ -183,21 +187,25 @@ export function InteractiveRGBLaptop({
     if (screenMatRef.current) {
       if (isWorking) {
         // Dynamic RGB cycling + rapid hacker terminal flicker
-        const hue = (t * 0.9) % 1.0;
-        const color = new THREE.Color().setHSL(hue, 1.0, 0.55);
-        const flicker = 0.7 + Math.sin(t * 17.0) * 0.22 + (Math.sin(t * 39.0) > 0.5 ? 0.3 : 0);
+        const hue = (t * 1.15) % 1.0;
+        const color = new THREE.Color().setHSL(hue, 1.0, 0.6);
+        const flicker = 2.4 + Math.sin(t * 22.0) * 0.7 + (Math.sin(t * 47.0) > 0.4 ? 0.8 : 0);
         screenMatRef.current.emissive.copy(color);
         screenMatRef.current.emissiveIntensity = flicker;
         if (lightRef.current) {
           lightRef.current.color.copy(color);
-          lightRef.current.intensity = flicker * 0.7;
+          lightRef.current.intensity = flicker * 0.75;
         }
       } else {
-        screenMatRef.current.emissive.set(defaultEmissive);
-        screenMatRef.current.emissiveIntensity = 0.3;
+        // Continuous animated cyber kelap-kelip & breathing pulse even in idle
+        const idlePulse = 1.35 + Math.sin(t * 7.0) * 0.4 + (Math.sin(t * 23.0) > 0.5 ? 0.45 : 0);
+        const idleHue = (0.54 + Math.sin(t * 0.6) * 0.08) % 1.0; // Shifting cyber cyan / teal
+        const idleColor = new THREE.Color().setHSL(idleHue, 0.95, 0.55);
+        screenMatRef.current.emissive.copy(idleColor);
+        screenMatRef.current.emissiveIntensity = idlePulse;
         if (lightRef.current) {
-          lightRef.current.intensity = 0.12;
-          lightRef.current.color.set(defaultEmissive);
+          lightRef.current.intensity = idlePulse * 0.4;
+          lightRef.current.color.copy(idleColor);
         }
       }
     }
@@ -207,14 +215,15 @@ export function InteractiveRGBLaptop({
     <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
       <Clone object={laptopModel.scene} />
       {/* Dynamic Glowing RGB Screen Pane */}
-      <mesh position={[0, 0.145, -0.11]} rotation={[-0.32, 0, 0]}>
+      <mesh position={[0, 0.148, -0.103]} rotation={[-0.32, 0, 0]}>
         <planeGeometry args={[0.26, 0.165]} />
         <meshStandardMaterial
           ref={screenMatRef}
           color="#0B132B"
           emissive={defaultEmissive}
-          emissiveIntensity={0.3}
-          roughness={0.2}
+          emissiveIntensity={1.3}
+          roughness={0.15}
+          side={THREE.DoubleSide}
         />
       </mesh>
       {/* Real-time RGB Glow Casting onto Table and Keyboard */}
@@ -222,8 +231,8 @@ export function InteractiveRGBLaptop({
         ref={lightRef}
         position={[0, 0.16, 0.05]}
         color={defaultEmissive}
-        intensity={0.2}
-        distance={0.85}
+        intensity={0.4}
+        distance={0.95}
         decay={2}
       />
     </group>
@@ -267,12 +276,12 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
         }
       } else if (isWriting) {
         // VIBRANT RGB HACKER/DEVELOPER MONITOR FLICKER
-        const hue1 = (t * 0.85) % 1.0;
+        const hue1 = (t * 1.1) % 1.0;
         const hue2 = (hue1 + 0.35) % 1.0;
-        const color1 = new THREE.Color().setHSL(hue1, 1.0, 0.55);
-        const color2 = new THREE.Color().setHSL(hue2, 1.0, 0.55);
-        const flicker1 = 0.65 + Math.sin(t * 18.0) * 0.2 + (Math.sin(t * 43.0) > 0.5 ? 0.25 : 0);
-        const flicker2 = 0.65 + Math.cos(t * 15.0) * 0.2 + (Math.cos(t * 37.0) > 0.5 ? 0.25 : 0);
+        const color1 = new THREE.Color().setHSL(hue1, 1.0, 0.6);
+        const color2 = new THREE.Color().setHSL(hue2, 1.0, 0.6);
+        const flicker1 = 2.4 + Math.sin(t * 22.0) * 0.7 + (Math.sin(t * 47.0) > 0.4 ? 0.8 : 0);
+        const flicker2 = 2.2 + Math.cos(t * 19.0) * 0.7 + (Math.cos(t * 41.0) > 0.4 ? 0.8 : 0);
 
         codeScreenRef.current.emissive.copy(color1);
         codeScreenRef.current.emissiveIntensity = flicker1;
@@ -286,25 +295,28 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
         }
       } else if (isDone) {
         codeScreenRef.current.emissive.set('#10B981');
-        codeScreenRef.current.emissiveIntensity = 0.5;
+        codeScreenRef.current.emissiveIntensity = 1.2;
         if (termScreenRef.current) {
           termScreenRef.current.emissive.set('#10B981');
-          termScreenRef.current.emissiveIntensity = 0.5;
+          termScreenRef.current.emissiveIntensity = 1.2;
         }
         if (rgbLightRef.current) {
           rgbLightRef.current.color.set('#10B981');
-          rgbLightRef.current.intensity = 0.3;
+          rgbLightRef.current.intensity = 0.5;
         }
       } else {
+        // Continuous animated cyber glow & terminal pulse in standby/idle
+        const idlePulse1 = 1.35 + Math.sin(t * 7.5) * 0.4 + (Math.sin(t * 23.0) > 0.5 ? 0.45 : 0);
+        const idlePulse2 = 1.30 + Math.cos(t * 8.5) * 0.38 + (Math.cos(t * 29.0) > 0.5 ? 0.45 : 0);
         codeScreenRef.current.emissive.set('#38BDF8');
-        codeScreenRef.current.emissiveIntensity = 0.35;
+        codeScreenRef.current.emissiveIntensity = idlePulse1;
         if (termScreenRef.current) {
           termScreenRef.current.emissive.set('#818CF8');
-          termScreenRef.current.emissiveIntensity = 0.35;
+          termScreenRef.current.emissiveIntensity = idlePulse2;
         }
         if (rgbLightRef.current) {
           rgbLightRef.current.color.set('#38BDF8');
-          rgbLightRef.current.intensity = 0.15;
+          rgbLightRef.current.intensity = idlePulse1 * 0.35;
         }
       }
     }
@@ -374,8 +386,9 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
             ref={codeScreenRef}
             color="#0A0E17"
             emissive="#38BDF8"
-            emissiveIntensity={0.5}
-            roughness={0.2}
+            emissiveIntensity={1.3}
+            roughness={0.15}
+            side={THREE.DoubleSide}
           />
         </mesh>
         {/* Monitor Stand */}
@@ -400,8 +413,9 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
             ref={termScreenRef}
             color="#0F172A"
             emissive="#64748B"
-            emissiveIntensity={0.3}
-            roughness={0.2}
+            emissiveIntensity={1.2}
+            roughness={0.15}
+            side={THREE.DoubleSide}
           />
         </mesh>
         {/* Monitor Stand */}
@@ -684,39 +698,110 @@ export function ArtCanvasDisplay({ currentNode }: FurnitureProps) {
         <meshStandardMaterial color="#DCD6CB" roughness={0.92} />
       </mesh>
 
-      {/* Large Mobile Presentation Whiteboard on Wheeled Steel Frame */}
+      {/* Large Mobile Presentation Kanban Whiteboard on Wheeled Steel Frame */}
       <group position={[-0.2, 0, 0]} rotation={[0, 0.35, 0]}>
-        {/* Main Board Surface with Rounded Bezel */}
+        {/* Main Board Surface with Glossy White Enamel */}
         <RoundedBox radius={0.02} smoothness={3} args={[1.75, 1.15, 0.03]} position={[0, 1.35, 0]} castShadow receiveShadow>
-          <meshStandardMaterial color="#FAF9F5" roughness={0.35} />
+          <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.05} />
         </RoundedBox>
+        {/* Outer Aluminum Bezel Frame */}
         <mesh position={[0, 1.35, 0]}>
           <boxGeometry args={[1.79, 1.19, 0.025]} />
-          <meshStandardMaterial color="#2B3038" roughness={0.4} metalness={0.7} />
+          <meshStandardMaterial color="#334155" roughness={0.35} metalness={0.8} />
         </mesh>
 
-        {/* Sticky Notes & Wireframe Diagrams on Board */}
-        <mesh position={[-0.45, 1.45, 0.018]}>
-          <planeGeometry args={[0.22, 0.22]} />
-          <meshStandardMaterial color="#FBBF24" roughness={0.7} />
+        {/* Kanban Board Header Bar */}
+        <mesh position={[0, 1.83, 0.017]}>
+          <planeGeometry args={[1.68, 0.09]} />
+          <meshStandardMaterial color="#0F172A" roughness={0.4} />
         </mesh>
-        <mesh position={[-0.15, 1.45, 0.018]}>
-          <planeGeometry args={[0.22, 0.22]} />
-          <meshStandardMaterial color="#38BDF8" roughness={0.7} />
+
+        {/* Kanban Column Dividers (3 vertical lines dividing into 4 columns) */}
+        {[-0.42, 0.0, 0.42].map((x, idx) => (
+          <mesh key={`kanban-col-div-${idx}`} position={[x, 1.33, 0.017]}>
+            <planeGeometry args={[0.008, 0.88]} />
+            <meshStandardMaterial color="#CBD5E1" roughness={0.5} />
+          </mesh>
+        ))}
+
+        {/* Column 1: BACKLOG / TO DO (Sticky Notes) */}
+        <mesh position={[-0.63, 1.62, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#FBBF24" roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
-        <mesh position={[0.15, 1.45, 0.018]}>
-          <planeGeometry args={[0.22, 0.22]} />
-          <meshStandardMaterial color="#D98078" roughness={0.7} />
+        <mesh position={[-0.63, 1.40, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#F59E0B" roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
-        <mesh position={[0.45, 1.45, 0.018]}>
-          <planeGeometry args={[0.22, 0.22]} />
-          <meshStandardMaterial color="#8DA895" roughness={0.7} />
+        <mesh position={[-0.63, 1.18, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#FDE047" roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
-        {/* Wireframe Diagram Box */}
-        <mesh position={[0, 1.1, 0.018]}>
-          <planeGeometry args={[0.9, 0.32]} />
-          <meshStandardMaterial color="#F0EDE4" roughness={0.5} />
+
+        {/* Column 2: IN PROGRESS (Tech Writing & Scouting Cards) */}
+        <mesh position={[-0.21, 1.58, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#38BDF8" roughness={0.6} side={THREE.DoubleSide} />
         </mesh>
+        <mesh position={[-0.21, 1.35, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#0284C7" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Column 3: SOP AUDIT / REVIEW (Kang Bos Primary Audit Target Cards) */}
+        <mesh position={[0.21, 1.60, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#FB7185" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0.21, 1.38, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#E11D48" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0.21, 1.15, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#FDA4AF" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Column 4: DONE / PUBLISHED (Success Cards) */}
+        <mesh position={[0.63, 1.62, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#34D399" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0.63, 1.40, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#10B981" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh position={[0.63, 1.18, 0.018]}>
+          <planeGeometry args={[0.18, 0.16]} />
+          <meshStandardMaterial color="#059669" roughness={0.6} side={THREE.DoubleSide} />
+        </mesh>
+
+        {/* Aluminum Dry-Erase Marker Tray & Markers at Bottom */}
+        <group position={[0, 0.77, 0.04]}>
+          {/* Tray */}
+          <mesh castShadow>
+            <boxGeometry args={[1.68, 0.025, 0.07]} />
+            <meshStandardMaterial color="#64748B" metalness={0.8} roughness={0.3} />
+          </mesh>
+          {/* 3 Dry-Erase Markers (Black, Blue, Red) */}
+          <mesh position={[-0.3, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.01, 0.01, 0.13, 8]} />
+            <meshStandardMaterial color="#0F172A" roughness={0.4} />
+          </mesh>
+          <mesh position={[-0.12, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.01, 0.01, 0.13, 8]} />
+            <meshStandardMaterial color="#2563EB" roughness={0.4} />
+          </mesh>
+          <mesh position={[0.06, 0.02, 0]} rotation={[0, 0, Math.PI / 2]}>
+            <cylinderGeometry args={[0.01, 0.01, 0.13, 8]} />
+            <meshStandardMaterial color="#DC2626" roughness={0.4} />
+          </mesh>
+          {/* Eraser */}
+          <mesh position={[0.3, 0.025, 0]}>
+            <boxGeometry args={[0.12, 0.035, 0.05]} />
+            <meshStandardMaterial color="#1E293B" roughness={0.7} />
+          </mesh>
+        </group>
 
         {/* Steel Stand Legs & Casters */}
         <mesh position={[-0.7, 0.65, 0]} castShadow>

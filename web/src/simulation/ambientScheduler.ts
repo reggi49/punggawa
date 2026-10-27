@@ -94,20 +94,20 @@ export class AmbientOfficeSimulator {
       bayzero: {
         id: 'bayzero',
         actualState: 'Idle',
-        ambientActivity: 'LookingAround',
+        ambientActivity: 'StandingIdle',
         currentPosition: [...OFFICE_POIS.bayzero_desk.position],
         targetPosition: [...OFFICE_POIS.bayzero_desk.position],
         targetRotationY: OFFICE_POIS.bayzero_desk.rotationY,
-        isSeated: true,
+        isSeated: false,
         pathQueue: [],
         destinationPOI: OFFICE_POIS.bayzero_desk,
         activityStartTime: now,
-        activityDuration: 26000, // Starts with 26s looking around
+        activityDuration: 30000,
         cooldowns: { social: now + 55000, coffee: 0, server: 0, easel: 0, lounge: 0 },
-        recentActivities: ['LookingAround'],
+        recentActivities: ['StandingIdle'],
         socialPartnerId: null,
         socialRole: null,
-        characterAction: 'looking_around',
+        characterAction: 'kanban_pacing',
       },
       scout: {
         id: 'scout',
@@ -642,14 +642,17 @@ export class AmbientOfficeSimulator {
     }
 
     // 3. Desk In-Place Variations (Remaining ~75% of time)
-    // Sub-distribution among eligible in-place behaviors:
-    // - Seated idle or looking around: ~50% total
-    //   -> SeatedIdle: ~28%
-    //   -> LookingAround: ~22%
-    // - Small posture adjustment or stretching: ~18% total
-    //   -> Stretching: ~18%
-    // - Another context-appropriate idle activity: ~7% total
-    //   -> LookingAtMonitor: ~7%
+    // Kang Bos (Bay-Zero) stands in front of the Kanban Whiteboard inspecting tasks & pacing
+    if (w.id === 'bayzero') {
+      w.isSeated = false;
+      w.ambientActivity = 'StandingIdle';
+      w.characterAction = 'kanban_pacing';
+      w.activityStartTime = now;
+      w.activityDuration = 18000 + Math.random() * 12000;
+      this.recordActivity(w, w.ambientActivity);
+      return;
+    }
+
     const deskRoll = Math.random();
     w.isSeated = true;
     w.activityStartTime = now;

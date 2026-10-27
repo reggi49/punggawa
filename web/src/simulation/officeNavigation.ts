@@ -5,7 +5,7 @@
  * without characters clipping through furniture or walking into walls.
  */
 import * as THREE from 'three';
-import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
+import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
 
 export interface OfficePOI {
   id: string;
@@ -39,10 +39,10 @@ export const OFFICE_POIS: Record<string, OfficePOI> = {
   },
   bayzero_desk: {
     id: 'bayzero_desk',
-    name: "Bay-Zero's Console",
-    position: BAYZERO_SEAT_ANCHOR.seatWorldPosition,
-    rotationY: BAYZERO_SEAT_ANCHOR.seatWorldRotationY,
-    isSeated: true,
+    name: "Kang Bos's Kanban Station",
+    position: BAYZERO_KANBAN_ANCHOR.position,
+    rotationY: BAYZERO_KANBAN_ANCHOR.rotationY,
+    isSeated: false,
     type: 'desk',
     assignedTo: 'bayzero',
   },

@@ -62,6 +62,12 @@ export const BAYZERO_SEAT_ANCHOR = {
   laptopLocalRotationY: MEETING_ZONE_CONFIG.bayZeroAngle,
 };
 
+// Kang Bos (Bay-Zero) Kanban Whiteboard Stand Anchor (Standing in front of the board)
+export const BAYZERO_KANBAN_ANCHOR = {
+  position: [-3.55, 0, -2.55] as [number, number, number],
+  rotationY: 3.49, // Facing towards the Kanban Whiteboard
+};
+
 // Scout World Seat Anchor (Identical to Meeting Chair 2, opposite Bay-Zero)
 const scAngle = MEETING_ZONE_CONFIG.bayZeroAngle + Math.PI;
 const scSin = Math.sin(scAngle);
@@ -92,10 +98,10 @@ export const WORKSTATION_ANCHORS = {
   stark: WORKSTATION_CONFIG.stark,
   usagi: WORKSTATION_CONFIG.usagi,
   bayzero: {
-    deskPosition: MEETING_ZONE_CONFIG.center,
-    deskRotationY: 0,
-    seatWorldPosition: BAYZERO_SEAT_ANCHOR.seatWorldPosition,
-    seatWorldRotationY: BAYZERO_SEAT_ANCHOR.seatWorldRotationY,
+    deskPosition: BAYZERO_KANBAN_ANCHOR.position,
+    deskRotationY: BAYZERO_KANBAN_ANCHOR.rotationY,
+    seatWorldPosition: BAYZERO_KANBAN_ANCHOR.position,
+    seatWorldRotationY: BAYZERO_KANBAN_ANCHOR.rotationY,
   },
   scout: {
     deskPosition: MEETING_ZONE_CONFIG.center,

@@ -461,7 +461,7 @@ def fetch_candidate_for_usagi(existing_topics: set[str]) -> tuple[str, str, dict
     try:
         from orchestrator.tools.youtube_client import list_channel_videos
         for ch_id in settings.DONGENG_TARGET_CHANNELS:
-            vids = list_channel_videos(ch_id, max_results=10)
+            vids = list_channel_videos(ch_id, max_results=30)
             for v in vids:
                 v_id = str(v.get("id") or v.get("video_id") or "").strip()
                 v_title = str(v.get("title") or "").strip()
@@ -483,16 +483,16 @@ def fetch_candidate_for_usagi(existing_topics: set[str]) -> tuple[str, str, dict
     except Exception as exc:
         logger.warning(f"Gagal memindai YouTube Dongeng: {exc}")
 
-    # 2. Classic Folktale Fallbacks
+    # 2. Classic Folktale Fallbacks (Real verified YouTube video IDs)
     dongeng_catalog = [
-        ("dongeng_kancil_buaya_sungai", "Kisah Si Kancil dan Buaya yang Cerdik Menyeberang Sungai"),
-        ("dongeng_sangkuriang_tangkuban", "Legenda Sangkuriang dan Terciptanya Gunung Tangkuban Perahu"),
-        ("dongeng_timun_mas_raksasa_ijo", "Petualangan Berani Timun Mas Mengalahkan Raksasa Jahat"),
-        ("dongeng_malin_kundang_pantai_air", "Kisah Pengorbanan Ibu dan Pelajaran Hidup Malin Kundang"),
-        ("dongeng_keong_mas_candra_kirana", "Misteri Keong Mas dan Putri Candra Kirana yang Bijaksana"),
-        ("dongeng_bawang_merah_putih_danau", "Kisah Bawang Merah dan Bawang Putih: Kebaikan Berbuah Manis"),
-        ("dongeng_danau_toba_ikan_ajaib", "Asal Usul Danau Toba dan Sumpah Ikan Mas Ajaib"),
-        ("dongeng_ciung_wanara_pajajaran", "Legenda Ciung Wanara dan Ayam Jago Sakti Kerajaan Galuh"),
+        ("KUrlU6WW7ZI", "Kisah Si Kancil dan Buaya yang Cerdik Menyeberang Sungai"),
+        ("x2RGBsncrmo", "Legenda Sangkuriang dan Terciptanya Gunung Tangkuban Perahu"),
+        ("juEC_Q-j9Tw", "Petualangan Berani Timun Mas Mengalahkan Raksasa Jahat"),
+        ("x-OETwI6ij0", "Kisah Pengorbanan Ibu dan Pelajaran Hidup Malin Kundang"),
+        ("14xZV-jEnY0", "Misteri Keong Mas dan Putri Candra Kirana yang Bijaksana"),
+        ("XYKYCVb1oCU", "Kisah Bawang Merah dan Bawang Putih: Kebaikan Berbuah Manis"),
+        ("CapRqHdluYM", "Asal Usul Danau Toba dan Sumpah Ikan Mas Ajaib"),
+        ("yo9IsAMSFks", "Legenda Ciung Wanara dan Ayam Jago Sakti Kerajaan Galuh"),
     ]
     for v_id, v_title in dongeng_catalog:
         if v_id.lower() not in existing_topics and v_title.lower() not in existing_topics:

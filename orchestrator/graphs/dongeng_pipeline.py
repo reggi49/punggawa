@@ -26,6 +26,7 @@ from orchestrator.tools.youtube_client import (
     get_youtube_metadata,
     is_short_video,
     looks_like_skip,
+    search_youtube_video,
 )
 
 logger = logging.getLogger("DongengGraph")
@@ -65,28 +66,36 @@ def ingest_node(state: AgentState) -> dict[str, Any]:
     video_id = extract_video_id(str(raw_video))
     timestamp = datetime.now(timezone.utc).isoformat()
 
-    if not video_id:
-        err_msg = "video_id tidak ditemukan pada parameter input."
-        logger.error(f"Task {task_id} gagal: {err_msg}")
-        return {
-            "status": "failed",
-            "task_type": "dongeng",
-            "video_id": None,
-            "error": err_msg,
-            "execution_logs": [f"[{timestamp}] Ingest failed: {err_msg}"],
-        }
+    info = None
+    # 1. Jika video_id berupa 11 karakter valid YouTube ID, coba ambil metadata langsung
+    if video_id and re.match(r"^[a-zA-Z0-9_-]{11}$", video_id):
+        logger.info(f"[{settings.WORKER_ID}] Ingesting YouTube video ID: {video_id}")
+        info = get_youtube_metadata(video_id)
 
-    logger.info(f"[{settings.WORKER_ID}] Ingesting YouTube video: {video_id}")
-
-    # Ambil metadata YouTube
-    info = get_youtube_metadata(video_id)
+    # 2. Jika bukan 11-char ID atau metadata gagal, coba cari via YouTube Search API
     if not info:
-        err_msg = f"Gagal mengambil metadata YouTube untuk videoId: {video_id}"
+        search_query = (
+            input_data.get("topic")
+            or input_data.get("query")
+            or state.get("topic")
+            or raw_video
+            or ""
+        )
+        if search_query:
+            logger.info(f"[{settings.WORKER_ID}] Mencari video YouTube otomatis dengan query: '{search_query}'")
+            search_res = search_youtube_video(str(search_query))
+            if search_res and search_res.get("video_id"):
+                video_id = search_res["video_id"]
+                info = search_res
+                logger.info(f"[{settings.WORKER_ID}] Berhasil menemukan video pengganti: {video_id} ('{info.get('title')}')")
+
+    if not info or not video_id:
+        err_msg = f"Gagal mengambil metadata YouTube untuk videoId: {video_id or raw_video}"
         logger.error(err_msg)
         return {
             "status": "failed",
             "task_type": "dongeng",
-            "video_id": video_id,
+            "video_id": video_id or None,
             "error": err_msg,
             "execution_logs": [f"[{timestamp}] Ingest failed: {err_msg}"],
         }
