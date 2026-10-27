@@ -287,6 +287,7 @@ interface HUDOverlayProps {
   onDismissAlert?: () => void;
   onRecheckHealth?: () => void;
   onSwitchTo2D?: () => void;
+  isMobile?: boolean;
   loadingLogs?: boolean;
   onRefreshLogs?: () => void;
 }
@@ -309,6 +310,7 @@ export function HUDOverlay({
   onDismissAlert,
   onRecheckHealth,
   onSwitchTo2D,
+  isMobile = false,
   loadingLogs = false,
   onRefreshLogs,
 }: HUDOverlayProps) {
@@ -1067,8 +1069,8 @@ export function HUDOverlay({
             <span>Peluang Karir</span>
           </button>
 
-          {/* Mode 2D Eco Toggle Button */}
-          {onSwitchTo2D && (
+          {/* Mode 2D Eco Toggle Button - Disembunyikan di browser desktop */}
+          {isMobile && onSwitchTo2D && (
             <button
               onClick={onSwitchTo2D}
               style={{
@@ -1314,7 +1316,17 @@ export function HUDOverlay({
                   <div style={{ fontSize: '11px', color: '#8A8A82', marginTop: '2px' }}>
                     Penanggung Jawab:{' '}
                     <span style={{ color: humanStatus.color, fontWeight: 700 }}>
-                      {humanStatus.responsibleWorker.toUpperCase()}
+                      {humanStatus.responsibleWorker === 'janitor'
+                        ? 'ROBOT VACUUM'
+                        : humanStatus.responsibleWorker === 'stark'
+                        ? 'KANG NULIS'
+                        : humanStatus.responsibleWorker === 'usagi'
+                        ? 'KANG DONGENG'
+                        : humanStatus.responsibleWorker === 'bayzero'
+                        ? 'KANG BOS'
+                        : humanStatus.responsibleWorker === 'scout'
+                        ? 'KANG KERJA'
+                        : 'TIM'}
                     </span>
                   </div>
                 </div>

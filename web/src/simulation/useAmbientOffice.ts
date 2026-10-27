@@ -68,6 +68,13 @@ export function useAmbientOffice(
     currentNode === 'idle_coffee' ||
     currentNode === 'STREAM_INIT';
 
+  const isHousekeeping =
+    currentNode === 'housekeeping' ||
+    currentNode === 'housekeeping_node' ||
+    details?.task_type === 'housekeeping' ||
+    details?.action_type === 'housekeeping' ||
+    threadId === 'system';
+
   const isSOPNode = currentNode === 'sop_validator_node';
   const isAwaitingApproval =
     currentNode === 'await_approval' ||
@@ -99,6 +106,16 @@ export function useAmbientOffice(
       simulator.updateActualState('bayzero', 'Blocked', serverTargetPos, serverTargetRotY, 'confused_scratch');
       simulator.updateActualState('stark', 'Idle');
       simulator.updateActualState('usagi', 'Idle');
+      simulator.updateActualState('scout', 'Idle');
+      return;
+    }
+
+    if (isHousekeeping) {
+      // Pembersihan sistem adalah tugas Robot Vacuum Cleaner (Janitor Droid).
+      // Seluruh agen kru tetap santai di meja masing-masing (duduk tenang).
+      simulator.updateActualState('stark', 'Idle');
+      simulator.updateActualState('usagi', 'Idle');
+      simulator.updateActualState('bayzero', 'Idle');
       simulator.updateActualState('scout', 'Idle');
       return;
     }
@@ -320,16 +337,41 @@ function buildVisualState(
     ambientLabel = 'Dormant / Offline 🔌';
   }
 
+  const isHousekeeping =
+    currentNode === 'housekeeping' ||
+    currentNode === 'housekeeping_node';
+
+  // Aksi yang mewajibkan karakter berdiri:
+  const isStandingAction =
+    amb.characterAction === 'drawing_canvas' ||
+    amb.characterAction === 'searching_archive' ||
+    amb.characterAction === 'walk_to_desk' ||
+    amb.characterAction === 'visiting_coffee' ||
+    amb.ambientActivity === 'Walking' ||
+    amb.ambientActivity === 'ReturningToDesk' ||
+    amb.ambientActivity === 'StandingIdle' ||
+    isOutageBayZero;
+
+  // Jika sedang bekerja di meja workstation, karakter selalu duduk rapi di kursinya
+  const isSeated = isStandingAction ? false : (isWorking ? true : amb.isSeated);
+
+  let displayLabel = ambientLabel;
+  if (isOutageBayZero) {
+    displayLabel = 'Investigasi Server ⚠️';
+  } else if (isWorking && !isHousekeeping) {
+    displayLabel = getHumanStatus(currentNode).label;
+  }
+
   return {
     id,
     targetPos: amb.targetPosition,
     targetRotY: amb.targetRotationY,
     action: amb.characterAction,
-    isSeated: isOutageBayZero ? false : (isWorking ? (amb.targetPosition[2] > 0.6 && amb.targetPosition[2] < 1.0) : amb.isSeated),
+    isSeated,
     isActive: isWorking, // True for running AI task or active outage investigation
     actualState: amb.actualState,
     ambientActivity: amb.ambientActivity,
-    ambientLabel: isOutageBayZero ? 'Investigasi Server ⚠️' : (isWorking ? getHumanStatus(currentNode).label : ambientLabel),
+    ambientLabel: displayLabel,
     socialRole: amb.socialRole,
   };
 }

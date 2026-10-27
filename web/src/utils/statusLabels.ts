@@ -21,7 +21,7 @@ export interface HumanStatusConfig {
   badgeBg: string;
   description: string;
   icon: string;
-  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'scout' | 'team';
+  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'scout' | 'team' | 'janitor';
 }
 
 export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
@@ -321,9 +321,9 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     color: '#06b6d4',
     glowColor: '#0891b2',
     badgeBg: 'rgba(6, 182, 212, 0.25)',
-    description: 'Janitor Bot aktif menyapu sisa checkpoint & memangkas data database.',
+    description: 'Robot Vacuum Cleaner aktif menyapu sisa checkpoint & memangkas data database.',
     icon: '🧹',
-    responsibleWorker: 'team',
+    responsibleWorker: 'janitor',
   },
   housekeeping_node: {
     label: 'Pembersihan Sistem 🧹',
@@ -331,9 +331,9 @@ export const STATUS_LABELS: Record<string, HumanStatusConfig> = {
     color: '#06b6d4',
     glowColor: '#0891b2',
     badgeBg: 'rgba(6, 182, 212, 0.25)',
-    description: 'Janitor Bot aktif menyapu sisa checkpoint & memangkas data database.',
+    description: 'Robot Vacuum Cleaner aktif menyapu sisa checkpoint & memangkas data database.',
     icon: '🧹',
-    responsibleWorker: 'team',
+    responsibleWorker: 'janitor',
   },
 };
 

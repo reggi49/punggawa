@@ -54,8 +54,11 @@ export function OfficeScene({
 
   // Janitor Bot status
   const isHousekeepingActive =
-    (currentNode === 'housekeeping' || currentNode === 'housekeeping_node') &&
-    status !== 'completed';
+    currentNode === 'housekeeping' ||
+    currentNode === 'housekeeping_node' ||
+    details?.task_type === 'housekeeping' ||
+    details?.action_type === 'housekeeping' ||
+    threadId === 'system';
 
   // Determine dynamic spotlight focus
   const activeWorkerId = characters.stark.isActive
