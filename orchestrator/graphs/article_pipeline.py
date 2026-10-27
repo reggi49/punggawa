@@ -68,6 +68,21 @@ def ingest_trend_node(state: AgentState) -> dict[str, Any]:
             "error": None,
         }
 
+    # Jika target_urls sudah disediakan (misal dari jadwal Bay-Zero atau input spesifik pengguna),
+    # jangan tiban target_urls dan topik yang sudah terkurasi dengan repositori trending baru!
+    existing_target = (state.get("target_urls") or input_data.get("target_urls") or input_data.get("urls") or "").strip()
+    if existing_target:
+        logger.info(
+            f"[{settings.WORKER_ID}] Target URL '{existing_target}' sudah ditentukan sebelumnya (terkurasi). "
+            f"Melewati penemuan tren baru untuk menjaga integritas kurasi topik."
+        )
+        return {
+            "execution_logs": [
+                f"[{timestamp}] Target URL already curated/specified ({existing_target}). Bypassing trend re-discovery."
+            ],
+            "error": None,
+        }
+
     trend_items: list[dict[str, Any]] = []
     source_used = ""
 
@@ -100,28 +115,66 @@ def ingest_trend_node(state: AgentState) -> dict[str, Any]:
             "error": None,
         }
 
-    # Filter kandidat tren agar tidak memilih topik yang sudah pernah terbit sebelumnya
-    top_item = trend_items[0]
+    # Filter kandidat tren agar tidak memilih topik yang sudah pernah terbit/dijadwalkan sebelumnya
+    top_item = None
     for cand in trend_items:
-        cand_id = cand.get("repo_name") or cand.get("title") or ""
+        cand_id = (cand.get("repo_name") or cand.get("title") or "").strip()
+        cand_url = (cand.get("repo_url") or cand.get("url") or "").strip()
         if not cand_id:
             continue
+
+        is_duplicate = False
         try:
             with postgres_pool.connection() as conn:
                 with conn.cursor() as cur:
+                    # 1. Cek di content_schedules (semua status: completed, in_progress, pending, discarded)
                     cur.execute(
-                        "SELECT 1 FROM content_schedules WHERE status = 'completed' AND title ILIKE %s LIMIT 1",
-                        (f"%{cand_id[:35]}%",),
+                        """
+                        SELECT 1 FROM content_schedules 
+                        WHERE status IN ('completed', 'in_progress', 'pending', 'discarded')
+                          AND (
+                              title ILIKE %s 
+                              OR payload::text ILIKE %s 
+                              OR payload::text ILIKE %s
+                          )
+                        LIMIT 1;
+                        """,
+                        (f"%{cand_id[:35]}%", f"%{cand_id[:35]}%", f"%{cand_url[:35]}%" if cand_url else f"%{cand_id[:35]}%"),
                     )
                     if cur.fetchone():
-                        logger.info(
-                            f"⏭️ [AUTO-DEDUPLICATE] Kandidat tren '{cand_id}' sudah pernah terbit. Memilih kandidat alternatif berikutnya..."
+                        is_duplicate = True
+
+                    # 2. Cek di agent_execution_logs (node publish_node)
+                    if not is_duplicate:
+                        cur.execute(
+                            """
+                            SELECT 1 FROM agent_execution_logs
+                            WHERE node = 'publish_node'
+                              AND (
+                                  message ILIKE %s
+                                  OR details::text ILIKE %s
+                              )
+                            LIMIT 1;
+                            """,
+                            (f"%{cand_id[:35]}%", f"%{cand_id[:35]}%"),
                         )
-                        continue
-        except Exception:
-            pass
+                        if cur.fetchone():
+                            is_duplicate = True
+        except Exception as dedup_err:
+            logger.warning(f"Error saat cek deduplikasi kandidat '{cand_id}': {dedup_err}")
+
+        if is_duplicate:
+            logger.info(
+                f"⏭️ [AUTO-DEDUPLICATE] Kandidat tren '{cand_id}' sudah pernah dikerjakan/terbit. Memilih alternatif berikutnya..."
+            )
+            continue
+
         top_item = cand
         break
+
+    if not top_item and trend_items:
+        logger.warning("Seluruh kandidat tren dalam batch ini sudah pernah terbit. Menggunakan fallback kandidat pertama.")
+        top_item = trend_items[0]
 
     logger.info(f"🎯 Kandidat tren terpilih dari {source_used}: {top_item}")
 

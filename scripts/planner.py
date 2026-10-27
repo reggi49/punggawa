@@ -6,6 +6,7 @@ menghindari penumpukan artikel dalam 1 hari, dan mencatat rencana ke PostgreSQL 
 import json
 import logging
 import os
+import re
 import sys
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -46,11 +47,12 @@ AGENT_CADENCE: dict[str, dict[str, Any]] = {
 
 
 def get_existing_scheduled_topics() -> set[str]:
-    """Mengambil seluruh judul, nama repo, URL, dan video ID yang sudah ada di database."""
+    """Mengambil seluruh judul, nama repo, URL, dan video ID yang sudah ada di database (schedules dan publish logs)."""
     existing: set[str] = set()
     try:
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
+                # 1. Dari content_schedules (termasuk status discarded/recycle bin agar tidak muncul lagi)
                 cur.execute("SELECT title, payload FROM content_schedules;")
                 for row in cur.fetchall():
                     raw_title = (row[0] or "").strip().lower()
@@ -58,7 +60,8 @@ def get_existing_scheduled_topics() -> set[str]:
                         existing.add(raw_title)
                         # Ekstrak nama repo jika format "bedah repositori: owner/name"
                         if "bedah repositori:" in raw_title:
-                            existing.add(raw_title.replace("bedah repositori:", "").strip())
+                            repo_part = raw_title.replace("bedah repositori:", "").strip()
+                            existing.add(repo_part)
                     
                     payload_raw = row[1]
                     payload = payload_raw if isinstance(payload_raw, dict) else json.loads(payload_raw or "{}")
@@ -71,6 +74,19 @@ def get_existing_scheduled_topics() -> set[str]:
                         existing.add(str(inp["topic"]).strip().lower())
                     if inp.get("query"):
                         existing.add(str(inp["query"]).strip().lower())
+
+                # 2. Dari agent_execution_logs (khusus node publish_node yang telah dipublikasikan ke CMS/web)
+                cur.execute("SELECT message, details FROM agent_execution_logs WHERE node = 'publish_node';")
+                for msg, det in cur.fetchall():
+                    if msg:
+                        existing.add(msg.strip().lower())
+                    if isinstance(det, dict):
+                        for v in det.values():
+                            if isinstance(v, str):
+                                s = v.strip().lower()
+                                existing.add(s)
+                                for match in re.findall(r'([a-zA-Z0-9_\-\.]+/[a-zA-Z0-9_\-\.]+)', s):
+                                    existing.add(match.lower())
     except Exception as exc:
         logger.warning(f"Gagal membaca riwayat jadwal untuk deduplikasi: {exc}")
     return existing

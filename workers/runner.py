@@ -63,15 +63,23 @@ def _handle_task_success(
         except Exception as db_err:
             logger.warning(f"Gagal memperbarui status schedule {schedule_id}: {db_err}")
 
+    published_title = (
+        final_state.get("dual_content", {}).get("id", {}).get("title")
+        or final_state.get("metadata", {}).get("title")
+        or title
+    )
+
     emit_agent_event(
         thread_id=thread_id,
         node="publish_node",
         status="completed",
-        message=f"Sukses menerbitkan: '{title}'",
+        message=f"Sukses menerbitkan: '{published_title}'",
         details={
             "schedule_id": schedule_id,
             "agent_name": agent_name,
-            "title": title,
+            "title": published_title,
+            "original_title": title,
+            "target_urls": final_state.get("target_urls") or "",
             "result_url": result_url,
         },
     )
