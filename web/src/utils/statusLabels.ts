@@ -21,7 +21,7 @@ export interface HumanStatusConfig {
   badgeBg: string;
   description: string;
   icon: string;
-  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout' | 'team';
+  responsibleWorker: 'stark' | 'usagi' | 'bayzero' | 'scout' | 'team';
 }
 
 export const STATUS_LABELS: Record<string, HumanStatusConfig> = {

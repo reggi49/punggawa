@@ -700,10 +700,10 @@ export function MobileDashboard({
                 const isCompleted = log.status === 'completed' || log.node === 'publish_node';
                 const agent = (log.agent_name || (log.details && log.details.agent_name) || '').toLowerCase();
                 let agentBadge = '🤖 Squad';
-                if (agent.includes('stark')) agentBadge = '⚡ Stark';
-                else if (agent.includes('usagi')) agentBadge = '🦊 Usagi';
-                else if (agent.includes('bay') || agent.includes('zero')) agentBadge = '🔍 Bay-Zero';
-                else if (agent.includes('clara') || agent.includes('scout')) agentBadge = '🎯 Clara';
+                if (agent.includes('stark') || agent.includes('nulis')) agentBadge = '⚡ Kang Nulis';
+                else if (agent.includes('usagi') || agent.includes('dongeng')) agentBadge = '🦊 Kang Dongeng';
+                else if (agent.includes('bay') || agent.includes('zero') || agent.includes('bos')) agentBadge = '🔍 Kang Bos';
+                else if (agent.includes('clara') || agent.includes('scout') || agent.includes('kerja') || agent.includes('job')) agentBadge = '💼 Kang Kerja';
                 else if (agent.includes('janitor')) agentBadge = '🧹 Janitor';
 
                 return (

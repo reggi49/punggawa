@@ -177,7 +177,7 @@ async def get_logs(
 ):
     """
     Mengambil riwayat log eksekusi agen yang tersimpan persisten di PostgreSQL.
-    Mendukung filter berdasarkan agent ('Stark', 'Usagi', 'Bay-Zero', 'Clara'),
+    Mendukung filter berdasarkan agent ('Stark', 'Usagi', 'Bay-Zero', 'Scout'),
     tanggal (YYYY-MM-DD WIB), dan status.
     """
     try:
@@ -815,7 +815,7 @@ async def trigger_services_health_check():
 # =========================================================================
 @app.get("/api/jobs")
 async def list_jobs(limit: int = 50, status: str | None = None):
-    """Mengembalikan daftar lowongan kerja yang sudah dianalisis oleh Clara/Career-Ops."""
+    """Mengembalikan daftar lowongan kerja yang sudah dianalisis oleh Kang Kerja (Scout/Career-Ops)."""
     from orchestrator.connections import postgres_pool
     try:
         with postgres_pool.connection() as conn:
@@ -945,8 +945,8 @@ async def resume_job_task(job_id: str, payload: dict[str, Any] | None = None):
         "thread_id": f"job-{job_id}",
         "node": "fetch_job_node",
         "status": "running",
-        "worker_id": "clara",
-        "message": f"Sinyal resume HITL diterima. Clara melanjutkan kembali ekstraksi job {job_id}...",
+        "worker_id": "scout",
+        "message": f"Sinyal resume HITL diterima. Kang Kerja (Scout) melanjutkan kembali ekstraksi job {job_id}...",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "details": {
             "job_id": job_id,

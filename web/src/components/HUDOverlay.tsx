@@ -43,7 +43,7 @@ import { CareerOpsModal } from './CareerOpsModal';
 
 export interface TaskPreset {
   id: string;
-  agent: 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout';
+  agent: 'stark' | 'usagi' | 'bayzero' | 'scout';
   agentName: string;
   agentRole: string;
   title: string;
@@ -59,12 +59,12 @@ export interface TaskPreset {
 }
 
 export const TASK_PRESETS: TaskPreset[] = [
-  // STARK (Tech Writer & Trend Researcher)
+  // STARK (Kang Nulis: Tech Writer & Trend Researcher)
   {
     id: 'stark_github_trending_global',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'GitHub Trending: Repositori Internasional Viral',
     description: 'Menarik repositori open-source global teratas dari GitHub Trending Weekly (international / all spoken languages) dan menyusun artikel edukatif.',
     type: 'article',
@@ -76,8 +76,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'stark_gnews_tech_global',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'Google News: Headline Teknologi Global (International)',
     description: 'Mengambil headline berita teknologi paling hangat langsung dari section feed resmi Google News Technology International (English).',
     type: 'article',
@@ -90,8 +90,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'stark_github_trending',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'GitHub Trending: Bedah Repositori Python Mingguan',
     description: 'Menarik repositori open-source Python paling viral di GitHub Trending Weekly, menganalisis arsitektur kodenya, dan menyusun artikel edukatif.',
     type: 'article',
@@ -104,8 +104,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'stark_ai_trends_2026',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'Tren AI Agent & Autonomous Coding 2026',
     description: 'Riset tren arsitektur cognitive agents, pair programming otonom, dan benchmarking model reasoning terkini.',
     type: 'article',
@@ -117,8 +117,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'stark_langgraph_arch',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'Arsitektur Multi-Agent dengan LangGraph & Redis',
     description: 'Panduan teknis orkestrasi multi-agent, checkpointer state graph, memory persistence, dan distributed queue.',
     type: 'article',
@@ -130,8 +130,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'stark_web3d_spatial',
     agent: 'stark',
-    agentName: 'Stark',
-    agentRole: 'Tech Architect & Writer',
+    agentName: 'Kang Nulis',
+    agentRole: 'Kang Nulis (Tech Writer)',
     title: 'Modern Web 3D & Spatial UI dengan Three.js & R3F',
     description: 'Studi komprehensif implementasi visualisasi kantor virtual interaktif 60fps dengan React Three Fiber.',
     type: 'article',
@@ -141,12 +141,12 @@ export const TASK_PRESETS: TaskPreset[] = [
     badge: '3D Web',
   },
 
-  // USAGI (Media & Dongeng Curator)
+  // USAGI (Kang Dongeng: Media & Cerita Curator)
   {
     id: 'usagi_dongeng_kancil',
     agent: 'usagi',
-    agentName: 'Usagi',
-    agentRole: 'Dongeng & Media Curator',
+    agentName: 'Kang Dongeng',
+    agentRole: 'Kang Dongeng (Media & Cerita)',
     title: 'Dongeng Nusantara: Kisah Si Kancil & Buaya Cerdik',
     description: 'Kurasi naskah fabel edukatif nusantara, generate cover thumbnail, dan posting ke CMS Dongeng Bogorstore.',
     type: 'dongeng',
@@ -158,8 +158,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'usagi_dongeng_sangkuriang',
     agent: 'usagi',
-    agentName: 'Usagi',
-    agentRole: 'Dongeng & Media Curator',
+    agentName: 'Kang Dongeng',
+    agentRole: 'Kang Dongeng (Media & Cerita)',
     title: 'Legenda: Sangkuriang & Gunung Tangkuban Perahu',
     description: 'Penyusunan naskah cerita rakyat Jawa Barat dengan visual cover dan pesan moral kearifan lokal.',
     type: 'dongeng',
@@ -171,8 +171,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'usagi_visual_cover',
     agent: 'usagi',
-    agentName: 'Usagi',
-    agentRole: 'Dongeng & Media Curator',
+    agentName: 'Kang Dongeng',
+    agentRole: 'Kang Dongeng (Media & Cerita)',
     title: 'Studio Desain: Render Visual Cover & Media',
     description: 'Pembuatan thumbnail visual kreatif resolusi tinggi menggunakan palette Skandinavia modern.',
     type: 'article',
@@ -181,12 +181,12 @@ export const TASK_PRESETS: TaskPreset[] = [
     badge: 'Design Art',
   },
 
-  // BAY-ZERO (SOP Auditor & Lead Server Inspector)
+  // BAY-ZERO (Kang Bos: SOP Auditor & Lead Server Inspector)
   {
     id: 'bayzero_server_health',
     agent: 'bayzero',
-    agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Server Health Inspector',
+    agentName: 'Kang Bos',
+    agentRole: 'Kang Bos (SOP Auditor & Lead)',
     title: 'Pengecekan Kesehatan Server & Microservices Uptime',
     description: 'Inspeksi real-time seluruh microservice eksternal (Keselip, Kataku, Dongeng), latensi HTTP, konektivitas database & Redis, dan status rack server.',
     type: 'article',
@@ -197,8 +197,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'bayzero_cloud_security',
     agent: 'bayzero',
-    agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Server Health Inspector',
+    agentName: 'Kang Bos',
+    agentRole: 'Kang Bos (SOP Auditor & Lead)',
     title: 'Audit Keamanan Server & Hardening Cloud Gateway',
     description: 'Audit arsitektur keamanan server, verifikasi autentikasi token HMAC, mitigasi serangan DDoS, dan isolasi antrean Redis.',
     type: 'article',
@@ -209,8 +209,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'bayzero_audit_sop',
     agent: 'bayzero',
-    agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Server Health Inspector',
+    agentName: 'Kang Bos',
+    agentRole: 'Kang Bos (SOP Auditor & Lead)',
     title: 'Audit Kepatuhan SOP & Quality Gate Publikasi',
     description: 'Inspeksi menyeluruh struktur artikel, verifikasi standar editorial, dan deteksi kejanggalan sebelum rilis.',
     type: 'article',
@@ -221,8 +221,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'bayzero_fact_check',
     agent: 'bayzero',
-    agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Server Health Inspector',
+    agentName: 'Kang Bos',
+    agentRole: 'Kang Bos (SOP Auditor & Lead)',
     title: 'Verifikasi Fakta, Sitasi Sumber & Plagiarisme',
     description: 'Validasi referensi web, akurasi kutipan teknis, dan verifikasi orisinalitas naskah.',
     type: 'article',
@@ -233,8 +233,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'bayzero_clean_system',
     agent: 'bayzero',
-    agentName: 'Bay-Zero',
-    agentRole: 'SOP Auditor & Server Health Inspector',
+    agentName: 'Kang Bos',
+    agentRole: 'Kang Bos (SOP Auditor & Lead)',
     title: 'Pembersihan Buffer Sistem & Maintenance Antrean',
     description: 'Pemeliharaan memori Redis, pembersihan riwayat log kedaluwarsa, dan auto-cleanup database PostgreSQL.',
     type: 'article',
@@ -245,8 +245,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'scout_analyze_url',
     agent: 'scout',
-    agentName: 'Scout',
-    agentRole: 'Career Intelligence Lead',
+    agentName: 'Kang Kerja',
+    agentRole: 'Kang Kerja (Career Intelligence Lead)',
     title: 'Analisis Mendalam Loker dari URL',
     description: 'Evaluasi keselarasan kualifikasi A–H, Dual-Scoring (Fit & Quality), deteksi ATS, Skill Gap Heatmap, serta Tailored Cover Letter.',
     type: 'job_hunt',
@@ -257,8 +257,8 @@ export const TASK_PRESETS: TaskPreset[] = [
   {
     id: 'scout_auto_scout_remote',
     agent: 'scout',
-    agentName: 'Scout',
-    agentRole: 'Career Intelligence Lead',
+    agentName: 'Kang Kerja',
+    agentRole: 'Kang Kerja (Career Intelligence Lead)',
     title: 'Auto-Scout Loker Remote (RemoteOK)',
     description: 'Mencari dan menyaring lowongan remote engineering aktif di RemoteOK yang paling cocok dengan skill profil kandidat.',
     type: 'job_hunt',
@@ -324,10 +324,10 @@ export function HUDOverlay({
     if (logAgentFilter === 'all') return logs;
     return logs.filter((log) => {
       const rawActor = (log.agent_name || (log.details && log.details.agent_name) || '').toLowerCase();
-      if (logAgentFilter === 'stark') return rawActor.includes('stark');
-      if (logAgentFilter === 'usagi') return rawActor.includes('usagi');
-      if (logAgentFilter === 'bayzero') return rawActor.includes('bay') || rawActor.includes('zero');
-      if (logAgentFilter === 'clara') return rawActor.includes('clara') || rawActor.includes('scout') || rawActor.includes('job');
+      if (logAgentFilter === 'stark') return rawActor.includes('stark') || rawActor.includes('nulis') || rawActor.includes('writer');
+      if (logAgentFilter === 'usagi') return rawActor.includes('usagi') || rawActor.includes('dongeng');
+      if (logAgentFilter === 'bayzero') return rawActor.includes('bay') || rawActor.includes('zero') || rawActor.includes('bos');
+      if (logAgentFilter === 'scout') return rawActor.includes('scout') || rawActor.includes('clara') || rawActor.includes('job') || rawActor.includes('kerja');
       if (logAgentFilter === 'janitor') return rawActor.includes('janitor') || rawActor.includes('droid');
       return true;
     });
@@ -942,7 +942,7 @@ export function HUDOverlay({
               </span>
             </div>
             <p style={{ fontSize: '11px', color: '#8A8A82', margin: 0 }}>
-              Multi-Agent Orchestrator • Stark, Usagi, Bay-Zero & Clara
+              Multi-Agent Orchestrator • Kang Nulis, Kang Dongeng, Kang Bos & Kang Kerja
             </p>
           </div>
         </div>
@@ -1042,7 +1042,7 @@ export function HUDOverlay({
             <span>Kalender Konten</span>
           </button>
 
-          {/* Peluang Karir (Career-Ops Clara) Modal Button */}
+          {/* Peluang Karir (Kang Kerja: Career-Ops) Modal Button */}
           <button
             onClick={() => setJobModalOpen(true)}
             style={{
@@ -1061,7 +1061,7 @@ export function HUDOverlay({
               letterSpacing: '0.02em',
               transition: 'all 0.2s ease',
             }}
-            title="Buka Peluang Karir & Hasil Kurasi Loker (Career-Ops Clara)"
+            title="Buka Peluang Karir & Hasil Kurasi Loker (Kang Kerja)"
           >
             <Briefcase size={14} color="#D4A373" />
             <span>Peluang Karir</span>
@@ -1665,10 +1665,10 @@ export function HUDOverlay({
               }}
             >
               <option value="all">Semua Agen</option>
-              <option value="stark">⚡ Stark (Tech)</option>
-              <option value="usagi">🦊 Usagi (Dongeng)</option>
-              <option value="bayzero">🔍 Bay-Zero (SRE)</option>
-              <option value="clara">🎯 Clara (Career)</option>
+              <option value="stark">⚡ Kang Nulis (Writer)</option>
+              <option value="usagi">🦊 Kang Dongeng (Cerita)</option>
+              <option value="bayzero">🔍 Kang Bos (Auditor)</option>
+              <option value="scout">💼 Kang Kerja (Loker)</option>
               <option value="janitor">🧹 Janitor</option>
             </select>
 
@@ -2433,10 +2433,10 @@ export function HUDOverlay({
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                   {[
                     { id: 'all', label: `Semua Misi (${TASK_PRESETS.length})`, icon: '🌟' },
-                    { id: 'stark', label: '⚡ Stark (Writer)', icon: '⚡' },
-                    { id: 'usagi', label: '🦊 Usagi (Dongeng)', icon: '🦊' },
-                    { id: 'bayzero', label: '🛡️ Bay-Zero (Server & Audit)', icon: '🛡️' },
-                    { id: 'scout', label: '🎯 Scout (Career Intelligence)', icon: '🎯' },
+                    { id: 'stark', label: '⚡ Kang Nulis (Writer)', icon: '⚡' },
+                    { id: 'usagi', label: '🦊 Kang Dongeng (Cerita)', icon: '🦊' },
+                    { id: 'bayzero', label: '🛡️ Kang Bos (Auditor & SOP)', icon: '🛡️' },
+                    { id: 'scout', label: '💼 Kang Kerja (Loker & Karir)', icon: '💼' },
                   ].map((tab) => {
                     const active = activeAgentTab === tab.id;
                     return (
@@ -2828,7 +2828,7 @@ export function HUDOverlay({
                     Kalender Editorial & Observability Jadwal
                   </h3>
                   <p style={{ fontSize: '11px', color: '#8A8A82', margin: '2px 0 0 0' }}>
-                    Perencanaan otonom Bay-Zero (Stark @ 09:00 WIB, Usagi @ 19:00 WIB) & Pelaporan Real-Time
+                    Perencanaan otonom Kang Bos (Kang Nulis @ 09:00 WIB, Kang Dongeng @ 19:00 WIB) & Pelaporan Real-Time
                   </p>
                 </div>
               </div>
@@ -3239,10 +3239,20 @@ export function HUDOverlay({
                                 ? '⚡'
                                 : sched.agent_name === 'Usagi'
                                 ? '🦊'
-                                : '📋'}
+                                : sched.agent_name === 'Bay-Zero'
+                                ? '🔍'
+                                : '💼'}
                             </span>
                             <span style={{ fontWeight: 800, color: '#30343A' }}>
-                              {sched.agent_name}
+                              {sched.agent_name === 'Stark'
+                                ? 'Kang Nulis'
+                                : sched.agent_name === 'Usagi'
+                                ? 'Kang Dongeng'
+                                : sched.agent_name === 'Bay-Zero'
+                                ? 'Kang Bos'
+                                : sched.agent_name === 'Scout'
+                                ? 'Kang Kerja'
+                                : sched.agent_name}
                             </span>
                           </div>
 
@@ -4049,7 +4059,7 @@ export function HUDOverlay({
         document.body
       )}
 
-      {/* 9. CAREER-OPS & TALENT OPPORTUNITIES MODAL (Clara) */}
+      {/* 9. CAREER-OPS & TALENT OPPORTUNITIES MODAL (Kang Kerja) */}
       <CareerOpsModal
         isOpen={jobModalOpen}
         onClose={() => setJobModalOpen(false)}

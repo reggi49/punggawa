@@ -88,15 +88,6 @@ export const SCOUT_SEAT_ANCHOR = {
   laptopLocalRotationY: scAngle,
 };
 
-// Clara World Position (Standing facing Bay-Zero in open meeting zone, no chair collision)
-export const CLARA_STAND_ANCHOR = {
-  worldPosition: [-0.95, 0, 0.70] as [number, number, number],
-  worldRotationY: Math.atan2(
-    BAYZERO_SEAT_ANCHOR.seatWorldPosition[0] - -0.95,
-    BAYZERO_SEAT_ANCHOR.seatWorldPosition[2] - 0.70
-  ),
-};
-
 export const WORKSTATION_ANCHORS = {
   stark: WORKSTATION_CONFIG.stark,
   usagi: WORKSTATION_CONFIG.usagi,
@@ -111,12 +102,6 @@ export const WORKSTATION_ANCHORS = {
     deskRotationY: 0,
     seatWorldPosition: SCOUT_SEAT_ANCHOR.seatWorldPosition,
     seatWorldRotationY: SCOUT_SEAT_ANCHOR.seatWorldRotationY,
-  },
-  clara: {
-    deskPosition: MEETING_ZONE_CONFIG.center,
-    deskRotationY: 0,
-    seatWorldPosition: CLARA_STAND_ANCHOR.worldPosition,
-    seatWorldRotationY: CLARA_STAND_ANCHOR.worldRotationY,
   },
 };
 

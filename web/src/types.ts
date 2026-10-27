@@ -6,7 +6,7 @@ import { STATUS_LABELS, HumanStatusConfig } from './utils/statusLabels';
 import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
-  CLARA_STAND_ANCHOR,
+  SCOUT_SEAT_ANCHOR,
 } from './config/layoutAnchors';
 
 export type AgentNodeName =
@@ -101,7 +101,7 @@ export type CharacterAction =
   | 'casual_conversation'
   | 'offline_rest';
 
-export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'clara' | 'scout';
+export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'scout';
 
 export interface WorkerProfile {
   id: WorkerId;
@@ -119,9 +119,9 @@ export interface WorkerProfile {
 export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   stark: {
     id: 'stark',
-    name: 'Stark',
-    codeName: 'Tech Architect',
-    role: 'Tech Architect & Writer',
+    name: 'Kang Nulis',
+    codeName: 'Kang Nulis',
+    role: 'Kang Nulis (Tech Writer)',
     specialty: 'Artikel KodePintar & In-Depth Technical Guides',
     color: '#354A60',
     glowColor: '#C49A6C',
@@ -131,9 +131,9 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   },
   usagi: {
     id: 'usagi',
-    name: 'Usagi',
-    codeName: 'Creative Curator',
-    role: 'Dongeng & Media Curator',
+    name: 'Kang Dongeng',
+    codeName: 'Kang Dongeng',
+    role: 'Kang Dongeng (Media & Cerita)',
     specialty: 'Kurasi YouTube, Cerita Rakyat & Visual Bogorstore',
     color: '#D98078',
     glowColor: '#8DA895',
@@ -143,9 +143,9 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
   },
   bayzero: {
     id: 'bayzero',
-    name: 'Bay-Zero',
-    codeName: 'System Inspector',
-    role: 'SOP Auditor & Server Health Inspector',
+    name: 'Kang Bos',
+    codeName: 'Kang Bos',
+    role: 'Kang Bos (SOP Auditor & Lead)',
     specialty: 'Quality Gate, Pengecekan Server & Uptime Microservices',
     color: '#8DA895',
     glowColor: '#30343A',
@@ -153,29 +153,17 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
     deskPosition: BAYZERO_SEAT_ANCHOR.seatWorldPosition,
     seatRotation: BAYZERO_SEAT_ANCHOR.seatWorldRotationY,
   },
-  clara: {
-    id: 'clara',
-    name: 'Clara',
-    codeName: 'Editorial Partner',
-    role: 'Editorial Lead & Brand Strategist',
-    specialty: 'Content Strategy, Quality Control & Editorial Review',
-    color: '#D4A373',
-    glowColor: '#F59E0B',
-    badgeBg: 'rgba(212, 163, 115, 0.15)',
-    deskPosition: CLARA_STAND_ANCHOR.worldPosition,
-    seatRotation: CLARA_STAND_ANCHOR.worldRotationY,
-  },
   scout: {
     id: 'scout',
-    name: 'Scout',
-    codeName: 'Career Intelligence Lead',
-    role: 'Career Intelligence & Talent Ops',
-    specialty: 'Profile Evolution, ATS Intelligence, Dual-Scoring & Interview Pack',
+    name: 'Kang Kerja',
+    codeName: 'Kang Kerja',
+    role: 'Kang Kerja (Career Intelligence Lead)',
+    specialty: 'Kurasi Loker, Profile Matching, Analisis Karir & Scoring',
     color: '#0D9488',
     glowColor: '#14B8A6',
     badgeBg: 'rgba(13, 148, 136, 0.15)',
-    deskPosition: [-2.2, 0.82, -0.6],
-    seatRotation: Math.PI / 4,
+    deskPosition: SCOUT_SEAT_ANCHOR.seatWorldPosition,
+    seatRotation: SCOUT_SEAT_ANCHOR.seatWorldRotationY,
   },
 };
 

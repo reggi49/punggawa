@@ -237,7 +237,6 @@ export function useAmbientOffice(
     stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode, isDegraded),
     usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
     bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
-    clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode, isDegraded),
     scout: buildVisualState('scout', simulator.getWorkerState('scout'), currentNode, isDegraded),
   }));
 
@@ -256,7 +255,6 @@ export function useAmbientOffice(
         stark: buildVisualState('stark', simulator.getWorkerState('stark'), currentNode, isDegraded),
         usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
         bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
-        clara: buildVisualState('clara', simulator.getWorkerState('clara'), currentNode, isDegraded),
         scout: buildVisualState('scout', simulator.getWorkerState('scout'), currentNode, isDegraded),
       });
     }

@@ -32,8 +32,8 @@ def infer_agent_name(node: str, thread_id: str = "", details: dict[str, Any] | N
         return "Bay-Zero"
     if any(k in node_lower for k in ("janitor", "cleanup", "housekeeping")):
         return "Janitor Droid"
-    if any(k in th_lower or k in node_lower for k in ("job", "career", "clara", "scout")):
-        return "Clara"
+    if any(k in th_lower or k in node_lower for k in ("job", "career", "clara", "scout", "kerja")):
+        return "Scout"
     if "dongeng" in th_lower or any(k in node_lower for k in ("curate_video", "render_cover")):
         return "Usagi"
     if any(k in th_lower or k in node_lower for k in ("article", "stark", "trend", "github", "news")):

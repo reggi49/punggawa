@@ -72,17 +72,46 @@ export function CurvedUltrawideMonitor({
   scale = 1,
   emissiveColor = '#8DA895',
   emissiveIntensity = 0.6,
+  isWorking = false,
 }: {
   position?: [number, number, number];
   rotation?: [number, number, number];
   scale?: number;
   emissiveColor?: string;
   emissiveIntensity?: number;
+  isWorking?: boolean;
 }) {
   const R = 1.6; // 1600R realistic curvature radius
   const arcSpan = 0.58; // ~33 degrees arc (approx 0.95m screen width)
   const thetaStart = Math.PI - arcSpan / 2; // Centered at Math.PI, concave towards +Z (user)
   const screenH = 0.36; // 36cm height for 49" ultrawide display
+  const screenMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const rgbLightRef = useRef<THREE.PointLight>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (screenMatRef.current) {
+      if (isWorking) {
+        // Dynamic RGB rainbow cycle + vivid screen flicker
+        const hue = (t * 0.75 + 0.3) % 1.0;
+        const color = new THREE.Color().setHSL(hue, 1.0, 0.55);
+        const flicker = 0.65 + Math.sin(t * 16.0) * 0.22 + (Math.sin(t * 35.0) > 0.6 ? 0.25 : 0);
+        screenMatRef.current.emissive.copy(color);
+        screenMatRef.current.emissiveIntensity = flicker;
+        if (rgbLightRef.current) {
+          rgbLightRef.current.color.copy(color);
+          rgbLightRef.current.intensity = flicker * 0.6;
+        }
+      } else {
+        screenMatRef.current.emissive.set(emissiveColor);
+        screenMatRef.current.emissiveIntensity = emissiveIntensity;
+        if (rgbLightRef.current) {
+          rgbLightRef.current.intensity = 0.15;
+          rgbLightRef.current.color.set(emissiveColor);
+        }
+      }
+    }
+  });
 
   return (
     <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
@@ -114,6 +143,7 @@ export function CurvedUltrawideMonitor({
       <mesh position={[0, 0.22, R]}>
         <cylinderGeometry args={[R, R, screenH, 32, 1, true, thetaStart, arcSpan]} />
         <meshStandardMaterial
+          ref={screenMatRef}
           color="#0B132B"
           emissive={emissiveColor}
           emissiveIntensity={emissiveIntensity}
@@ -121,6 +151,81 @@ export function CurvedUltrawideMonitor({
           side={THREE.DoubleSide}
         />
       </mesh>
+
+      {/* Dynamic RGB Screen Glow */}
+      <pointLight ref={rgbLightRef} position={[0, 0.24, 0.2]} color={emissiveColor} intensity={0.2} distance={1.2} decay={2} />
+    </group>
+  );
+}
+
+/**
+ * Reusable Interactive RGB Laptop dengan layar kelap-kelip dinamis
+ */
+export function InteractiveRGBLaptop({
+  position = [0, 0, 0],
+  rotation = [0, 0, 0],
+  isWorking = false,
+  defaultEmissive = '#38BDF8',
+  scale = 1.15,
+}: {
+  position?: [number, number, number];
+  rotation?: [number, number, number];
+  isWorking?: boolean;
+  defaultEmissive?: string;
+  scale?: number;
+}) {
+  const laptopModel = useGLTF('/assets/models/props/laptop.glb');
+  const screenMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const lightRef = useRef<THREE.PointLight>(null);
+
+  useFrame(({ clock }) => {
+    const t = clock.getElapsedTime();
+    if (screenMatRef.current) {
+      if (isWorking) {
+        // Dynamic RGB cycling + rapid hacker terminal flicker
+        const hue = (t * 0.9) % 1.0;
+        const color = new THREE.Color().setHSL(hue, 1.0, 0.55);
+        const flicker = 0.7 + Math.sin(t * 17.0) * 0.22 + (Math.sin(t * 39.0) > 0.5 ? 0.3 : 0);
+        screenMatRef.current.emissive.copy(color);
+        screenMatRef.current.emissiveIntensity = flicker;
+        if (lightRef.current) {
+          lightRef.current.color.copy(color);
+          lightRef.current.intensity = flicker * 0.7;
+        }
+      } else {
+        screenMatRef.current.emissive.set(defaultEmissive);
+        screenMatRef.current.emissiveIntensity = 0.3;
+        if (lightRef.current) {
+          lightRef.current.intensity = 0.12;
+          lightRef.current.color.set(defaultEmissive);
+        }
+      }
+    }
+  });
+
+  return (
+    <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
+      <Clone object={laptopModel.scene} />
+      {/* Dynamic Glowing RGB Screen Pane */}
+      <mesh position={[0, 0.145, -0.11]} rotation={[-0.32, 0, 0]}>
+        <planeGeometry args={[0.26, 0.165]} />
+        <meshStandardMaterial
+          ref={screenMatRef}
+          color="#0B132B"
+          emissive={defaultEmissive}
+          emissiveIntensity={0.3}
+          roughness={0.2}
+        />
+      </mesh>
+      {/* Real-time RGB Glow Casting onto Table and Keyboard */}
+      <pointLight
+        ref={lightRef}
+        position={[0, 0.16, 0.05]}
+        color={defaultEmissive}
+        intensity={0.2}
+        distance={0.85}
+        decay={2}
+      />
     </group>
   );
 }
@@ -130,6 +235,8 @@ export function CurvedUltrawideMonitor({
  */
 export function StarkWorkstation({ currentNode }: FurnitureProps) {
   const codeScreenRef = useRef<THREE.MeshStandardMaterial>(null);
+  const termScreenRef = useRef<THREE.MeshStandardMaterial>(null);
+  const rgbLightRef = useRef<THREE.PointLight>(null);
   const keyboardModel = useGLTF('/assets/models/props/computer-keyboard.glb');
   const mouseModel = useGLTF('/assets/models/props/computer-mouse.glb');
   const deskLampModel = useGLTF('/assets/models/props/lamp-desk.glb');
@@ -137,7 +244,10 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
   const isWriting =
     currentNode === 'draft_node' ||
     currentNode === 'processor_node' ||
-    currentNode === 'ingest_node';
+    currentNode === 'ingest_node' ||
+    currentNode === 'enrich_sources_node' ||
+    currentNode === 'scrape_node' ||
+    currentNode === 'ingest_trend_node';
   const isFailed = currentNode === 'failed_node';
   const isDone = currentNode === 'publish_node' || currentNode === 'complete_node';
 
@@ -146,16 +256,56 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
     if (codeScreenRef.current) {
       if (isFailed) {
         codeScreenRef.current.emissive.set('#EF4444');
-        codeScreenRef.current.emissiveIntensity = Math.sin(t * 16) > 0 ? 0.7 : 0.15;
+        codeScreenRef.current.emissiveIntensity = Math.sin(t * 16) > 0 ? 0.8 : 0.15;
+        if (termScreenRef.current) {
+          termScreenRef.current.emissive.set('#EF4444');
+          termScreenRef.current.emissiveIntensity = Math.sin(t * 16) > 0 ? 0.8 : 0.15;
+        }
+        if (rgbLightRef.current) {
+          rgbLightRef.current.color.set('#EF4444');
+          rgbLightRef.current.intensity = Math.sin(t * 16) > 0 ? 0.6 : 0.1;
+        }
       } else if (isWriting) {
-        codeScreenRef.current.emissive.set('#38BDF8');
-        codeScreenRef.current.emissiveIntensity = 0.55 + Math.sin(t * 6) * 0.12;
+        // VIBRANT RGB HACKER/DEVELOPER MONITOR FLICKER
+        const hue1 = (t * 0.85) % 1.0;
+        const hue2 = (hue1 + 0.35) % 1.0;
+        const color1 = new THREE.Color().setHSL(hue1, 1.0, 0.55);
+        const color2 = new THREE.Color().setHSL(hue2, 1.0, 0.55);
+        const flicker1 = 0.65 + Math.sin(t * 18.0) * 0.2 + (Math.sin(t * 43.0) > 0.5 ? 0.25 : 0);
+        const flicker2 = 0.65 + Math.cos(t * 15.0) * 0.2 + (Math.cos(t * 37.0) > 0.5 ? 0.25 : 0);
+
+        codeScreenRef.current.emissive.copy(color1);
+        codeScreenRef.current.emissiveIntensity = flicker1;
+        if (termScreenRef.current) {
+          termScreenRef.current.emissive.copy(color2);
+          termScreenRef.current.emissiveIntensity = flicker2;
+        }
+        if (rgbLightRef.current) {
+          rgbLightRef.current.color.copy(color1);
+          rgbLightRef.current.intensity = flicker1 * 0.6;
+        }
       } else if (isDone) {
         codeScreenRef.current.emissive.set('#10B981');
         codeScreenRef.current.emissiveIntensity = 0.5;
+        if (termScreenRef.current) {
+          termScreenRef.current.emissive.set('#10B981');
+          termScreenRef.current.emissiveIntensity = 0.5;
+        }
+        if (rgbLightRef.current) {
+          rgbLightRef.current.color.set('#10B981');
+          rgbLightRef.current.intensity = 0.3;
+        }
       } else {
         codeScreenRef.current.emissive.set('#38BDF8');
         codeScreenRef.current.emissiveIntensity = 0.35;
+        if (termScreenRef.current) {
+          termScreenRef.current.emissive.set('#818CF8');
+          termScreenRef.current.emissiveIntensity = 0.35;
+        }
+        if (rgbLightRef.current) {
+          rgbLightRef.current.color.set('#38BDF8');
+          rgbLightRef.current.intensity = 0.15;
+        }
       }
     }
   });
@@ -247,6 +397,7 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
         <mesh position={[0, 0.22, 0.014]}>
           <planeGeometry args={[0.53, 0.33]} />
           <meshStandardMaterial
+            ref={termScreenRef}
             color="#0F172A"
             emissive="#64748B"
             emissiveIntensity={0.3}
@@ -263,6 +414,9 @@ export function StarkWorkstation({ currentNode }: FurnitureProps) {
           <meshStandardMaterial color="#2B3038" roughness={0.4} metalness={0.8} />
         </mesh>
       </group>
+
+      {/* Dynamic Screen RGB Projection Light */}
+      <pointLight ref={rgbLightRef} position={[0, 0.98, -0.05]} color="#38BDF8" intensity={0.25} distance={1.2} decay={2} />
 
       {/* Real Kenney Keyboard & Mouse at [0, 0.745, 0.18] */}
       <group position={[0, 0.745, 0.18]}>
@@ -348,24 +502,18 @@ export function UsagiWorkstation({ currentNode }: FurnitureProps) {
         position={[-0.08, 0.74, -0.22]}
         emissiveColor={isCurating ? '#D98078' : '#8DA895'}
         emissiveIntensity={0.6}
+        isWorking={isCurating}
         scale={0.92}
       />
 
-      {/* Angled Companion Laptop */}
-      <group position={[0.55, 0.745, -0.05]} rotation={[0, -0.25, 0]}>
-        <RoundedBox radius={0.01} smoothness={2} args={[0.32, 0.015, 0.22]} position={[0, 0, 0]} castShadow>
-          <meshStandardMaterial color="#C8C4BD" metalness={0.8} roughness={0.25} />
-        </RoundedBox>
-        <group position={[0, 0.01, -0.1]} rotation={[-0.35, 0, 0]}>
-          <RoundedBox radius={0.01} smoothness={2} args={[0.32, 0.22, 0.012]} position={[0, 0.11, 0]}>
-            <meshStandardMaterial color="#2B3038" roughness={0.3} />
-          </RoundedBox>
-          <mesh position={[0, 0.11, 0.007]}>
-            <planeGeometry args={[0.3, 0.2]} />
-            <meshStandardMaterial color="#1E293B" emissive="#38BDF8" emissiveIntensity={0.4} />
-          </mesh>
-        </group>
-      </group>
+      {/* Angled Companion Interactive RGB Laptop */}
+      <InteractiveRGBLaptop
+        position={[0.55, 0.745, -0.05]}
+        rotation={[0, -0.25, 0]}
+        isWorking={isCurating}
+        defaultEmissive="#D98078"
+        scale={0.95}
+      />
 
       {/* Real Kenney Keyboard & Mouse */}
       <group position={[-0.08, 0.745, 0.18]}>
@@ -390,8 +538,13 @@ export function UsagiWorkstation({ currentNode }: FurnitureProps) {
  */
 export function BayZeroWorkstation({ currentNode }: FurnitureProps) {
   const isAudit = currentNode === 'sop_validator_node';
+  const isJobTask =
+    currentNode.startsWith('job_') ||
+    currentNode.includes('fit_node') ||
+    currentNode.includes('draft_application') ||
+    currentNode.includes('generate_prep') ||
+    currentNode.includes('review_critique');
   const chairModel = useGLTF('/models/modern_arm_chair_01/modern_arm_chair_01.gltf');
-  const laptopModel = useGLTF('/assets/models/props/laptop.glb');
 
   return (
     <group position={MEETING_ZONE_CONFIG.center}>
@@ -440,21 +593,21 @@ export function BayZeroWorkstation({ currentNode }: FurnitureProps) {
         );
       })}
 
-      {/* 4. Real Quaternius/Kenney Open Review Laptop on Table directly in front of Chair 0 (Bay-Zero) */}
-      <group
+      {/* 4. Kang Bos (Bay-Zero) Interactive RGB Review Laptop directly in front of Chair 0 */}
+      <InteractiveRGBLaptop
         position={BAYZERO_SEAT_ANCHOR.laptopLocalPosition}
         rotation={[0, BAYZERO_SEAT_ANCHOR.laptopLocalRotationY, 0]}
-      >
-        <Clone object={laptopModel.scene} scale={[1.15, 1.15, 1.15]} />
-      </group>
+        isWorking={isAudit}
+        defaultEmissive="#8DA895"
+      />
 
-      {/* 5. Scout's Career Intelligence Laptop directly in front of Chair 2 (Scout) */}
-      <group
+      {/* 5. Kang Kerja (Scout) Interactive RGB Career Intelligence Laptop directly in front of Chair 2 */}
+      <InteractiveRGBLaptop
         position={SCOUT_SEAT_ANCHOR.laptopLocalPosition}
         rotation={[0, SCOUT_SEAT_ANCHOR.laptopLocalRotationY, 0]}
-      >
-        <Clone object={laptopModel.scene} scale={[1.15, 1.15, 1.15]} />
-      </group>
+        isWorking={isJobTask}
+        defaultEmissive="#0D9488"
+      />
 
       {/* Table Accessories (Coffee Mug) */}
       <group

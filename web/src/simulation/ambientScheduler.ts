@@ -9,7 +9,6 @@
 import * as THREE from 'three';
 import { WorkerId, AmbientActivityType, ActualAgentState, CharacterAction } from '../types';
 import { OfficePOI, OFFICE_POIS, buildSafePath } from './officeNavigation';
-import { CLARA_STAND_ANCHOR } from '../config/layoutAnchors';
 
 export interface WorkerAmbientState {
   id: WorkerId;
@@ -109,24 +108,6 @@ export class AmbientOfficeSimulator {
         socialPartnerId: null,
         socialRole: null,
         characterAction: 'looking_around',
-      },
-      clara: {
-        id: 'clara',
-        actualState: 'Meeting',
-        ambientActivity: 'CasualConversation',
-        currentPosition: [...CLARA_STAND_ANCHOR.worldPosition],
-        targetPosition: [...CLARA_STAND_ANCHOR.worldPosition],
-        targetRotationY: CLARA_STAND_ANCHOR.worldRotationY,
-        isSeated: false,
-        pathQueue: [],
-        destinationPOI: null,
-        activityStartTime: now,
-        activityDuration: 600000,
-        cooldowns: { social: 0, coffee: 0, server: 0, easel: 0, lounge: 0 },
-        recentActivities: ['CasualConversation'],
-        socialPartnerId: 'bayzero',
-        socialRole: 'speaker',
-        characterAction: 'casual_conversation',
       },
       scout: {
         id: 'scout',

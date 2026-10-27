@@ -183,26 +183,53 @@ export function StylizedHumanoidCharacter({
 
       chest.rotation.x = 0.08; // Punggung bersandar tegak alami pada sandaran kursi di z = -0.22
 
-      if (action === 'intense_typing') {
-        // Mengetik di keyboard: Lengan atas -0.45, lengan bawah -1.1 menyentuh keyboard (y = 0.76)
-        const typeSpeed = 22.0;
-        head.rotation.x = 0.18;
-        head.rotation.y = Math.sin(t * 10) * 0.03;
+      const isActivelyWorking = isActive || actualState === 'Working';
+      const isTypingAction =
+        action === 'intense_typing' ||
+        (isActivelyWorking && isSeated && action !== 'confused_scratch' && action !== 'success_celebration');
 
-        leftShoulder.rotation.x = THREE.MathUtils.lerp(leftShoulder.rotation.x, -0.45, delta * 12);
+      if (isTypingAction) {
+        // ENHANCED LIVELY KEYBOARD TYPING ANIMATION
+        // Gerakan tangan mengetik naik-turun secara tegas, dinamis dan realistis
+        const typeCadence = 18.0;
+        const leftTap = Math.sin(t * typeCadence) * 0.16 + (Math.sin(t * 37.0) > 0.4 ? 0.05 : -0.02);
+        const rightTap = Math.cos(t * (typeCadence + 1.6)) * 0.16 + (Math.cos(t * 31.0) > 0.4 ? 0.05 : -0.02);
+
+        // Micro-pause sesaat untuk berpikir
+        const isTypingBurst = Math.sin(t * 1.6) > -0.7;
+        const burstFactor = isTypingBurst ? 1.0 : 0.25;
+
+        // Kepala fokus ke monitor/keyboard dengan anggukan ritmis alami
+        head.rotation.x = THREE.MathUtils.lerp(head.rotation.x, 0.22 + Math.sin(t * 4.0) * 0.03, delta * 12);
+        head.rotation.y = THREE.MathUtils.lerp(head.rotation.y, Math.sin(t * 1.5) * 0.05, delta * 12);
+
+        // Bahu bergeser dinamis mengikuti tuts keyboard
+        leftShoulder.rotation.x = THREE.MathUtils.lerp(
+          leftShoulder.rotation.x,
+          -0.45 + leftTap * 0.06 * burstFactor,
+          delta * 16
+        );
+        leftShoulder.rotation.y = THREE.MathUtils.lerp(leftShoulder.rotation.y, Math.sin(t * 2.5) * 0.05, delta * 10);
         leftShoulder.rotation.z = 0.16;
+
+        rightShoulder.rotation.x = THREE.MathUtils.lerp(
+          rightShoulder.rotation.x,
+          -0.45 + rightTap * 0.06 * burstFactor,
+          delta * 16
+        );
+        rightShoulder.rotation.y = THREE.MathUtils.lerp(rightShoulder.rotation.y, -Math.sin(t * 2.5) * 0.05, delta * 10);
+        rightShoulder.rotation.z = -0.16;
+
+        // Siku (Elbow) berotasi tegas ke atas-bawah menekan keyboard
         leftElbow.rotation.x = THREE.MathUtils.lerp(
           leftElbow.rotation.x,
-          -1.1 + Math.sin(t * typeSpeed) * 0.04,
-          delta * 12
+          -1.12 + leftTap * burstFactor,
+          delta * 22
         );
-
-        rightShoulder.rotation.x = THREE.MathUtils.lerp(rightShoulder.rotation.x, -0.45, delta * 12);
-        rightShoulder.rotation.z = -0.16;
         rightElbow.rotation.x = THREE.MathUtils.lerp(
           rightElbow.rotation.x,
-          -1.1 + Math.cos(t * typeSpeed) * 0.04,
-          delta * 12
+          -1.12 + rightTap * burstFactor,
+          delta * 22
         );
       } else if (action === 'looking_monitor' || action === 'inspecting_sop') {
         // Memeriksa layar monitor / laptop dengan teliti
@@ -543,7 +570,15 @@ export function StylizedHumanoidCharacter({
         if (!showPill) return null;
 
         const workerProfile = WORKER_PROFILES[id];
-        const workerName = workerProfile?.name || (id === 'bayzero' ? 'Bay-Zero' : id === 'clara' ? 'Clara' : id);
+        const workerName =
+          workerProfile?.name ||
+          (id === 'stark'
+            ? 'Kang Nulis'
+            : id === 'usagi'
+            ? 'Kang Dongeng'
+            : id === 'bayzero'
+            ? 'Kang Bos'
+            : 'Kang Kerja');
 
         return (
           <Html position={[0, isSeated ? 1.62 : 2.05, 0]} center distanceFactor={14} zIndexRange={[50, 0]}>
@@ -598,7 +633,7 @@ export function StylizedHumanoidCharacter({
         {/* Celana Kantor / Office Chinos (Rounded Organic Volume) */}
         <RoundedBox radius={0.06} smoothness={5} args={[0.31, 0.17, 0.22]} position={[0, 0, 0]} castShadow receiveShadow>
           <meshStandardMaterial
-            color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+            color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
             roughness={0.7}
           />
         </RoundedBox>
@@ -616,7 +651,7 @@ export function StylizedHumanoidCharacter({
           {/* Kemeja / Sweater Kantor (Rounded Soft Bevel) */}
           <RoundedBox radius={0.075} smoothness={5} args={[0.36, 0.33, 0.23]} position={[0, 0.16, 0]} castShadow receiveShadow>
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
               roughness={0.75}
               metalness={0.0}
             />
@@ -626,14 +661,14 @@ export function StylizedHumanoidCharacter({
           <mesh position={[-0.18, 0.27, 0]} castShadow>
             <sphereGeometry args={[0.075, 12, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
               roughness={0.75}
             />
           </mesh>
           <mesh position={[0.18, 0.27, 0]} castShadow>
             <sphereGeometry args={[0.075, 12, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
               roughness={0.75}
             />
           </mesh>
@@ -642,7 +677,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.065, 0.022, 10, 20]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#EFE9DF' : id === 'clara' ? '#A85A42' : '#4B535E'}
+              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#EFE9DF' : '#4B535E'}
               roughness={0.8}
             />
           </mesh>
@@ -651,7 +686,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, 0.36, 0]} castShadow>
             <cylinderGeometry args={[0.048, 0.052, 0.08, 14]} />
             <meshStandardMaterial
-              color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+              color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
               roughness={0.6}
             />
           </mesh>
@@ -661,7 +696,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, 0.07, 0]} castShadow>
               <sphereGeometry args={[0.115, 18, 18]} />
               <meshStandardMaterial
-                color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+                color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
                 roughness={0.6}
               />
             </mesh>
@@ -752,23 +787,6 @@ export function StylizedHumanoidCharacter({
                 </mesh>
               </group>
             )}
-
-            {id === 'clara' && (
-              <group position={[0, 0.09, 0]}>
-                <mesh position={[0, 0.05, -0.01]} castShadow>
-                  <sphereGeometry args={[0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.7]} />
-                  <meshStandardMaterial color="#6B4226" roughness={0.65} />
-                </mesh>
-                <mesh position={[-0.08, -0.01, 0.04]} rotation={[0, 0, 0.15]} castShadow>
-                  <capsuleGeometry args={[0.03, 0.14, 6, 8]} />
-                  <meshStandardMaterial color="#6B4226" roughness={0.65} />
-                </mesh>
-                <mesh position={[0.08, -0.01, 0.04]} rotation={[0, 0, -0.15]} castShadow>
-                  <capsuleGeometry args={[0.03, 0.14, 6, 8]} />
-                  <meshStandardMaterial color="#6B4226" roughness={0.65} />
-                </mesh>
-              </group>
-            )}
           </group>
 
           {/* 4. LENGAN KIRI LENGKAP (Shoulder -> Upper Arm -> Elbow -> Forearm -> Hand) */}
@@ -777,7 +795,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.13, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.18, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                 roughness={0.75}
               />
             </mesh>
@@ -787,7 +805,7 @@ export function StylizedHumanoidCharacter({
               <mesh castShadow>
                 <sphereGeometry args={[0.042, 10, 10]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                   roughness={0.75}
                 />
               </mesh>
@@ -796,7 +814,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, -0.11, 0]} castShadow>
                 <capsuleGeometry args={[0.040, 0.16, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                   roughness={0.75}
                 />
               </mesh>
@@ -806,14 +824,14 @@ export function StylizedHumanoidCharacter({
                 <mesh castShadow>
                   <capsuleGeometry args={[0.032, 0.04, 8, 10]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
                     roughness={0.6}
                   />
                 </mesh>
                 <mesh position={[-0.02, 0.01, 0.01]} rotation={[0.3, 0, -0.4]} castShadow>
                   <capsuleGeometry args={[0.012, 0.024, 6, 8]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
                     roughness={0.6}
                   />
                 </mesh>
@@ -840,7 +858,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.13, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.18, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                 roughness={0.75}
               />
             </mesh>
@@ -850,7 +868,7 @@ export function StylizedHumanoidCharacter({
               <mesh castShadow>
                 <sphereGeometry args={[0.042, 10, 10]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                   roughness={0.75}
                 />
               </mesh>
@@ -859,7 +877,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, -0.11, 0]} castShadow>
                 <capsuleGeometry args={[0.040, 0.16, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : id === 'clara' ? '#C26D53' : '#646F7E'}
+                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
                   roughness={0.75}
                 />
               </mesh>
@@ -869,14 +887,14 @@ export function StylizedHumanoidCharacter({
                 <mesh castShadow>
                   <capsuleGeometry args={[0.032, 0.04, 8, 10]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
                     roughness={0.6}
                   />
                 </mesh>
                 <mesh position={[0.02, 0.01, 0.01]} rotation={[0.3, 0, 0.4]} castShadow>
                   <capsuleGeometry args={[0.012, 0.024, 6, 8]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : id === 'clara' ? '#ECC5B0' : '#D4A57A'}
+                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
                     roughness={0.6}
                   />
                 </mesh>
@@ -909,7 +927,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, -0.19, 0]} castShadow>
             <capsuleGeometry args={[0.055, 0.28, 8, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
               roughness={0.7}
             />
           </mesh>
@@ -919,7 +937,7 @@ export function StylizedHumanoidCharacter({
             <mesh castShadow>
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
                 roughness={0.7}
               />
             </mesh>
@@ -928,7 +946,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.17, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.26, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
                 roughness={0.7}
               />
             </mesh>
@@ -944,7 +962,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, 0.012, 0.01]} rotation={[0.2, 0, 0]} castShadow>
                 <capsuleGeometry args={[0.038, 0.11, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : id === 'clara' ? '#3E2723' : '#2C2620'}
+                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : '#2C2620'}
                   roughness={0.5}
                 />
               </mesh>
@@ -958,7 +976,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, -0.19, 0]} castShadow>
             <capsuleGeometry args={[0.055, 0.28, 8, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
               roughness={0.7}
             />
           </mesh>
@@ -968,7 +986,7 @@ export function StylizedHumanoidCharacter({
             <mesh castShadow>
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
                 roughness={0.7}
               />
             </mesh>
@@ -977,7 +995,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.17, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.26, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : id === 'clara' ? '#2C3539' : '#2E333D'}
+                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
                 roughness={0.7}
               />
             </mesh>
@@ -993,7 +1011,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, 0.012, 0.01]} rotation={[0.2, 0, 0]} castShadow>
                 <capsuleGeometry args={[0.038, 0.11, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : id === 'clara' ? '#3E2723' : '#2C2620'}
+                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : '#2C2620'}
                   roughness={0.5}
                 />
               </mesh>

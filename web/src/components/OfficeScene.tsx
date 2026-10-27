@@ -18,7 +18,6 @@ import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
   SCOUT_SEAT_ANCHOR,
-  CLARA_STAND_ANCHOR,
 } from '../config/layoutAnchors';
 
 interface OfficeSceneProps {
@@ -147,23 +146,7 @@ export function OfficeScene({
         dotColorOverride={isDegraded ? '#EF4444' : (characters.bayzero.isActive ? undefined : '#F59E0B')}
       />
 
-      {/* Clara: Central Table Editorial Partner (Standing with Coffee Mug in Discussion) */}
-      <StylizedHumanoidCharacter
-        id="clara"
-        currentNode={currentNode}
-        action="casual_conversation"
-        targetPos={CLARA_STAND_ANCHOR.worldPosition}
-        targetRotY={CLARA_STAND_ANCHOR.worldRotationY}
-        isActive={false}
-        isSeated={false}
-        socialRole="speaker"
-        holdingCoffeeMug={true}
-        actualState="Meeting"
-        badgeLabelOverride="Meeting"
-        dotColorOverride="#F59E0B"
-      />
-
-      {/* Scout: Central Table Career Intelligence Lead (Seated Opposite Bay-Zero) */}
+      {/* Scout / Kang Kerja: Central Table Career Intelligence Lead (Seated Opposite Bay-Zero) */}
       <StylizedHumanoidCharacter
         id="scout"
         currentNode={currentNode}
