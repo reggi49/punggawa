@@ -295,9 +295,10 @@ def scrape_node(state: AgentState) -> dict[str, Any]:
         }
     except Exception as exc:
         logger.warning(f"Scrape URL eksternal gagal: {exc}. Mengaktifkan fallback pengetahuan AI internal.")
+        input_data = state.get("input_data") or {}
         topic = (
-            state.get("input_data", {}).get("topic")
-            or state.get("input_data", {}).get("query")
+            input_data.get("topic")
+            or input_data.get("query")
             or "Topik Terkini"
         )
         fallback_content = (

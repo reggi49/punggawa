@@ -110,7 +110,7 @@ def search_brave(
                 return []
 
             data = resp.json()
-            raw_results = data.get("web", {}).get("results", [])
+            raw_results = (data.get("web") or {}).get("results", [])
             results = []
             for item in raw_results:
                 url = item.get("url", "")

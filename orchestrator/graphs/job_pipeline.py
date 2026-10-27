@@ -144,7 +144,7 @@ def fetch_job_node(state: JobAgentState) -> dict[str, Any]:
     # 3. Jika tidak ada URL langsung, jalankan auto-scout remote jobs
     logger.info("URL tidak diberikan, menjalankan auto-scouting lowongan remote via RemoteOK...")
     profile = load_career_profile()
-    keywords = profile.get("core_competencies", {}).get("languages", ["python", "golang", "react"])
+    keywords = (profile.get("core_competencies") or {}).get("languages", ["python", "golang", "react"])
     remote_jobs = search_remote_jobs(keywords=keywords, limit=1)
 
     if not remote_jobs:
@@ -246,7 +246,7 @@ def draft_application_node(state: JobAgentState) -> dict[str, Any]:
     follow_up = generate_follow_up_email(
         company_name=company,
         role_title=role,
-        candidate_name=profile.get("personal", {}).get("name", "Reggi"),
+        candidate_name=(profile.get("personal") or {}).get("name", "Reggi"),
         days_elapsed=14,
     )
 

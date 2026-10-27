@@ -41,9 +41,9 @@ Tugasmu adalah menganalisis data proyek baru, pencapaian baru, atau repositori b
 lalu memperkaya profil kandidat agar penilaian lowongan kerja tetap akurat dan mutakhir.
 
 PROFIL KANDIDAT SAAT INI:
-Languages: {current_profile.get('core_competencies', {}).get('languages', [])}
-Frameworks/Tools: {current_profile.get('core_competencies', {}).get('frameworks_and_tools', [])}
-Specialties: {current_profile.get('core_competencies', {}).get('specialties', [])}
+Languages: {(current_profile.get('core_competencies') or {}).get('languages', [])}
+Frameworks/Tools: {(current_profile.get('core_competencies') or {}).get('frameworks_and_tools', [])}
+Specialties: {(current_profile.get('core_competencies') or {}).get('specialties', [])}
 CV Summary:
 {current_profile.get('master_cv_markdown', '')[:1500]}
 

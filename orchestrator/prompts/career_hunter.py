@@ -245,10 +245,10 @@ Gunakan informasi memory di atas sebagai konteks tambahan!
 Tugasmu adalah menganalisis lowongan kerja secara kritis, realistis, dan jujur berdasarkan profil kandidat dan data riwayat berikut:
 
 PROFIL KANDIDAT:
-Nama: {profile.get('personal', {}).get('name', 'Kandidat')}
-Lokasi: {profile.get('personal', {}).get('location', 'Indonesia')}
-Target Role: {profile.get('target_preferences', {}).get('target_roles', [])}
-Bahasa & Tools Utama: {profile.get('core_competencies', {}).get('languages', [])} + {profile.get('core_competencies', {}).get('frameworks_and_tools', [])}
+Nama: {(profile.get('personal') or {}).get('name', 'Kandidat')}
+Lokasi: {(profile.get('personal') or {}).get('location', 'Indonesia')}
+Target Role: {(profile.get('target_preferences') or {}).get('target_roles', [])}
+Bahasa & Tools Utama: {(profile.get('core_competencies') or {}).get('languages', [])} + {(profile.get('core_competencies') or {}).get('frameworks_and_tools', [])}
 Ringkasan CV:
 {profile.get('master_cv_markdown', '')[:2000]}
 
@@ -339,8 +339,8 @@ KEMBALIKAN HANYA FORMAT JSON MURNI:
         ats_vendor=result.get("ats_vendor"),
         quality_score=result.get("job_quality_score", 3),
         fit_score=result.get("fit_score", 3),
-        culture_notes=result.get("quality_breakdown", {}).get("culture_summary", ""),
-        tech_stack=result.get("evaluation_report", {}).get("C_skills_match", {}).get("matching_skills", []),
+        culture_notes=(result.get("quality_breakdown") or {}).get("culture_summary", ""),
+        tech_stack=(result.get("evaluation_report") or {}).get("C_skills_match", {}).get("matching_skills", []),
         interview_insights=result.get("evaluation_report", {}),
     )
 
@@ -364,14 +364,14 @@ def draft_application(
 Tugasmu adalah menyusun aplikasi lamaran kerja yang tajam, persuasif, to-the-point, dan ATS-optimized.
 
 KANDIDAT:
-Nama: {profile.get('personal', {}).get('name', 'Kandidat')}
+Nama: {(profile.get('personal') or {}).get('name', 'Kandidat')}
 CV & Pengalaman:
 {profile.get('master_cv_markdown', '')[:2500]}
 
 INFORMASI LOKER:
 Posisi: {evaluation.get('role_title')} di {evaluation.get('company_name')}
-Matching Skills: {evaluation.get('evaluation_report', {}).get('C_skills_match', {}).get('matching_skills', [])}
-Key Pitch: {evaluation.get('evaluation_report', {}).get('H_pitch_points', [])}
+Matching Skills: {(evaluation.get('evaluation_report') or {}).get('C_skills_match', {}).get('matching_skills', [])}
+Key Pitch: {(evaluation.get('evaluation_report') or {}).get('H_pitch_points', [])}
 
 DESKRIPSI LOKER:
 \"\"\"

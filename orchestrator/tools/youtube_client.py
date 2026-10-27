@@ -220,8 +220,8 @@ def list_channel_videos(
                         },
                     ).json()
                 for it in pl.get("items", []):
-                    vid = it.get("contentDetails", {}).get("videoId")
-                    title = it.get("snippet", {}).get("title")
+                    vid = (it.get("contentDetails") or {}).get("videoId")
+                    title = (it.get("snippet") or {}).get("title")
                     if vid and title and vid not in processed:
                         videos.append({"id": vid, "title": title})
                 return videos

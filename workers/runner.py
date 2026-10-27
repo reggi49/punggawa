@@ -34,6 +34,7 @@ def _handle_task_success(
     published_ids = final_state.get("published_ids") or {}
     cms_res = final_state.get("cms_post_result") or {}
     curation_res = final_state.get("curation_result") or {}
+    video_id = final_state.get("video_id")
 
     if published_ids.get("id"):
         result_url = f"https://www.kodeabc.tech/article/{published_ids['id']}"
@@ -41,6 +42,11 @@ def _handle_task_success(
         result_url = cms_res["url"]
     elif curation_res.get("skip"):
         result_url = f"Dilewati ({curation_res.get('reason', 'skip')})"
+    elif video_id:
+        if final_state.get("is_short"):
+            result_url = f"https://www.youtube.com/shorts/{video_id}"
+        else:
+            result_url = f"https://www.youtube.com/watch?v={video_id}"
     elif final_state.get("saved_job_id"):
         job_id = final_state.get("saved_job_id")
         eval_res = final_state.get("evaluation_result") or {}
@@ -63,9 +69,15 @@ def _handle_task_success(
         except Exception as db_err:
             logger.warning(f"Gagal memperbarui status schedule {schedule_id}: {db_err}")
 
+    dual_content = final_state.get("dual_content") or {}
+    metadata = final_state.get("metadata") or {}
+    video_meta = final_state.get("video_metadata") or {}
+
     published_title = (
-        final_state.get("dual_content", {}).get("id", {}).get("title")
-        or final_state.get("metadata", {}).get("title")
+        (dual_content.get("id") or {}).get("title")
+        or metadata.get("title")
+        or curation_res.get("title")
+        or video_meta.get("title")
         or title
     )
 

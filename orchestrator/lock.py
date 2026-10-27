@@ -140,7 +140,7 @@ def with_distributed_lock(
                     config = args[1]
 
                 if isinstance(config, dict):
-                    thread_id = config.get("configurable", {}).get("thread_id")
+                    thread_id = (config.get("configurable") or {}).get("thread_id")
 
             if not thread_id:
                 raise ValueError("thread_id wajib disertakan untuk mengaktifkan Distributed Lock.")
