@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Terminal,
@@ -345,6 +345,28 @@ export function HUDOverlay({
   const [servicesModalOpen, setServicesModalOpen] = useState(false);
   const [logAgentFilter, setLogAgentFilter] = useState<string>('all');
 
+  // Dynamic clearance measurement so side panels never collide with the Top Header Bar
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerBottom, setHeaderBottom] = useState<number>(108);
+
+  useEffect(() => {
+    if (!headerRef.current) return;
+    const updatePosition = () => {
+      if (headerRef.current) {
+        const rect = headerRef.current.getBoundingClientRect();
+        setHeaderBottom(Math.max(104, Math.round(rect.bottom) + 14));
+      }
+    };
+    updatePosition();
+    const observer = new ResizeObserver(updatePosition);
+    observer.observe(headerRef.current);
+    window.addEventListener('resize', updatePosition);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updatePosition);
+    };
+  }, []);
+
   // Filter logs per agent
   const filteredLogs = useMemo(() => {
     if (logAgentFilter === 'all') return logs;
@@ -354,6 +376,7 @@ export function HUDOverlay({
       if (logAgentFilter === 'usagi') return rawActor.includes('usagi') || rawActor.includes('dongeng');
       if (logAgentFilter === 'bayzero') return rawActor.includes('bay') || rawActor.includes('zero') || rawActor.includes('bos');
       if (logAgentFilter === 'scout') return rawActor.includes('scout') || rawActor.includes('clara') || rawActor.includes('job') || rawActor.includes('kerja');
+      if (logAgentFilter === 'sosmed') return rawActor.includes('sosmed') || rawActor.includes('tiktok') || rawActor.includes('postiz');
       if (logAgentFilter === 'janitor') return rawActor.includes('janitor') || rawActor.includes('droid');
       return true;
     });
@@ -919,6 +942,7 @@ export function HUDOverlay({
     <div style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 10 }}>
       {/* 1. TOP HEADER BAR */}
       <div
+        ref={headerRef}
         className="warm-panel"
         style={{
           pointerEvents: 'auto',
@@ -1248,6 +1272,7 @@ export function HUDOverlay({
         isDegraded={isDegraded}
         isRechecking={isRechecking}
         isDismissed={isAlertDismissed}
+        topOffset={headerBottom}
         onDismiss={onDismissAlert}
         onRecheck={onRecheckHealth}
         onViewDetails={() => setServicesModalOpen(true)}
@@ -1260,9 +1285,11 @@ export function HUDOverlay({
           style={{
             pointerEvents: 'auto',
             position: 'absolute',
-            top: '90px',
+            top: `${headerBottom}px`,
             left: '20px',
             width: '320px',
+            maxHeight: `calc(100vh - ${headerBottom + 70}px)`,
+            overflowY: 'auto',
             borderRadius: '16px',
             padding: '14px',
             display: 'flex',
@@ -1272,6 +1299,7 @@ export function HUDOverlay({
             boxShadow: `0 8px 24px rgba(0, 0, 0, 0.08), 0 0 10px ${humanStatus.glowColor}10`,
             background: 'rgba(248, 246, 240, 0.94)',
             backdropFilter: 'blur(12px)',
+            transition: 'top 0.2s ease',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1430,9 +1458,11 @@ export function HUDOverlay({
           style={{
             pointerEvents: 'auto',
             position: 'absolute',
-            top: '90px',
+            top: `${headerBottom}px`,
             right: '20px',
             width: '320px',
+            maxHeight: `calc(100vh - ${headerBottom + 70}px)`,
+            overflowY: 'auto',
             borderRadius: '16px',
             padding: '14px',
             display: 'flex',
@@ -1440,6 +1470,7 @@ export function HUDOverlay({
             gap: '10px',
             border: '1px solid rgba(196, 154, 108, 0.3)',
             boxShadow: '0 8px 20px rgba(0, 0, 0, 0.1)',
+            transition: 'top 0.2s ease',
           }}
         >
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -1459,7 +1490,7 @@ export function HUDOverlay({
 
         {teamPanelOpen && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {(['stark', 'bayzero', 'usagi'] as WorkerId[]).map((wId) => {
+            {(['stark', 'bayzero', 'usagi', 'scout', 'sosmed'] as WorkerId[]).map((wId) => {
               const prof = WORKER_PROFILES[wId];
               const visual = characterStates?.[wId];
               const isUptimeAlertOutdated =

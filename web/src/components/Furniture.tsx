@@ -180,8 +180,31 @@ export function InteractiveRGBLaptop({
   scale?: number;
 }) {
   const laptopModel = useGLTF('/assets/models/props/laptop.glb');
-  const screenMatRef = useRef<THREE.MeshStandardMaterial>(null);
+  const screenMatRef = useRef<THREE.MeshStandardMaterial | null>(null);
   const lightRef = useRef<THREE.PointLight>(null);
+
+  // Clone laptop model hierarchy and bind screenMat directly to Mesh_laptop_1 (the real 3D model screen polygon)
+  const clonedScene = useMemo(() => {
+    const scene = laptopModel.scene.clone(true);
+    scene.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.name === 'Mesh_laptop_1') {
+          // Exactly attach screen material to the real laptop screen mesh!
+          const screenMat = new THREE.MeshStandardMaterial({
+            color: '#0B132B',
+            emissive: new THREE.Color(defaultEmissive),
+            emissiveIntensity: 1.3,
+            roughness: 0.15,
+            metalness: 0.1,
+          });
+          screenMatRef.current = screenMat;
+          mesh.material = screenMat;
+        }
+      }
+    });
+    return scene;
+  }, [laptopModel.scene, defaultEmissive]);
 
   useFrame(({ clock }) => {
     const t = clock.getElapsedTime();
@@ -216,19 +239,7 @@ export function InteractiveRGBLaptop({
     <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
       {/* Center laptop model so its origin is at the center of the base */}
       <group position={[-0.132, 0, 0.12]}>
-        <Clone object={laptopModel.scene} />
-        {/* Dynamic Glowing RGB Screen Pane: precisely matched to laptop screen bezel */}
-        <mesh position={[0.132, 0.088, -0.1935]} rotation={[-0.421, 0, 0]}>
-          <planeGeometry args={[0.228, 0.126]} />
-          <meshStandardMaterial
-            ref={screenMatRef}
-            color="#0B132B"
-            emissive={defaultEmissive}
-            emissiveIntensity={1.3}
-            roughness={0.15}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
+        <primitive object={clonedScene} />
         {/* Real-time RGB Glow Casting onto Table and Keyboard */}
         <pointLight
           ref={lightRef}

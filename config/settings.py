@@ -152,6 +152,32 @@ class Settings(BaseSettings):
         description="Base WebSocket URL container Browserless",
     )
 
+    # Postiz Social Media Integrations
+    POSTIZ_API_KEY: str = Field(
+        "",
+        description="Postiz public API key for social media automation",
+    )
+    POSTIZ_BASE_URL: str = Field(
+        "https://sosial.bogorstore.com/api/public/v1",
+        description="Postiz public API base URL",
+    )
+    POSTIZ_TIKTOK_INTEGRATION_ID: str = Field(
+        "cmw2y48yi0003o274ue9csad3",
+        description="Postiz integration ID for TikTok (Kedai Daily Nurul)",
+    )
+    POSTIZ_INSTAGRAM_INTEGRATION_ID: str = Field(
+        "cmvvzqhn7000epl6yd8bp7mzz",
+        description="Postiz integration ID for Instagram (Regi)",
+    )
+    POSTIZ_THREADS_INTEGRATION_ID: str = Field(
+        "cmw1m3jvh0001o274j5o6snns",
+        description="Postiz integration ID for Threads (reggimuhamad)",
+    )
+    POSTIZ_YOUTUBE_INTEGRATION_ID: str = Field(
+        "cmw1jqlvs0001mk736aotawcm",
+        description="Postiz integration ID for YouTube (Dongeng Nusantara)",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

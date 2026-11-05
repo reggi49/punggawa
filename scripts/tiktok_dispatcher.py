@@ -21,12 +21,14 @@ project_root = os.path.abspath(os.path.join(current_dir, ".."))
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
+from config.settings import settings
+
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("TikTokDispatcher")
 
-POSTIZ_API_KEY = "d59b5fb460b5b78844e9ddd597a2bf575dc034b34d87e11868d21b3406837344"
-POSTIZ_BASE_URL = "https://sosial.bogorstore.com/api/public/v1"
-TIKTOK_INTEGRATION_ID = "cmw2y48yi0003o274ue9csad3"  # Kedai Daily Nurul
+POSTIZ_API_KEY = settings.POSTIZ_API_KEY
+POSTIZ_BASE_URL = settings.POSTIZ_BASE_URL
+TIKTOK_INTEGRATION_ID = settings.POSTIZ_TIKTOK_INTEGRATION_ID
 QUEUE_DIR = os.path.join(project_root, "data", "tiktok_queue")
 
 

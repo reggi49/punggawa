@@ -126,7 +126,7 @@ export function StylizedHumanoidCharacter({
   const humanStatus = getHumanStatus(currentNode);
 
   useFrame(({ clock }, delta) => {
-    const t = clock.getElapsedTime() + (id === 'stark' ? 0 : id === 'usagi' ? 1.6 : 3.2);
+    const t = clock.getElapsedTime() + (id === 'stark' ? 0 : id === 'usagi' ? 1.6 : id === 'bayzero' ? 3.2 : id === 'scout' ? 4.8 : 6.4);
     const root = rootRef.current;
     if (!root) return;
 
@@ -716,6 +716,8 @@ export function StylizedHumanoidCharacter({
             ? 'Kang Dongeng'
             : id === 'bayzero'
             ? 'Kang Bos'
+            : id === 'sosmed'
+            ? 'Kang Sosmed'
             : 'Kang Kerja');
 
         return (

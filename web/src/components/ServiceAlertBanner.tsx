@@ -7,6 +7,7 @@ export interface ServiceAlertBannerProps {
   isDegraded?: boolean;
   isRechecking?: boolean;
   isDismissed?: boolean;
+  topOffset?: number;
   onRecheck?: () => void;
   onDismiss?: () => void;
   onOpenDetailsModal?: () => void;
@@ -18,6 +19,7 @@ export function ServiceAlertBanner({
   isDegraded,
   isRechecking = false,
   isDismissed = false,
+  topOffset,
   onRecheck,
   onDismiss,
   onOpenDetailsModal,
@@ -42,7 +44,7 @@ export function ServiceAlertBanner({
     <div
       style={{
         position: 'absolute',
-        top: '82px',
+        top: `${topOffset ?? 108}px`,
         left: '20px',
         right: '20px',
         zIndex: 50,

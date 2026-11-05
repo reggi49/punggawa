@@ -655,7 +655,7 @@ def fetch_candidate_for_sosmed(existing_topics: set[str]) -> tuple[str, str, dic
             "file_path": vpath,
             "filename": filename,
             "caption": custom_caption,
-            "integration_id": "cmw2y48yi0003o274ue9csad3",
+            "integration_id": settings.POSTIZ_TIKTOK_INTEGRATION_ID or "cmw2y48yi0003o274ue9csad3",
             "strategy": "draft_inbox",
         }
 

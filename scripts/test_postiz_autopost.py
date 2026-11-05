@@ -14,9 +14,19 @@ from datetime import datetime, timezone
 import requests
 from PIL import Image, ImageDraw
 
-API_KEY = "d59b5fb460b5b78844e9ddd597a2bf575dc034b34d87e11868d21b3406837344"
-BASE_URL = "https://sosial.bogorstore.com/api/public/v1"
-INTEGRATION_ID = "cmvvzqhn7000epl6yd8bp7mzz"
+import os
+import sys
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.abspath(os.path.join(current_dir, ".."))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
+
+from config.settings import settings
+
+API_KEY = settings.POSTIZ_API_KEY
+BASE_URL = settings.POSTIZ_BASE_URL
+INTEGRATION_ID = settings.POSTIZ_INSTAGRAM_INTEGRATION_ID
 
 def create_banner():
     width, height = 1080, 1080
