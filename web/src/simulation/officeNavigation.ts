@@ -5,7 +5,7 @@
  * without characters clipping through furniture or walking into walls.
  */
 import * as THREE from 'three';
-import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
+import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR, SOSMED_SEAT_ANCHOR } from '../config/layoutAnchors';
 
 export interface OfficePOI {
   id: string;
@@ -14,7 +14,7 @@ export interface OfficePOI {
   rotationY: number;
   isSeated: boolean;
   type: 'desk' | 'lounge' | 'coffee' | 'server' | 'easel' | 'social' | 'lookout';
-  assignedTo?: 'stark' | 'usagi' | 'bayzero' | 'scout';
+  assignedTo?: 'stark' | 'usagi' | 'bayzero' | 'scout' | 'sosmed';
 }
 
 export const OFFICE_POIS: Record<string, OfficePOI> = {
@@ -54,6 +54,15 @@ export const OFFICE_POIS: Record<string, OfficePOI> = {
     isSeated: true,
     type: 'desk',
     assignedTo: 'scout',
+  },
+  sosmed_desk: {
+    id: 'sosmed_desk',
+    name: "Kang Sosmed's Station",
+    position: SOSMED_SEAT_ANCHOR.seatWorldPosition,
+    rotationY: SOSMED_SEAT_ANCHOR.seatWorldRotationY,
+    isSeated: true,
+    type: 'desk',
+    assignedTo: 'sosmed',
   },
 
   // 2. Coffee Corner & Lounge POIs

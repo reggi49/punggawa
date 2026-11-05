@@ -43,7 +43,7 @@ import { CareerOpsModal } from './CareerOpsModal';
 
 export interface TaskPreset {
   id: string;
-  agent: 'stark' | 'usagi' | 'bayzero' | 'scout';
+  agent: WorkerId;
   agentName: string;
   agentRole: string;
   title: string;
@@ -266,6 +266,30 @@ export const TASK_PRESETS: TaskPreset[] = [
     icon: '🌐',
     badge: 'Auto-Scout',
   },
+  {
+    id: 'sosmed_tiktok_dispatch',
+    agent: 'sosmed',
+    agentName: 'Kang Sosmed',
+    agentRole: 'Kang Sosmed (Social Media Lead)',
+    title: 'Unggah Video Antrean ke TikTok Shop (Inbox Draft)',
+    description: 'Mengirimkan video produk dari antrean ke Inbox Akun TikTok Kedai Daily Nurul via Postiz, siap disematkan Keranjang Kuning.',
+    type: 'tiktok',
+    category: 'social_media',
+    icon: '📱',
+    badge: 'TikTok Shop',
+  },
+  {
+    id: 'sosmed_sync_channels',
+    agent: 'sosmed',
+    agentName: 'Kang Sosmed',
+    agentRole: 'Kang Sosmed (Social Media Lead)',
+    title: 'Audit & Sinkronisasi Saluran Sosial Media',
+    description: 'Memeriksa status otentikasi akun Instagram, Threads, dan TikTok pada dashboard Postiz MBTech/Bogorstore.',
+    type: 'sosmed',
+    category: 'social_media',
+    icon: '🔄',
+    badge: 'Postiz Sync',
+  },
 ];
 
 interface HUDOverlayProps {
@@ -484,8 +508,8 @@ export function HUDOverlay({
   const fetchSchedules = async () => {
     setIsLoadingSchedules(true);
     try {
-      // Ambil hingga 150 item termasuk discarded agar tab Recycle Bin dan filter terisi lengkap
-      const res = await fetch('/api/schedules?limit=150&include_discarded=true');
+      // Ambil hingga 300 item termasuk discarded agar tab Recycle Bin dan filter terisi lengkap
+      const res = await fetch('/api/schedules?limit=300&include_discarded=true');
       if (res.ok) {
         const data = await res.json();
         setSchedulesList(data.schedules || []);
@@ -944,7 +968,7 @@ export function HUDOverlay({
               </span>
             </div>
             <p style={{ fontSize: '11px', color: '#8A8A82', margin: 0 }}>
-              Multi-Agent Orchestrator • Kang Nulis, Kang Dongeng, Kang Bos & Kang Kerja
+              Multi-Agent Orchestrator • Kang Nulis, Kang Dongeng, Kang Bos, Kang Kerja & Kang Sosmed
             </p>
           </div>
         </div>
@@ -1681,6 +1705,7 @@ export function HUDOverlay({
               <option value="usagi">🦊 Kang Dongeng (Cerita)</option>
               <option value="bayzero">🔍 Kang Bos (Auditor)</option>
               <option value="scout">💼 Kang Kerja (Loker)</option>
+              <option value="sosmed">📱 Kang Sosmed (Socials)</option>
               <option value="janitor">🧹 Janitor</option>
             </select>
 
@@ -2449,6 +2474,7 @@ export function HUDOverlay({
                     { id: 'usagi', label: '🦊 Kang Dongeng (Cerita)', icon: '🦊' },
                     { id: 'bayzero', label: '🛡️ Kang Bos (Auditor & SOP)', icon: '🛡️' },
                     { id: 'scout', label: '💼 Kang Kerja (Loker & Karir)', icon: '💼' },
+                    { id: 'sosmed', label: '📱 Kang Sosmed (TikTok & Socials)', icon: '📱' },
                   ].map((tab) => {
                     const active = activeAgentTab === tab.id;
                     return (
@@ -3253,17 +3279,23 @@ export function HUDOverlay({
                                 ? '🦊'
                                 : sched.agent_name === 'Bay-Zero'
                                 ? '🔍'
-                                : '💼'}
+                                : sched.agent_name === 'Scout'
+                                ? '💼'
+                                : sched.agent_name === 'Sosmed'
+                                ? '📱'
+                                : '📌'}
                             </span>
                             <span style={{ fontWeight: 800, color: '#30343A' }}>
                               {sched.agent_name === 'Stark'
-                                ? 'Kang Nulis'
+                                ? 'Kang Nulis (KodeABC)'
                                 : sched.agent_name === 'Usagi'
-                                ? 'Kang Dongeng'
+                                ? 'Kang Dongeng (Bogorstore)'
                                 : sched.agent_name === 'Bay-Zero'
                                 ? 'Kang Bos'
                                 : sched.agent_name === 'Scout'
                                 ? 'Kang Kerja'
+                                : sched.agent_name === 'Sosmed'
+                                ? 'Kang Sosmed (Socials)'
                                 : sched.agent_name}
                             </span>
                           </div>
@@ -3286,6 +3318,51 @@ export function HUDOverlay({
                               >
                                 {sched.task_type}
                               </span>
+                              {sched.agent_name === 'Stark' && (
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(37, 99, 235, 0.12)',
+                                    color: '#1D4ED8',
+                                    fontWeight: 700,
+                                    border: '1px solid rgba(37, 99, 235, 0.25)',
+                                  }}
+                                >
+                                  🌐 KodeABC
+                                </span>
+                              )}
+                              {sched.agent_name === 'Usagi' && (
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(234, 88, 12, 0.12)',
+                                    color: '#C2410C',
+                                    fontWeight: 700,
+                                    border: '1px solid rgba(234, 88, 12, 0.25)',
+                                  }}
+                                >
+                                  🎬 Bogorstore
+                                </span>
+                              )}
+                              {sched.agent_name === 'Sosmed' && (
+                                <span
+                                  style={{
+                                    fontSize: '9.5px',
+                                    padding: '1px 5px',
+                                    borderRadius: '4px',
+                                    background: 'rgba(225, 29, 72, 0.12)',
+                                    color: '#E11D48',
+                                    fontWeight: 700,
+                                    border: '1px solid rgba(225, 29, 72, 0.25)',
+                                  }}
+                                >
+                                  📱 Postiz / TikTok
+                                </span>
+                              )}
                               {sched.payload?.category && (
                                 <span style={{ fontSize: '9.5px', color: '#94A3B8' }}>
                                   • {sched.payload.category}

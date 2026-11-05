@@ -43,20 +43,53 @@ def get_domain(url: str) -> str:
         return ""
 
 
+def extract_fallback_query(primary_url: str = "", topic: str = "") -> str:
+    """
+    Ekstrak query alternatif yang ringkas dan efektif jika query utama tidak membuahkan hasil:
+    - Jika primary_url adalah GitHub (github.com/owner/repo), gunakan 'owner repo github'.
+    - Jika URL memiliki slug artikel yang deskriptif, ambil kata-kata dari slug.
+    - Jika topik terlalu panjang, ekstrak 5-7 kata kunci utama.
+    """
+    if primary_url:
+        try:
+            parsed = urllib.parse.urlparse(primary_url)
+            path = parsed.path.strip("/")
+            if "github.com" in parsed.netloc.lower():
+                parts = [p for p in path.split("/") if p]
+                if len(parts) >= 2:
+                    return f"{parts[0]} {parts[1]} github"
+                elif len(parts) == 1:
+                    return f"{parts[0]} github"
+            elif path:
+                last_segment = path.split("/")[-1]
+                slug_words = re.sub(r"[_\-\.]+", " ", last_segment).strip()
+                tokens = [w for w in slug_words.split() if len(w) > 2 and not w.isdigit()]
+                if len(tokens) >= 2:
+                    return " ".join(tokens[:6])
+        except Exception:
+            pass
+
+    words = re.findall(r"\b[A-Za-z0-9_\-\.]{2,}\b", topic)
+    if words:
+        return " ".join(words[:6])
+    return ""
+
+
 def clean_search_query(topic: str) -> str:
     """
     Membersihkan query topik agar optimal saat dicari di Brave Search:
     - Menghapus prefix seperti 'Bedah Repositori: ', 'Liputan Tren: ', dsb.
     - Menangani pola owner/repo GitHub agar mencari ulasan/dokumentasi terkait.
     - Menghapus hashtag atau karakter aneh yang mengganggu pencarian.
+    - Membatasi panjang query maksimal 8 kata agar tidak over-specific.
     """
     q = re.sub(
-        r"^(bedah repositori|eksplorasi repositori|liputan tren|trending weekly):\s*",
+        r"^(bedah repositori trending|bedah repositori|eksplorasi repositori github|eksplorasi repositori|liputan tren|trending weekly):\s*",
         "",
         topic,
         flags=re.IGNORECASE,
     )
-    # Jika format GitHub owner/repo
+    # Jika format GitHub owner/repo ada di dalam string
     repo_match = re.search(r"([a-zA-Z0-9_\-\.]+/[a-zA-Z0-9_\-\.]+)", q)
     if repo_match:
         repo_clean = repo_match.group(1).replace("/", " ")
@@ -66,7 +99,13 @@ def clean_search_query(topic: str) -> str:
     q = re.sub(r"#\w+", "", q)
     q = re.sub(r"[^\w\s\-\.]", " ", q)
     q = re.sub(r"\s+", " ", q).strip()
-    return q[:90]
+
+    # Batasi agar tidak lebih dari 8 kata
+    words = q.split()
+    if len(words) > 8:
+        q = " ".join(words[:7])
+
+    return q[:80]
 
 
 def search_brave(
@@ -137,14 +176,28 @@ def find_related_sources(
     """
     Mencari 1-2 sumber artikel sekunder yang independen dan berbeda domain
     dari sumber primer untuk memperkaya konteks artikel dan mengurangi subjektivitas.
+    Mendukung fallback query otomatis jika pencarian pertama tidak membuahkan hasil.
     """
     query = clean_search_query(topic)
-    if not query:
-        return []
+    candidates: list[dict[str, Any]] = []
 
-    logger.info(f"🔍 [Brave Search] Mencari sumber referensi pendukung untuk query: '{query}'...")
-    candidates = search_brave(query=query, count=8)
+    if query:
+        logger.info(f"🔍 [Brave Search] Mencari sumber referensi pendukung untuk query: '{query}'...")
+        candidates = search_brave(query=query, count=8)
+
+    # Fallback jika query utama tidak menghasilkan kandidat
     if not candidates:
+        fallback_q = extract_fallback_query(primary_url=primary_url, topic=topic)
+        if fallback_q and fallback_q.lower() != (query or "").lower():
+            logger.info(
+                f"🔄 [Brave Search] Query utama '{query}' nihil. Mencoba fallback query: '{fallback_q}'..."
+            )
+            candidates = search_brave(query=fallback_q, count=8)
+
+    if not candidates:
+        logger.warning(
+            f"⚠️ [Brave Search] Tidak ada kandidat sumber ditemukan untuk topic='{topic}' / url='{primary_url}'."
+        )
         return []
 
     primary_domain = get_domain(primary_url)

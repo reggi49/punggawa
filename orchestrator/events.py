@@ -232,6 +232,66 @@ def emit_idle_event(message: str = "Worker is idle waiting for tasks") -> bool:
     )
 
 
+def notify_kang_bos(
+    agent_name: str,
+    subject: str,
+    message: str,
+    details: dict[str, Any] | None = None,
+) -> bool:
+    """
+    Mengirimkan alert dan laporan penting langsung ke Kang Bos:
+    1. Mencatat event ke UI Visualizer & PostgreSQL execution logs (node: 'kang_bos_alert', status: 'alert')
+    2. Mengirim pesan via Telegram Bot ke Kang Bos jika TELEGRAM_BOT_TOKEN dan TELEGRAM_CHAT_ID aktif
+    3. Mencatat di terminal logger
+    """
+    logger.warning(f"📢 [LAPORAN KANG BOS] [{agent_name}] {subject}: {message}")
+
+    # 1. Emit agent event agar muncul di Dashboard / Visualizer UI
+    emit_agent_event(
+        thread_id=f"alert_{agent_name.lower()}",
+        node="kang_bos_alert",
+        status="alert",
+        message=f"📢 [LAPORAN KANG BOS] {agent_name}: {subject} - {message}",
+        details={
+            **(details or {}),
+            "agent_name": agent_name,
+            "subject": subject,
+            "alert_type": "kang_bos_report",
+        },
+    )
+
+    # 2. Kirim notifikasi via Telegram Webhook jika dikonfigurasi
+    if getattr(settings, "TELEGRAM_BOT_TOKEN", None) and getattr(settings, "TELEGRAM_CHAT_ID", None):
+        try:
+            import httpx
+            pesan = (
+                f"📢 <b>LAPORAN UNTUK KANG BOS</b>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"👤 <b>Aktor:</b> {agent_name}\n"
+                f"📌 <b>Perihal:</b> {subject}\n\n"
+                f"{message}\n\n"
+                f"⚠️ <i>Pemberitahuan otomatis: Sistem tidak akan membuat task dummy buatan agar tidak terjadi false error. Menunggu arahan/strategi baru dari Kang Bos.</i>"
+            )
+            with httpx.Client(timeout=10.0) as client:
+                res = client.post(
+                    f"https://api.telegram.org/bot{settings.TELEGRAM_BOT_TOKEN}/sendMessage",
+                    json={
+                        "chat_id": settings.TELEGRAM_CHAT_ID,
+                        "text": pesan,
+                        "parse_mode": "HTML",
+                        "disable_web_page_preview": True,
+                    },
+                )
+                if res.status_code == 200:
+                    logger.info("✅ Notifikasi Kang Bos berhasil terkirim via Telegram.")
+                else:
+                    logger.warning(f"Gagal mengirim Telegram ke Kang Bos: {res.status_code} - {res.text}")
+        except Exception as exc:
+            logger.warning(f"Error mengirim notifikasi Telegram ke Kang Bos: {exc}")
+
+    return True
+
+
 def agent_node_tracker(node_name: str, description: str = ""):
     """
     Decorator untuk LangGraph node yang otomatis memancarkan status:

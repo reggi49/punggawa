@@ -7,6 +7,7 @@ import {
   MEETING_ZONE_CONFIG,
   BAYZERO_SEAT_ANCHOR,
   SCOUT_SEAT_ANCHOR,
+  SOSMED_SEAT_ANCHOR,
 } from '../config/layoutAnchors';
 import { ServicesHealthResponse } from '../types';
 
@@ -213,28 +214,31 @@ export function InteractiveRGBLaptop({
 
   return (
     <group position={position} rotation={rotation} scale={[scale, scale, scale]}>
-      <Clone object={laptopModel.scene} />
-      {/* Dynamic Glowing RGB Screen Pane */}
-      <mesh position={[0, 0.148, -0.103]} rotation={[-0.32, 0, 0]}>
-        <planeGeometry args={[0.26, 0.165]} />
-        <meshStandardMaterial
-          ref={screenMatRef}
-          color="#0B132B"
-          emissive={defaultEmissive}
-          emissiveIntensity={1.3}
-          roughness={0.15}
-          side={THREE.DoubleSide}
+      {/* Center laptop model so its origin is at the center of the base */}
+      <group position={[-0.132, 0, 0.12]}>
+        <Clone object={laptopModel.scene} />
+        {/* Dynamic Glowing RGB Screen Pane: precisely matched to laptop screen bezel */}
+        <mesh position={[0.132, 0.088, -0.1935]} rotation={[-0.421, 0, 0]}>
+          <planeGeometry args={[0.228, 0.126]} />
+          <meshStandardMaterial
+            ref={screenMatRef}
+            color="#0B132B"
+            emissive={defaultEmissive}
+            emissiveIntensity={1.3}
+            roughness={0.15}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+        {/* Real-time RGB Glow Casting onto Table and Keyboard */}
+        <pointLight
+          ref={lightRef}
+          position={[0.132, 0.14, -0.05]}
+          color={defaultEmissive}
+          intensity={0.4}
+          distance={0.95}
+          decay={2}
         />
-      </mesh>
-      {/* Real-time RGB Glow Casting onto Table and Keyboard */}
-      <pointLight
-        ref={lightRef}
-        position={[0, 0.16, 0.05]}
-        color={defaultEmissive}
-        intensity={0.4}
-        distance={0.95}
-        decay={2}
-      />
+      </group>
     </group>
   );
 }
@@ -558,6 +562,12 @@ export function BayZeroWorkstation({ currentNode }: FurnitureProps) {
     currentNode.includes('draft_application') ||
     currentNode.includes('generate_prep') ||
     currentNode.includes('review_critique');
+  const isSosmedTask =
+    currentNode.startsWith('tiktok_') ||
+    currentNode.includes('tiktok') ||
+    currentNode.includes('postiz') ||
+    currentNode.includes('sosmed') ||
+    currentNode.includes('social');
   const chairModel = useGLTF('/models/modern_arm_chair_01/modern_arm_chair_01.gltf');
 
   return (
@@ -607,12 +617,12 @@ export function BayZeroWorkstation({ currentNode }: FurnitureProps) {
         );
       })}
 
-      {/* 4. Kang Bos (Bay-Zero) Interactive RGB Review Laptop directly in front of Chair 0 */}
+      {/* 4. Kang Sosmed (Social Media Lead) Interactive RGB Review Laptop directly in front of Chair 0 */}
       <InteractiveRGBLaptop
-        position={BAYZERO_SEAT_ANCHOR.laptopLocalPosition}
-        rotation={[0, BAYZERO_SEAT_ANCHOR.laptopLocalRotationY, 0]}
-        isWorking={isAudit}
-        defaultEmissive="#8DA895"
+        position={SOSMED_SEAT_ANCHOR.laptopLocalPosition}
+        rotation={[0, SOSMED_SEAT_ANCHOR.laptopLocalRotationY, 0]}
+        isWorking={isSosmedTask || isAudit}
+        defaultEmissive="#E11D48"
       />
 
       {/* 5. Kang Kerja (Scout) Interactive RGB Career Intelligence Laptop directly in front of Chair 2 */}

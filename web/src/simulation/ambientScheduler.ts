@@ -127,6 +127,24 @@ export class AmbientOfficeSimulator {
         socialRole: null,
         characterAction: 'looking_monitor',
       },
+      sosmed: {
+        id: 'sosmed',
+        actualState: 'Idle',
+        ambientActivity: 'LookingAtMonitor',
+        currentPosition: [...OFFICE_POIS.sosmed_desk.position],
+        targetPosition: [...OFFICE_POIS.sosmed_desk.position],
+        targetRotationY: OFFICE_POIS.sosmed_desk.rotationY,
+        isSeated: true,
+        pathQueue: [],
+        destinationPOI: OFFICE_POIS.sosmed_desk,
+        activityStartTime: now,
+        activityDuration: 28000,
+        cooldowns: { social: now + 45000, coffee: 0, server: 0, easel: 0, lounge: 0 },
+        recentActivities: ['LookingAtMonitor'],
+        socialPartnerId: null,
+        socialRole: null,
+        characterAction: 'looking_monitor',
+      },
     };
   }
 

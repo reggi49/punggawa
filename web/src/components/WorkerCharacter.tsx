@@ -22,6 +22,69 @@ interface CharacterProps {
   holdingCoffeeMug?: boolean;
 }
 
+// Palette Helpers for Completely Unique Character Styling
+const getChinosColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'stark': return '#262930'; // Dark Slate Black
+    case 'usagi': return '#324254'; // Indigo Navy
+    case 'bayzero': return '#2E333D'; // Charcoal
+    case 'scout': return '#1E293B'; // Deep Navy
+    case 'sosmed': return '#C4A482'; // Warm Sand Khaki
+    default: return '#2E333D';
+  }
+};
+
+const getTorsoColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'stark': return '#363B44'; // Tech Charcoal
+    case 'usagi': return '#FAF6F0'; // Cream Soft Knit
+    case 'bayzero': return '#646F7E'; // Steel Grey
+    case 'scout': return '#0F766E'; // Forest Teal
+    case 'sosmed': return '#EA580C'; // Sunset Terracotta / Vibrant Coral
+    default: return '#646F7E';
+  }
+};
+
+const getCollarColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'stark': return '#262930';
+    case 'usagi': return '#EFE9DF';
+    case 'bayzero': return '#4B535E';
+    case 'scout': return '#115E59';
+    case 'sosmed': return '#FFFFFF'; // Clean Crisp White
+    default: return '#4B535E';
+  }
+};
+
+const getSkinColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'usagi': return '#E8B8A0';
+    case 'sosmed': return '#E0A97E';
+    case 'scout': return '#C89870';
+    default: return '#D4A57A';
+  }
+};
+
+const getShoeSoleColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'usagi': return '#FFFFFF';
+    case 'sosmed': return '#FFFFFF'; // White Chunky Sole
+    case 'scout': return '#0F766E';
+    default: return '#22252A';
+  }
+};
+
+const getShoeUpperColor = (workerId: WorkerId) => {
+  switch (workerId) {
+    case 'usagi': return '#FAF6F0';
+    case 'stark': return '#1A1D22';
+    case 'bayzero': return '#2C2620';
+    case 'scout': return '#1E293B';
+    case 'sosmed': return '#F97316'; // Tangerine Retro Sneaker Upper
+    default: return '#2C2620';
+  }
+};
+
 export function StylizedHumanoidCharacter({
   id,
   currentNode,
@@ -708,7 +771,7 @@ export function StylizedHumanoidCharacter({
         {/* Celana Kantor / Office Chinos (Rounded Organic Volume) */}
         <RoundedBox radius={0.06} smoothness={5} args={[0.31, 0.17, 0.22]} position={[0, 0, 0]} castShadow receiveShadow>
           <meshStandardMaterial
-            color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+            color={getChinosColor(id)}
             roughness={0.7}
           />
         </RoundedBox>
@@ -726,7 +789,7 @@ export function StylizedHumanoidCharacter({
           {/* Kemeja / Sweater Kantor (Rounded Soft Bevel) */}
           <RoundedBox radius={0.075} smoothness={5} args={[0.36, 0.33, 0.23]} position={[0, 0.16, 0]} castShadow receiveShadow>
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+              color={getTorsoColor(id)}
               roughness={0.75}
               metalness={0.0}
             />
@@ -736,14 +799,14 @@ export function StylizedHumanoidCharacter({
           <mesh position={[-0.18, 0.27, 0]} castShadow>
             <sphereGeometry args={[0.075, 12, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+              color={getTorsoColor(id)}
               roughness={0.75}
             />
           </mesh>
           <mesh position={[0.18, 0.27, 0]} castShadow>
             <sphereGeometry args={[0.075, 12, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+              color={getTorsoColor(id)}
               roughness={0.75}
             />
           </mesh>
@@ -752,7 +815,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, 0.32, 0]} rotation={[Math.PI / 2, 0, 0]}>
             <torusGeometry args={[0.065, 0.022, 10, 20]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#EFE9DF' : '#4B535E'}
+              color={getCollarColor(id)}
               roughness={0.8}
             />
           </mesh>
@@ -761,7 +824,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, 0.36, 0]} castShadow>
             <cylinderGeometry args={[0.048, 0.052, 0.08, 14]} />
             <meshStandardMaterial
-              color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+              color={getSkinColor(id)}
               roughness={0.6}
             />
           </mesh>
@@ -771,7 +834,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, 0.07, 0]} castShadow>
               <sphereGeometry args={[0.115, 18, 18]} />
               <meshStandardMaterial
-                color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+                color={getSkinColor(id)}
                 roughness={0.6}
               />
             </mesh>
@@ -862,6 +925,61 @@ export function StylizedHumanoidCharacter({
                 </mesh>
               </group>
             )}
+
+            {id === 'scout' && (
+              <group position={[0, 0.09, 0]}>
+                {/* Chestnut Brown Layered Hair */}
+                <mesh position={[0, 0.05, -0.01]} castShadow>
+                  <sphereGeometry args={[0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.7]} />
+                  <meshStandardMaterial color="#5c3d2e" roughness={0.65} />
+                </mesh>
+                <mesh position={[0.02, 0.06, 0.07]} rotation={[0.15, -0.1, 0.1]} castShadow>
+                  <capsuleGeometry args={[0.035, 0.11, 8, 10]} />
+                  <meshStandardMaterial color="#4a2e1b" roughness={0.65} />
+                </mesh>
+                {/* Tech Earphone */}
+                <mesh position={[-0.115, 0.02, 0]}>
+                  <sphereGeometry args={[0.022, 8, 8]} />
+                  <meshStandardMaterial color="#0D9488" roughness={0.3} metalness={0.6} />
+                </mesh>
+              </group>
+            )}
+
+            {id === 'sosmed' && (
+              <group position={[0, 0.09, 0]}>
+                {/* Textured Dark Cocoa Hair */}
+                <mesh position={[0, 0.05, -0.01]} castShadow>
+                  <sphereGeometry args={[0.12, 16, 16, 0, Math.PI * 2, 0, Math.PI / 1.7]} />
+                  <meshStandardMaterial color="#3B1E08" roughness={0.6} />
+                </mesh>
+                {/* Trendy Curtain Fringe */}
+                <mesh position={[-0.03, 0.06, 0.07]} rotation={[0.2, -0.15, 0.2]} castShadow>
+                  <capsuleGeometry args={[0.034, 0.11, 8, 10]} />
+                  <meshStandardMaterial color="#4A2810" roughness={0.6} />
+                </mesh>
+                <mesh position={[0.04, 0.06, 0.07]} rotation={[0.2, 0.15, -0.2]} castShadow>
+                  <capsuleGeometry args={[0.034, 0.11, 8, 10]} />
+                  <meshStandardMaterial color="#4A2810" roughness={0.6} />
+                </mesh>
+                {/* Designer Studio Spectacles (Orange/Amber) */}
+                <mesh position={[0, -0.01, 0.1]}>
+                  <RoundedBox radius={0.01} smoothness={2} args={[0.18, 0.042, 0.02]}>
+                    <meshStandardMaterial
+                      color="#EA580C"
+                      roughness={0.3}
+                      metalness={0.2}
+                      transparent
+                      opacity={0.88}
+                    />
+                  </RoundedBox>
+                </mesh>
+                {/* Wireless Creator Mic / Ear Cuff */}
+                <mesh position={[0.115, -0.01, 0.02]}>
+                  <sphereGeometry args={[0.016, 8, 8]} />
+                  <meshStandardMaterial color="#FFFFFF" roughness={0.2} metalness={0.8} />
+                </mesh>
+              </group>
+            )}
           </group>
 
           {/* 4. LENGAN KIRI LENGKAP (Shoulder -> Upper Arm -> Elbow -> Forearm -> Hand) */}
@@ -870,7 +988,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.13, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.18, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                color={getTorsoColor(id)}
                 roughness={0.75}
               />
             </mesh>
@@ -880,7 +998,7 @@ export function StylizedHumanoidCharacter({
               <mesh castShadow>
                 <sphereGeometry args={[0.042, 10, 10]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                  color={getTorsoColor(id)}
                   roughness={0.75}
                 />
               </mesh>
@@ -889,7 +1007,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, -0.11, 0]} castShadow>
                 <capsuleGeometry args={[0.040, 0.16, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                  color={getTorsoColor(id)}
                   roughness={0.75}
                 />
               </mesh>
@@ -899,14 +1017,14 @@ export function StylizedHumanoidCharacter({
                 <mesh castShadow>
                   <capsuleGeometry args={[0.032, 0.04, 8, 10]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+                    color={getSkinColor(id)}
                     roughness={0.6}
                   />
                 </mesh>
                 <mesh position={[-0.02, 0.01, 0.01]} rotation={[0.3, 0, -0.4]} castShadow>
                   <capsuleGeometry args={[0.012, 0.024, 6, 8]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+                    color={getSkinColor(id)}
                     roughness={0.6}
                   />
                 </mesh>
@@ -933,7 +1051,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.13, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.18, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                color={getTorsoColor(id)}
                 roughness={0.75}
               />
             </mesh>
@@ -943,7 +1061,7 @@ export function StylizedHumanoidCharacter({
               <mesh castShadow>
                 <sphereGeometry args={[0.042, 10, 10]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                  color={getTorsoColor(id)}
                   roughness={0.75}
                 />
               </mesh>
@@ -952,7 +1070,7 @@ export function StylizedHumanoidCharacter({
               <mesh position={[0, -0.11, 0]} castShadow>
                 <capsuleGeometry args={[0.040, 0.16, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'stark' ? '#363B44' : id === 'usagi' ? '#FAF6F0' : '#646F7E'}
+                  color={getTorsoColor(id)}
                   roughness={0.75}
                 />
               </mesh>
@@ -962,14 +1080,14 @@ export function StylizedHumanoidCharacter({
                 <mesh castShadow>
                   <capsuleGeometry args={[0.032, 0.04, 8, 10]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+                    color={getSkinColor(id)}
                     roughness={0.6}
                   />
                 </mesh>
                 <mesh position={[0.02, 0.01, 0.01]} rotation={[0.3, 0, 0.4]} castShadow>
                   <capsuleGeometry args={[0.012, 0.024, 6, 8]} />
                   <meshStandardMaterial
-                    color={id === 'usagi' ? '#E8B8A0' : '#D4A57A'}
+                    color={getSkinColor(id)}
                     roughness={0.6}
                   />
                 </mesh>
@@ -1018,7 +1136,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, -0.19, 0]} castShadow>
             <capsuleGeometry args={[0.055, 0.28, 8, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+              color={getChinosColor(id)}
               roughness={0.7}
             />
           </mesh>
@@ -1028,7 +1146,7 @@ export function StylizedHumanoidCharacter({
             <mesh castShadow>
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+                color={getChinosColor(id)}
                 roughness={0.7}
               />
             </mesh>
@@ -1037,7 +1155,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.17, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.26, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+                color={getChinosColor(id)}
                 roughness={0.7}
               />
             </mesh>
@@ -1046,14 +1164,14 @@ export function StylizedHumanoidCharacter({
             <group position={[0, -0.36, 0.05]}>
               <RoundedBox radius={0.018} smoothness={3} args={[0.082, 0.028, 0.19]} position={[0, -0.015, 0]} castShadow>
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FFFFFF' : '#22252A'}
+                  color={getShoeSoleColor(id)}
                   roughness={0.6}
                 />
               </RoundedBox>
               <mesh position={[0, 0.012, 0.01]} rotation={[0.2, 0, 0]} castShadow>
                 <capsuleGeometry args={[0.038, 0.11, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : '#2C2620'}
+                  color={getShoeUpperColor(id)}
                   roughness={0.5}
                 />
               </mesh>
@@ -1067,7 +1185,7 @@ export function StylizedHumanoidCharacter({
           <mesh position={[0, -0.19, 0]} castShadow>
             <capsuleGeometry args={[0.055, 0.28, 8, 12]} />
             <meshStandardMaterial
-              color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+              color={getChinosColor(id)}
               roughness={0.7}
             />
           </mesh>
@@ -1077,7 +1195,7 @@ export function StylizedHumanoidCharacter({
             <mesh castShadow>
               <sphereGeometry args={[0.05, 10, 10]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+                color={getChinosColor(id)}
                 roughness={0.7}
               />
             </mesh>
@@ -1086,7 +1204,7 @@ export function StylizedHumanoidCharacter({
             <mesh position={[0, -0.17, 0]} castShadow>
               <capsuleGeometry args={[0.046, 0.26, 8, 12]} />
               <meshStandardMaterial
-                color={id === 'stark' ? '#262930' : id === 'usagi' ? '#324254' : '#2E333D'}
+                color={getChinosColor(id)}
                 roughness={0.7}
               />
             </mesh>
@@ -1095,14 +1213,14 @@ export function StylizedHumanoidCharacter({
             <group position={[0, -0.36, 0.05]}>
               <RoundedBox radius={0.018} smoothness={3} args={[0.082, 0.028, 0.19]} position={[0, -0.015, 0]} castShadow>
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FFFFFF' : '#22252A'}
+                  color={getShoeSoleColor(id)}
                   roughness={0.6}
                 />
               </RoundedBox>
               <mesh position={[0, 0.012, 0.01]} rotation={[0.2, 0, 0]} castShadow>
                 <capsuleGeometry args={[0.038, 0.11, 8, 12]} />
                 <meshStandardMaterial
-                  color={id === 'usagi' ? '#FAF6F0' : id === 'stark' ? '#1A1D22' : '#2C2620'}
+                  color={getShoeUpperColor(id)}
                   roughness={0.5}
                 />
               </mesh>

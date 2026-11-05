@@ -7,6 +7,7 @@ import {
   WORKSTATION_CONFIG,
   BAYZERO_SEAT_ANCHOR,
   SCOUT_SEAT_ANCHOR,
+  SOSMED_SEAT_ANCHOR,
 } from './config/layoutAnchors';
 
 export type AgentNodeName =
@@ -102,7 +103,7 @@ export type CharacterAction =
   | 'casual_conversation'
   | 'offline_rest';
 
-export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'scout';
+export type WorkerId = 'stark' | 'usagi' | 'bayzero' | 'scout' | 'sosmed';
 
 export interface WorkerProfile {
   id: WorkerId;
@@ -165,6 +166,18 @@ export const WORKER_PROFILES: Record<WorkerId, WorkerProfile> = {
     badgeBg: 'rgba(13, 148, 136, 0.15)',
     deskPosition: SCOUT_SEAT_ANCHOR.seatWorldPosition,
     seatRotation: SCOUT_SEAT_ANCHOR.seatWorldRotationY,
+  },
+  sosmed: {
+    id: 'sosmed',
+    name: 'Kang Sosmed',
+    codeName: 'Kang Sosmed',
+    role: 'Kang Sosmed (Social Media Lead)',
+    specialty: 'Otomasi Postiz, TikTok Shop, Instagram & Threads Multi-Channel',
+    color: '#E11D48',
+    glowColor: '#FB7185',
+    badgeBg: 'rgba(225, 29, 72, 0.15)',
+    deskPosition: SOSMED_SEAT_ANCHOR.seatWorldPosition,
+    seatRotation: SOSMED_SEAT_ANCHOR.seatWorldRotationY,
   },
 };
 

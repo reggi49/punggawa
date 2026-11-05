@@ -492,7 +492,7 @@ async def dispatch_task(req: DispatchRequest, request: Request):
 
 @app.get("/api/schedules")
 async def get_schedules(
-    limit: int = 50,
+    limit: int = 250,
     status: str | None = None,
     include_discarded: bool = False,
     days: int | None = None,
@@ -530,7 +530,7 @@ async def generate_schedules(request: Request):
     try:
         from scripts.planner import generate_weekly_editorial_plan, list_editorial_schedules
         planned = generate_weekly_editorial_plan()
-        schedules = list_editorial_schedules(limit=20)
+        schedules = list_editorial_schedules(limit=100)
         return {
             "success": True,
             "message": f"Berhasil menyelaraskan {len(planned)} jadwal konten 7 hari ke depan.",
@@ -554,7 +554,7 @@ async def rebalance_schedules(request: Request, days: int = 7):
     try:
         from scripts.planner import rebalance_and_replenish_schedules, list_editorial_schedules
         result = rebalance_and_replenish_schedules(days_ahead=days)
-        schedules = list_editorial_schedules(limit=days * 3)
+        schedules = list_editorial_schedules(limit=max(days * 10, 100))
         return {
             "success": True,
             "message": (
@@ -641,7 +641,7 @@ async def cleanup_duplicate_schedules_endpoint(request: Request):
     try:
         from scripts.planner import cleanup_duplicate_schedules, list_editorial_schedules
         deleted_count = cleanup_duplicate_schedules()
-        schedules = list_editorial_schedules(limit=50)
+        schedules = list_editorial_schedules(limit=100)
         return {
             "success": True,
             "message": f"Berhasil membersihkan {deleted_count} jadwal duplikat.",

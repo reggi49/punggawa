@@ -118,3 +118,81 @@ Untuk menjalankan worker di VPS Cloud bersamaan dengan Mac Lokal:
    - Cloud VPS: `WORKER_ID=vps-cloud-worker-1`
 4. Kedua worker akan mengonsumsi antrean yang sama. Jika kedua worker mencoba thread yang sama, **Redis Distributed Lock menjamin hanya ada 1 worker yang mengeksekusinya**, sementara worker lainnya mengembalikan task ke queue tanpa bentrok data.
 
+---
+
+## 📱 Panduan Integrasi Media Sosial & Troubleshooting OAuth
+
+### 1. Mengatasi Error Login TikTok: `non_sandbox_target`
+
+#### 📌 Penyebab Error
+Error ini muncul ketika aplikasi TikTok di [TikTok Developer Portal](https://developers.tiktok.com/) masih berada dalam mode **Sandbox** (Development). Pada mode Sandbox, TikTok secara ketat membatasi login OAuth **hanya untuk akun-akun TikTok yang telah didaftarkan secara manual ke dalam daftar Target Users (Sandbox Test Accounts)**. Jika akun yang mencoba login belum didaftarkan, TikTok akan menolak otorisasi dengan pesan:
+```text
+We couldn't log in with TikTok. This may be due to specific app settings.
+If you're a developer, correct the following and try again:
+non_sandbox_target
+```
+
+#### 🛠️ Langkah-Langkah Menambahkan Akun/Email ke Target Users:
+1. **Buka TikTok Developer Portal**:
+   - Kunjungi [https://developers.tiktok.com/](https://developers.tiktok.com/) dan login menggunakan akun developer Anda.
+2. **Buka Menu Aplikasi**:
+   - Di navigasi atas, klik **My Apps** (atau **Manage apps**).
+   - Pilih aplikasi yang Anda gunakan untuk integrasi sosial (misalnya aplikasi Bogorstore Social / Postiz).
+3. **Pastikan Mode Sandbox Aktif**:
+   - Periksa toggle mode di bagian atas / samping nama aplikasi, pastikan berada pada mode **Sandbox** (bukan Live/Production).
+4. **Masuk ke Sandbox Settings**:
+   - Di bilah menu sebelah kiri, klik tab **Sandbox settings** (atau gulir ke bawah pada halaman detail aplikasi).
+5. **Tambahkan Akun Target (Target Users)**:
+   - Temukan bagian bertuliskan **Target users**.
+   - Klik tombol **+ Add account** (atau *Add Target User*). Anda dapat menambahkan hingga maksimal 10 akun penguji.
+   - Akan muncul jendela otorisasi / login TikTok:
+     - Masukkan **Email**, **Nomor Telepon**, atau **Username TikTok** yang ingin Anda gunakan untuk login di Bogorstore Social/Postiz.
+     - Masukkan password akun TikTok tersebut dan selesaikan verifikasi captcha jika diminta.
+     - Klik tombol **Log in** dan setujui **TikTok Developer Terms of Service**.
+6. **Verifikasi Daftar Akun**:
+   - Setelah berhasil login, akun tersebut akan langsung tercantum dalam daftar tabel **Target users**.
+7. **Coba Login Ulang**:
+   - Kembali ke halaman integrasi sosial (misalnya `https://sosial.bogorstore.com/integrations/social/tiktok` atau Postiz).
+   - Klik **Connect / Tambah Akun TikTok**.
+   - Login menggunakan akun yang baru saja didaftarkan ke Target Users. Proses otorisasi akan berjalan sukses tanpa error `non_sandbox_target`.
+
+---
+
+#### 💡 Troubleshooting Error TikTok Lainnya:
+
+* **Error `scope`**:
+  - *Penyebab*: Scope/izin yang diminta oleh platform integrasi (seperti `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`, `video.upload`, `video.publish`) belum diaktifkan di portal developer.
+  - *Solusi*: Di menu aplikasi TikTok Developer, buka **Products** / **Add Products**, tambahkan **Login Kit** dan **Video Kit**, lalu pastikan permissions/scopes tersebut dicentang dan disimpan.
+* **Pindah ke Mode Live/Production**:
+  - Jika aplikasi ingin dapat dihubungkan oleh akun TikTok publik tanpa perlu mendaftarkan akun satu per satu ke Target Users, ajukan aplikasi melalui tombol **Submit for Review** di TikTok Developer Portal hingga disetujui (*Approved*).
+
+---
+
+## 📱 Agen "Kang Sosmed" & Alur Antrean Video TikTok (Inbox Draft)
+
+### 1. Peran & Spesialisasi
+Agen **Kang Sosmed** (`sosmed`, warna branding `#E11D48` Crimson Rose) beroperasi di meja bundar kantor 3D (Kursi 0), bertugas mengelola publikasi media sosial multi-channel melalui platform Postiz (`sosial.bogorstore.com` / `sosial.mbtech.info`).
+
+Fokus utamanya adalah memproses antrean konten video TikTok Shop untuk akun **Kedai Daily Nurul** (`cmw2y48yi0003o274ue9csad3`).
+
+### 2. Alur Pengunggahan Video 7 Hari (`data/tiktok_queue/`):
+1. **Unggah File Video**:
+   - Letakkan file video MP4 produk ke dalam folder `data/tiktok_queue/` (misalnya: `promo_kopi_bogor.mp4`, `madu_hutan.mp4`, dll).
+   - *(Opsional)* Jika ingin caption khusus, sertakan file teks dengan nama yang sama: `promo_kopi_bogor.txt`.
+2. **Perencanaan & Dispatching**:
+   - Kang Sosmed secara otomatis menjadwalkan video (jam 13:00 WIB setiap hari) via Planner.
+   - Script dispatcher mengunggah video ke Postiz Media Storage lalu menerbitkannya sebagai **Draf Inbox TikTok** (`content_posting_method: "UPLOAD"`).
+3. **Penyematan Keranjang Kuning di HP**:
+   - Notifikasi sistem akan muncul di HP TikTok admin: *"Video Anda siap diposting"*.
+   - Admin membuka notifikasi -> tap **+ Tambah Tautan / Produk (Add Link)** -> pilih produk dari etalase TikTok Shop -> klik **Posting**.
+4. **Pembersihan Otomatis Storage**:
+   - Setelah video sukses masuk ke Inbox TikTok, file lokal di `data/tiktok_queue/` otomatis dihapus demi menjaga efisiensi ruang disk.
+
+### 3. Pengecekan Integritas Fisik oleh Kang Bos (Bay-Zero):
+Setiap pagi, Kang Bos (Bay-Zero) melakukan audit kebenaran jadwal (bukan formalitas database):
+* **Pengecekan Video TikTok**: Memastikan file fisik MP4 benar-benar ada di `data/tiktok_queue` sebelum waktu tayang tiba, dan memverifikasi Postiz Post ID untuk status `completed`.
+* **Pengecekan Video YouTube**: Memverifikasi video YouTube masih aktif via oEmbed endpoint (bukan video terhapus atau diset private).
+* **Pengecekan Artikel**: Memverifikasi tautan publikasi CMS (`result_url`) terdaftar valid.
+* Jika ditemukan ketidaksesuaian, Kang Bos otomatis mengirimkan notifikasi diagnostik transparan agar strategi konten dapat segera diselaraskan.
+
+

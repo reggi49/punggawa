@@ -62,6 +62,11 @@ export const BAYZERO_SEAT_ANCHOR = {
   laptopLocalRotationY: MEETING_ZONE_CONFIG.bayZeroAngle,
 };
 
+// Kang Sosmed Seat Anchor (Uses the idle laptop at Chair 0 in Central Round Table)
+export const SOSMED_SEAT_ANCHOR = {
+  ...BAYZERO_SEAT_ANCHOR,
+};
+
 // Kang Bos (Bay-Zero) Kanban Whiteboard Stand Anchor (Standing in front of the board)
 export const BAYZERO_KANBAN_ANCHOR = {
   position: [-3.55, 0, -2.55] as [number, number, number],

@@ -194,34 +194,46 @@ def search_youtube_video(query: str) -> dict[str, Any] | None:
     if not query or not query.strip():
         return None
 
-    clean_query = query.strip()
+    # Bersihkan query dari hashtag unik (misal #4602a7) atau ID dummy
+    clean_query = re.sub(r"#\w+", "", query)
+    clean_query = re.sub(r"dongeng_[a-f0-9]+", "", clean_query, flags=re.I)
+    clean_query = re.sub(r"\s+", " ", clean_query).strip()
+    if not clean_query:
+        clean_query = "Dongeng Cerita Rakyat Nusantara Anak Indonesia"
 
     # 1. Coba via YouTube Data API v3 jika API Key tersedia
     if api_key:
-        try:
-            with httpx.Client(timeout=12.0) as client:
-                res = client.get(
-                    f"{YT_API}/search",
-                    params={
-                        "part": "snippet",
-                        "q": clean_query,
-                        "type": "video",
-                        "maxResults": 3,
-                        "relevanceLanguage": "id",
-                        "key": api_key,
-                    },
-                )
-                if res.status_code == 200:
-                    items = res.json().get("items", [])
-                    for it in items:
-                        vid = it.get("id", {}).get("videoId")
-                        if vid:
-                            meta = get_youtube_metadata(vid)
-                            if meta:
-                                meta["video_id"] = vid
-                                return meta
-        except Exception as exc:
-            logger.warning(f"search_youtube_video API gagal untuk '{clean_query}': {exc}")
+        queries_to_try = [clean_query]
+        # Jika query memiliki colon/subtitle, coba versi ringkasnya sebagai fallback
+        if ":" in clean_query:
+            queries_to_try.append(clean_query.split(":")[0].strip())
+        queries_to_try.append("Dongeng Nusantara Cerita Rakyat Anak")
+
+        for q in queries_to_try:
+            try:
+                with httpx.Client(timeout=12.0) as client:
+                    res = client.get(
+                        f"{YT_API}/search",
+                        params={
+                            "part": "snippet",
+                            "q": q,
+                            "type": "video",
+                            "maxResults": 3,
+                            "relevanceLanguage": "id",
+                            "key": api_key,
+                        },
+                    )
+                    if res.status_code == 200:
+                        items = res.json().get("items", [])
+                        for it in items:
+                            vid = it.get("id", {}).get("videoId")
+                            if vid:
+                                meta = get_youtube_metadata(vid)
+                                if meta:
+                                    meta["video_id"] = vid
+                                    return meta
+            except Exception as exc:
+                logger.warning(f"search_youtube_video API gagal untuk '{q}': {exc}")
 
     return None
 

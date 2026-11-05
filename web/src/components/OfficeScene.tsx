@@ -19,6 +19,7 @@ import {
   BAYZERO_SEAT_ANCHOR,
   BAYZERO_KANBAN_ANCHOR,
   SCOUT_SEAT_ANCHOR,
+  SOSMED_SEAT_ANCHOR,
 } from '../config/layoutAnchors';
 
 interface OfficeSceneProps {
@@ -165,6 +166,23 @@ export function OfficeScene({
         ambientLabel={characters.scout.ambientLabel}
         badgeLabelOverride={characters.scout.isActive ? undefined : 'Scouting'}
         dotColorOverride={characters.scout.isActive ? undefined : '#0D9488'}
+      />
+
+      {/* Sosmed / Kang Sosmed: Central Table Social Media Lead (Seated at Chair 0 in Central Round Table) */}
+      <StylizedHumanoidCharacter
+        id="sosmed"
+        currentNode={currentNode}
+        action={characters.sosmed?.isActive ? characters.sosmed.action : 'looking_monitor'}
+        targetPos={characters.sosmed?.isActive ? characters.sosmed.targetPos : SOSMED_SEAT_ANCHOR.seatWorldPosition}
+        targetRotY={characters.sosmed?.isActive ? characters.sosmed.targetRotY : SOSMED_SEAT_ANCHOR.seatWorldRotationY}
+        message={characters.sosmed?.isActive ? message : undefined}
+        isActive={characters.sosmed?.isActive ?? false}
+        isSeated={characters.sosmed?.isActive ? characters.sosmed.isSeated : true}
+        socialRole={characters.sosmed?.socialRole}
+        actualState={characters.sosmed?.actualState}
+        ambientLabel={characters.sosmed?.ambientLabel}
+        badgeLabelOverride={characters.sosmed?.isActive ? undefined : 'Sosmed'}
+        dotColorOverride={characters.sosmed?.isActive ? undefined : '#E11D48'}
       />
 
       {/* 6. Floor Contact Shadows */}

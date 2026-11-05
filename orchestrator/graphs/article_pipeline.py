@@ -1,5 +1,6 @@
 """Article Publishing Pipeline Graph (Assembly Line Pattern for KodePintar)."""
 import logging
+import urllib.parse
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Literal
@@ -25,7 +26,7 @@ logger = logging.getLogger("ArticleGraph")
 def ingest_node(state: AgentState) -> dict[str, Any]:
     task_id = state.get("task_id", "unknown")
     input_data = state.get("input_data", {})
-    topic = input_data.get("query") or input_data.get("topic") or "Teknologi Terkini"
+    topic = input_data.get("topic") or input_data.get("query") or "Teknologi Terkini"
     target_urls = input_data.get("target_urls") or input_data.get("urls") or ""
     category = input_data.get("category") or "technology"
 
@@ -227,11 +228,12 @@ def enrich_sources_node(state: AgentState) -> dict[str, Any]:
     """
     Memastikan artikel memiliki minimal 2 sumber referensi agar lebih kaya, objektif, dan komprehensif.
     Jika sumber kurang dari 2, mencari 1-2 artikel/sumber pendukung independen via Brave Search API.
+    Jika tetap kurang dari 2 sumber independen, hentikan pipeline untuk menjaga kualitas editorial.
     """
     task_id = state.get("task_id", "unknown")
     target_urls = state.get("target_urls") or ""
     input_data = state.get("input_data", {})
-    topic = input_data.get("query") or input_data.get("topic") or "Teknologi Terkini"
+    topic = input_data.get("topic") or input_data.get("query") or "Teknologi Terkini"
     timestamp = datetime.now(timezone.utc).isoformat()
 
     if isinstance(target_urls, str):
@@ -240,8 +242,8 @@ def enrich_sources_node(state: AgentState) -> dict[str, Any]:
         existing_urls = [str(u).strip() for u in target_urls if str(u).strip()]
 
     # Jika sumber kurang dari 2, cari sumber pendukung via Brave Search
-    if len(existing_urls) < 2 and topic:
-        primary_url = existing_urls[0] if existing_urls else ""
+    primary_url = existing_urls[0] if existing_urls else ""
+    if len(existing_urls) < 2 and (topic or primary_url):
         logger.info(f"[{settings.WORKER_ID}] Multi-source check: Sumber saat ini {len(existing_urls)}. Menjalankan Brave Search...")
         try:
             from orchestrator.tools.brave_search import find_related_sources
@@ -251,19 +253,28 @@ def enrich_sources_node(state: AgentState) -> dict[str, Any]:
                 existing_urls.extend(added_urls)
                 domains = [d["domain"] for d in discovered]
                 logger.info(f"✅ [Multi-Source] Berhasil menemukan {len(added_urls)} sumber baru via Brave Search: {domains}")
-                return {
-                    "target_urls": ", ".join(existing_urls),
-                    "execution_logs": [
-                        f"[{timestamp}] Multi-source enrichment added {len(added_urls)} secondary sources ({', '.join(domains)}) via Brave Search."
-                    ],
-                    "error": None,
-                }
         except Exception as exc:
             logger.warning(f"Gagal melakukan multi-source enrichment via Brave Search: {exc}")
 
+    # SOP Gate: Minimal 2 sumber referensi wajib terpenuhi sebelum proses penulisan & pembuatan gambar
+    if len(existing_urls) < 2:
+        logger.warning(
+            f"❌ [Multi-Source] Sumber referensi hanya {len(existing_urls)} (kurang dari syarat minimal 2). "
+            f"Menghentikan pipeline untuk menjaga standar kredibilitas dan mencegah pemborosan token LLM."
+        )
+        return {
+            "status": "failed",
+            "error": f"MultiSourceError: Artikel hanya memiliki {len(existing_urls)} sumber referensi ({existing_urls}). Standar editorial kode-abc mewajibkan minimal 2 sumber independen.",
+            "execution_logs": [
+                f"[{timestamp}] Multi-source enrichment failed: only {len(existing_urls)} source(s) available. Pipeline aborted to prevent single-source publication."
+            ],
+        }
+
     return {
-        "target_urls": ", ".join(existing_urls) if existing_urls else target_urls,
-        "execution_logs": [f"[{timestamp}] Multi-source verification complete ({len(existing_urls)} sources available)."],
+        "target_urls": ", ".join(existing_urls),
+        "execution_logs": [
+            f"[{timestamp}] Multi-source verification PASSED: {len(existing_urls)} sources available ({', '.join(existing_urls)})."
+        ],
         "error": None,
     }
 
@@ -462,6 +473,31 @@ def sop_validator_node(state: AgentState) -> dict[str, Any]:
 
     if not dual_content.get("translation_key") or id_data.get("translationKey") != en_data.get("translationKey"):
         violations.append("TranslationKey ID dan EN tidak sinkron atau hilang.")
+
+    # Verifikasi kepatuhan SOP multi-sumber (Minimal 2 sumber independen dengan domain berbeda)
+    target_urls_raw = state.get("target_urls") or ""
+    if isinstance(target_urls_raw, str):
+        url_list = [u.strip() for u in target_urls_raw.split(",") if u.strip()]
+    else:
+        url_list = [str(u).strip() for u in target_urls_raw if str(u).strip()]
+
+    unique_domains = set()
+    for u in url_list:
+        try:
+            domain = urllib.parse.urlparse(u).netloc.lower().replace("www.", "").strip()
+            if domain:
+                unique_domains.add(domain)
+        except Exception:
+            pass
+
+    if len(url_list) < 2:
+        violations.append(
+            f"Jumlah sumber referensi tidak memenuhi SOP ({len(url_list)} sumber: {url_list}). Minimal 2 sumber diwajibkan."
+        )
+    elif len(unique_domains) < 2:
+        violations.append(
+            f"Sumber referensi berasal dari domain tunggal ({unique_domains}). Minimal 2 domain independen yang berbeda diwajibkan."
+        )
 
     for lang in ("id", "en"):
         b64 = dual_images.get(lang, "")

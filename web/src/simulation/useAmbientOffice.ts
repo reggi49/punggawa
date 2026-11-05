@@ -10,7 +10,7 @@ import { useFrame } from '@react-three/fiber';
 import { WorkerId, ActualAgentState, AmbientActivityType, CharacterAction } from '../types';
 import { AmbientOfficeSimulator, WorkerAmbientState } from './ambientScheduler';
 import { getHumanStatus } from '../utils/statusLabels';
-import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR } from '../config/layoutAnchors';
+import { WORKSTATION_CONFIG, BAYZERO_SEAT_ANCHOR, BAYZERO_KANBAN_ANCHOR, SCOUT_SEAT_ANCHOR, SOSMED_SEAT_ANCHOR } from '../config/layoutAnchors';
 
 export interface CharacterVisualState {
   id: WorkerId;
@@ -47,6 +47,8 @@ export function useAmbientOffice(
       ? 'dongeng'
       : threadId.toLowerCase().includes('job')
       ? 'career_ops'
+      : (threadId.toLowerCase().includes('tiktok') || threadId.toLowerCase().includes('sosmed'))
+      ? 'tiktok'
       : 'article');
 
   const isDongengPipeline =
@@ -62,6 +64,20 @@ export function useAmbientOffice(
     threadId?.includes('job') ||
     details?.pipeline === 'career_ops' ||
     details?.role === 'career_intelligence';
+
+  const isSosmedPipeline =
+    taskType === 'tiktok' ||
+    taskType === 'sosmed' ||
+    taskType === 'social' ||
+    currentNode.startsWith('tiktok_') ||
+    currentNode.includes('tiktok') ||
+    currentNode.includes('postiz') ||
+    currentNode.includes('sosmed') ||
+    currentNode.includes('social') ||
+    threadId?.toLowerCase().includes('tiktok') ||
+    threadId?.toLowerCase().includes('sosmed') ||
+    details?.task_type === 'tiktok' ||
+    details?.action_type === 'tiktok';
 
   const isIdle =
     currentNode === 'IDLE' ||
@@ -96,6 +112,7 @@ export function useAmbientOffice(
       simulator.updateActualState('usagi', 'Offline');
       simulator.updateActualState('bayzero', 'Offline');
       simulator.updateActualState('scout', 'Offline');
+      simulator.updateActualState('sosmed', 'Offline');
       return;
     }
 
@@ -107,6 +124,7 @@ export function useAmbientOffice(
       simulator.updateActualState('stark', 'Idle');
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('scout', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
       return;
     }
 
@@ -117,6 +135,7 @@ export function useAmbientOffice(
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
       simulator.updateActualState('scout', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
       return;
     }
 
@@ -125,58 +144,101 @@ export function useAmbientOffice(
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
       simulator.updateActualState('scout', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
     } else if (isFailed) {
       // Blocked / Failure state
-      if (isJobPipeline) {
+      if (isSosmedPipeline) {
+        simulator.updateActualState('sosmed', 'Blocked', SOSMED_SEAT_ANCHOR.seatWorldPosition, SOSMED_SEAT_ANCHOR.seatWorldRotationY, 'confused_scratch');
+        simulator.updateActualState('stark', 'Idle');
+        simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
+      } else if (isJobPipeline) {
         simulator.updateActualState('scout', 'Blocked', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
       } else if (isDongengPipeline) {
         simulator.updateActualState('usagi', 'Blocked', WORKSTATION_CONFIG.usagi.seatWorldPosition, WORKSTATION_CONFIG.usagi.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       } else {
         simulator.updateActualState('stark', 'Blocked', WORKSTATION_CONFIG.stark.seatWorldPosition, WORKSTATION_CONFIG.stark.seatWorldRotationY, 'confused_scratch');
         simulator.updateActualState('usagi', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       }
     } else if (isAwaitingApproval) {
       // Waiting for human approval
-      if (isJobPipeline) {
+      if (isSosmedPipeline) {
+        simulator.updateActualState('sosmed', 'Waiting', SOSMED_SEAT_ANCHOR.seatWorldPosition, SOSMED_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('stark', 'Idle');
+        simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
+      } else if (isJobPipeline) {
         simulator.updateActualState('scout', 'Waiting', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
       } else if (isDongengPipeline) {
         simulator.updateActualState('usagi', 'Waiting', WORKSTATION_CONFIG.usagi.seatWorldPosition, WORKSTATION_CONFIG.usagi.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       } else {
         simulator.updateActualState('stark', 'Waiting', WORKSTATION_CONFIG.stark.seatWorldPosition, WORKSTATION_CONFIG.stark.seatWorldRotationY, 'observing');
         simulator.updateActualState('usagi', 'Idle');
         simulator.updateActualState('bayzero', 'Waiting', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       }
     } else if (isSOPNode) {
       // SOP Validation phase: Bay-Zero actively inspects & paces at Kanban board
       simulator.updateActualState('bayzero', 'Working', BAYZERO_KANBAN_ANCHOR.position, BAYZERO_KANBAN_ANCHOR.rotationY, 'kanban_pacing');
-      if (isJobPipeline) {
+      if (isSosmedPipeline) {
+        simulator.updateActualState('sosmed', 'Waiting', SOSMED_SEAT_ANCHOR.seatWorldPosition, SOSMED_SEAT_ANCHOR.seatWorldRotationY, 'observing');
+        simulator.updateActualState('stark', 'Idle');
+        simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('scout', 'Idle');
+      } else if (isJobPipeline) {
         simulator.updateActualState('scout', 'Waiting', SCOUT_SEAT_ANCHOR.seatWorldPosition, SCOUT_SEAT_ANCHOR.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('usagi', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       } else if (isDongengPipeline) {
         simulator.updateActualState('usagi', 'Waiting', WORKSTATION_CONFIG.usagi.seatWorldPosition, WORKSTATION_CONFIG.usagi.seatWorldRotationY, 'observing');
         simulator.updateActualState('stark', 'Idle');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       } else {
         simulator.updateActualState('stark', 'Waiting', WORKSTATION_CONFIG.stark.seatWorldPosition, WORKSTATION_CONFIG.stark.seatWorldRotationY, 'observing');
         simulator.updateActualState('usagi', 'Idle');
         simulator.updateActualState('scout', 'Idle');
+        simulator.updateActualState('sosmed', 'Idle');
       }
+    } else if (isSosmedPipeline) {
+      // Social Media & TikTok pipeline: Kang Sosmed works at round table Chair 0
+      let sosmedTaskPos: [number, number, number] = SOSMED_SEAT_ANCHOR.seatWorldPosition;
+      let sosmedTaskRotY = SOSMED_SEAT_ANCHOR.seatWorldRotationY;
+      let sosmedTaskAction: CharacterAction = 'intense_typing';
+
+      if (isComplete) {
+        sosmedTaskRotY = Math.PI * 0.45;
+        sosmedTaskAction = 'success_celebration';
+      }
+
+      simulator.updateActualState('sosmed', 'Working', sosmedTaskPos, sosmedTaskRotY, sosmedTaskAction);
+      simulator.updateActualState('stark', 'Idle');
+      simulator.updateActualState('usagi', 'Idle');
+      simulator.updateActualState('bayzero', 'Idle');
+      simulator.updateActualState('scout', 'Idle');
     } else if (isJobPipeline) {
       // Career Intelligence pipeline: Scout works at seat opposite Bay-Zero
       let scoutTaskPos: [number, number, number] = SCOUT_SEAT_ANCHOR.seatWorldPosition;
@@ -194,8 +256,9 @@ export function useAmbientOffice(
       simulator.updateActualState('stark', 'Idle');
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
     } else if (isDongengPipeline) {
-      // Dongeng pipeline: Usagi works, Stark, Scout and Bay-Zero are Idle
+      // Dongeng pipeline: Usagi works, others are Idle
       let usagiTaskPos: [number, number, number] = WORKSTATION_CONFIG.usagi.seatWorldPosition;
       let usagiTaskRotY = WORKSTATION_CONFIG.usagi.seatWorldRotationY;
       let usagiTaskAction: CharacterAction = 'intense_typing';
@@ -218,8 +281,9 @@ export function useAmbientOffice(
       simulator.updateActualState('stark', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
       simulator.updateActualState('scout', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
     } else {
-      // Article pipeline: Stark works, Usagi, Scout and Bay-Zero are Idle
+      // Article pipeline: Stark works, others are Idle
       let starkTaskPos: [number, number, number] = WORKSTATION_CONFIG.stark.seatWorldPosition;
       let starkTaskRotY = WORKSTATION_CONFIG.stark.seatWorldRotationY;
       let starkTaskAction: CharacterAction = 'intense_typing';
@@ -246,8 +310,9 @@ export function useAmbientOffice(
       simulator.updateActualState('usagi', 'Idle');
       simulator.updateActualState('bayzero', 'Idle');
       simulator.updateActualState('scout', 'Idle');
+      simulator.updateActualState('sosmed', 'Idle');
     }
-  }, [currentNode, status, isDongengPipeline, isJobPipeline, isIdle, isSOPNode, isAwaitingApproval, isFailed, isComplete, connected, isDegraded]);
+  }, [currentNode, status, isDongengPipeline, isJobPipeline, isSosmedPipeline, isIdle, isSOPNode, isAwaitingApproval, isFailed, isComplete, connected, isDegraded]);
 
   // Visual state hook updated efficiently on animation tick
   const [characterStates, setCharacterStates] = useState<Record<WorkerId, CharacterVisualState>>(() => ({
@@ -255,6 +320,7 @@ export function useAmbientOffice(
     usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
     bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
     scout: buildVisualState('scout', simulator.getWorkerState('scout'), currentNode, isDegraded),
+    sosmed: buildVisualState('sosmed', simulator.getWorkerState('sosmed'), currentNode, isDegraded),
   }));
 
   const lastUpdateRef = useRef<number>(0);
@@ -273,6 +339,7 @@ export function useAmbientOffice(
         usagi: buildVisualState('usagi', simulator.getWorkerState('usagi'), currentNode, isDegraded),
         bayzero: buildVisualState('bayzero', simulator.getWorkerState('bayzero'), currentNode, isDegraded),
         scout: buildVisualState('scout', simulator.getWorkerState('scout'), currentNode, isDegraded),
+        sosmed: buildVisualState('sosmed', simulator.getWorkerState('sosmed'), currentNode, isDegraded),
       });
     }
   });
