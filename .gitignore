@@ -55,3 +55,7 @@ Thumbs.db
 # Root duplicate public folder (if any generated)
 /public/models/
 /public/textures/
+
+# Media & Queue Data (Ephemeral queue, jangan push ke Git)
+data/tiktok_queue/**/*
+!data/tiktok_queue/**/.gitkeep

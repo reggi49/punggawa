@@ -33,6 +33,7 @@ import {
   Bug,
   RotateCcw,
   Archive,
+  UploadCloud,
 } from 'lucide-react';
 import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { WORKER_PROFILES, WorkerId, ActualAgentState, ServicesHealthResponse } from '../types';
@@ -40,6 +41,7 @@ import { LogEntry } from '../hooks/useEventStream';
 import { CharacterVisualState } from '../simulation/useAmbientOffice';
 import { ServiceAlertBanner } from './ServiceAlertBanner';
 import { CareerOpsModal } from './CareerOpsModal';
+import { TikTokUploadModal } from './TikTokUploadModal';
 
 export interface TaskPreset {
   id: string;
@@ -410,6 +412,7 @@ export function HUDOverlay({
   // Task Dispatch Modal State
   const [dispatchModalOpen, setDispatchModalOpen] = useState(false);
   const [jobModalOpen, setJobModalOpen] = useState(false);
+  const [tiktokUploadModalOpen, setTiktokUploadModalOpen] = useState(false);
   const [activeAgentTab, setActiveAgentTab] = useState<'all' | 'stark' | 'usagi' | 'bayzero' | 'scout'>('all');
   const [selectedPresetId, setSelectedPresetId] = useState<string>('stark_ai_trends_2026');
   const [showCustomInput, setShowCustomInput] = useState(false);
@@ -1115,6 +1118,31 @@ export function HUDOverlay({
           >
             <Briefcase size={14} color="#D4A373" />
             <span>Peluang Karir</span>
+          </button>
+
+          {/* Upload TikTok (Kang Sosmed: Video Queue Dispatcher) Button */}
+          <button
+            onClick={() => setTiktokUploadModalOpen(true)}
+            style={{
+              background: 'rgba(244, 241, 234, 0.94)',
+              color: '#30343A',
+              border: '1px solid rgba(2, 132, 199, 0.5)',
+              borderRadius: '10px',
+              padding: '7px 14px',
+              fontSize: '12px',
+              fontWeight: 800,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              cursor: 'pointer',
+              boxShadow: '0 2px 8px rgba(0, 0, 0, 0.08)',
+              letterSpacing: '0.02em',
+              transition: 'all 0.2s ease',
+            }}
+            title="Unggah Video ke Antrean TikTok (Kang Sosmed)"
+          >
+            <UploadCloud size={14} color="#0284C7" />
+            <span>Upload TikTok</span>
           </button>
 
           {/* Mode 2D Eco Toggle Button - Disembunyikan di browser desktop */}
@@ -4184,6 +4212,13 @@ export function HUDOverlay({
         isOpen={jobModalOpen}
         onClose={() => setJobModalOpen(false)}
         onOpenDispatch={handleOpenDispatch}
+      />
+
+      {/* 10. TIKTOK VIDEO QUEUE UPLOAD MODAL (Kang Sosmed) */}
+      <TikTokUploadModal
+        isOpen={tiktokUploadModalOpen}
+        onClose={() => setTiktokUploadModalOpen(false)}
+        adminPassword={authPassword}
       />
     </div>
   );

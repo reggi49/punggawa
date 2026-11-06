@@ -7,15 +7,17 @@ import asyncio
 import hashlib
 import hmac
 import json
+import glob
 import logging
 import os
+import re
 import time
 import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from typing import Any, AsyncGenerator
 
-from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
@@ -987,6 +989,217 @@ async def enrich_career_profile_endpoint(payload: dict[str, Any]):
     loop = asyncio.get_event_loop()
     updated = await loop.run_in_executor(None, enrich_profile_from_text, text)
     return {"message": "Profil berhasil diperkaya oleh Scout!", "profile": updated}
+
+
+# -------------------------------------------------------------
+# TIKTOK VIDEO QUEUE & SECURE UPLOAD ENDPOINTS
+# -------------------------------------------------------------
+MAX_VIDEO_SIZE = 250 * 1024 * 1024  # 250 MB
+ALLOWED_VIDEO_EXTENSIONS = {".mp4", ".mov", ".webm"}
+ALLOWED_VIDEO_MIME_TYPES = {
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
+    "application/octet-stream",
+}
+ALLOWED_TIKTOK_ACCOUNTS = {"berdongeng", "kedaidaily"}
+SERVER_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
+
+def validate_video_magic_bytes(header: bytes) -> bool:
+    """Memeriksa file signature/magic bytes video asli untuk mencegah payload berbahaya."""
+    if len(header) < 12:
+        return False
+    # WebM: Matroska/EBML header starts with 0x1A 0x45 0xDF 0xA3
+    if header.startswith(b"\x1a\x45\xdf\xa3"):
+        return True
+    # MP4 / QuickTime MOV: Contains 'ftyp', 'moov', or 'mdat' box in first 64 bytes
+    for box in (b"ftyp", b"moov", b"mdat"):
+        if box in header[:64]:
+            return True
+    return False
+
+
+def sanitize_safe_filename(original_name: str) -> str:
+    """Membersihkan nama file dari karakter berbahaya dan path traversal."""
+    name = os.path.basename(original_name).strip()
+    name = re.sub(r"[\x00-\x1f\x7f/\\]", "", name)
+    base, ext = os.path.splitext(name)
+    ext = ext.lower().strip()
+    clean_base = re.sub(r"[^a-zA-Z0-9_-]", "_", base)[:80].strip("_")
+    if not clean_base:
+        clean_base = f"video_{uuid.uuid4().hex[:8]}"
+    return f"{clean_base}{ext}"
+
+
+@app.get("/api/tiktok/queue")
+async def get_tiktok_queue_endpoint():
+    """Mengembalikan daftar video dalam antrean untuk akun berdongeng dan kedaidaily."""
+    base_queue_dir = os.path.abspath(os.path.join(SERVER_PROJECT_ROOT, "data", "tiktok_queue"))
+    queue_data: dict[str, Any] = {}
+
+    for acc in ["berdongeng", "kedaidaily"]:
+        sub_dir = os.path.join(base_queue_dir, acc)
+        os.makedirs(sub_dir, exist_ok=True)
+        videos = []
+        for pat in ["*.mp4", "*.mov", "*.webm"]:
+            for fpath in glob.glob(os.path.join(sub_dir, pat)):
+                fname = os.path.basename(fpath)
+                bname, _ = os.path.splitext(fname)
+                cap_file = os.path.join(sub_dir, f"{bname}.txt")
+                cap_preview = None
+                if os.path.exists(cap_file):
+                    try:
+                        with open(cap_file, "r", encoding="utf-8") as cf:
+                            cap_preview = cf.read()[:120].strip()
+                    except Exception:
+                        pass
+                videos.append({
+                    "filename": fname,
+                    "size_bytes": os.path.getsize(fpath),
+                    "size_mb": round(os.path.getsize(fpath) / (1024 * 1024), 2),
+                    "modified_at": datetime.fromtimestamp(os.path.getmtime(fpath), timezone.utc).isoformat(),
+                    "has_caption": os.path.exists(cap_file),
+                    "caption_preview": cap_preview,
+                })
+        videos.sort(key=lambda x: x["modified_at"])
+        queue_data[acc] = videos
+
+    return {"status": "ok", "queue": queue_data}
+
+
+@app.post("/api/tiktok/upload")
+async def upload_tiktok_video_endpoint(
+    request: Request,
+    file: UploadFile = File(...),
+    account: str = Form("berdongeng"),
+    title: str | None = Form(None),
+    caption: str | None = Form(None),
+):
+    """
+    Endpoint Unggah Video Antrean TikTok dengan Validasi Keamanan Berlapis (Defense-in-Depth):
+    1. Autentikasi Pengelola (HMAC Token / X-Admin-Password).
+    2. Whitelist Akun Tujuan (mencegah penulisan ke direktori sembarang).
+    3. Proteksi Path Traversal (commonpath verification).
+    4. Sanitasi Nama File & Whitelist Ekstensi (.mp4, .mov, .webm).
+    5. Validasi Magic Bytes / File Binary Signature.
+    6. Limit Ukuran Streaming (Maksimal 250 MB untuk cegah DoS disk).
+    7. Sanitasi Metadata Caption pendamping.
+    8. Audit Logging jejak unggahan.
+    """
+    # 1. Enforce Authentication
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.replace("Bearer ", "").strip() if auth_header.startswith("Bearer ") else None
+    admin_pw = request.headers.get("X-Admin-Password")
+    if not verify_auth_token(token) and admin_pw != settings.ADMIN_PASSWORD:
+        raise HTTPException(
+            status_code=401,
+            detail="Akses ditolak: Autentikasi diperlukan. Masukkan password pengelola atau login terlebih dahulu.",
+        )
+
+    # 2. Whitelist Akun
+    account_key = account.lower().strip()
+    if account_key not in ALLOWED_TIKTOK_ACCOUNTS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Target akun '{account}' tidak valid. Pilihan akun yang didukung: {list(ALLOWED_TIKTOK_ACCOUNTS)}",
+        )
+
+    # 3. Validasi Ekstensi & Nama File
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="File video tidak memiliki nama.")
+
+    clean_name = sanitize_safe_filename(file.filename)
+    _, ext = os.path.splitext(clean_name)
+    if ext not in ALLOWED_VIDEO_EXTENSIONS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Format file '{ext}' tidak diizinkan. Hanya video ({', '.join(ALLOWED_VIDEO_EXTENSIONS)}) yang diterima.",
+        )
+
+    # 4. Validasi MIME Type
+    content_type = (file.content_type or "").lower().strip()
+    if content_type and content_type not in ALLOWED_VIDEO_MIME_TYPES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Tipe konten '{content_type}' tidak diizinkan.",
+        )
+
+    # 5. Proteksi Path Traversal & Penentuan Direktori Tujuan
+    base_queue_dir = os.path.abspath(os.path.join(SERVER_PROJECT_ROOT, "data", "tiktok_queue"))
+    target_dir = os.path.abspath(os.path.join(base_queue_dir, account_key))
+    if os.path.commonpath([target_dir, base_queue_dir]) != base_queue_dir:
+        raise HTTPException(status_code=403, detail="Akses direktori ilegal ditolak.")
+    os.makedirs(target_dir, exist_ok=True)
+
+    ts_prefix = datetime.now().strftime("%Y%m%d_%H%M%S")
+    final_video_name = f"{ts_prefix}_{clean_name}"
+    final_video_path = os.path.join(target_dir, final_video_name)
+
+    # 6. Stream Chunked Write dengan Proteksi Ukuran Maksimum
+    header_bytes = b""
+    total_bytes = 0
+    try:
+        with open(final_video_path, "wb") as out_f:
+            while True:
+                chunk = await file.read(1024 * 1024)  # 1MB chunk
+                if not chunk:
+                    break
+                total_bytes += len(chunk)
+                if total_bytes > MAX_VIDEO_SIZE:
+                    out_f.close()
+                    if os.path.exists(final_video_path):
+                        os.remove(final_video_path)
+                    raise HTTPException(
+                        status_code=413,
+                        detail=f"Ukuran file melebihi batas maksimum 250 MB (terbaca {round(total_bytes / (1024*1024), 1)} MB).",
+                    )
+                if len(header_bytes) < 64:
+                    header_bytes += chunk[: 64 - len(header_bytes)]
+                out_f.write(chunk)
+    except HTTPException:
+        raise
+    except Exception as exc:
+        if os.path.exists(final_video_path):
+            os.remove(final_video_path)
+        logger.error(f"Gagal menyimpan video upload: {exc}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Gagal menyimpan file ke server: {exc}")
+
+    # 7. Validasi Magic Bytes
+    if not validate_video_magic_bytes(header_bytes):
+        if os.path.exists(final_video_path):
+            os.remove(final_video_path)
+        raise HTTPException(
+            status_code=400,
+            detail="File ditolak: File signature tidak cocok dengan header video MP4/MOV/WebM asli.",
+        )
+
+    # 8. Simpan File Caption Pendamping (.txt) jika Ada
+    base_stem, _ = os.path.splitext(final_video_name)
+    caption_path = os.path.join(target_dir, f"{base_stem}.txt")
+    clean_caption = (caption or "").strip()[:3000]
+
+    if clean_caption:
+        try:
+            with open(caption_path, "w", encoding="utf-8") as txt_f:
+                txt_f.write(clean_caption)
+        except Exception as txt_err:
+            logger.warning(f"Gagal menulis file caption .txt: {txt_err}")
+
+    client_ip = request.client.host if request.client else "unknown"
+    logger.info(
+        f"🛡️ [SECURITY AUDIT] Video aman diterima: '{final_video_name}' "
+        f"({round(total_bytes / (1024*1024), 2)} MB) untuk akun '{account_key}' dari IP {client_ip}"
+    )
+
+    return {
+        "status": "success",
+        "message": f"Video berhasil diunggah ke antrean {account_key}.",
+        "filename": final_video_name,
+        "account": account_key,
+        "size_mb": round(total_bytes / (1024 * 1024), 2),
+        "has_caption": bool(clean_caption),
+    }
 
 
 # Static web UI serving if web/dist exists
