@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -375,6 +376,8 @@ def process_queue(limit: int = 1, account_key: str | None = None, dry_run: bool 
             try:
                 dispatch_tiktok_draft(f_path, account_key=acc, dry_run=dry_run)
                 total_processed += 1
+                if not dry_run and total_processed < len(target_files):
+                    time.sleep(4)  # Jeda aman 4 detik untuk mematuhi rate limit TikTok API
             except Exception as exc:
                 logger.error(f"❌ Gagal memproses video '{os.path.basename(f_path)}': {exc}", exc_info=True)
 
