@@ -169,6 +169,10 @@ class Settings(BaseSettings):
         "cmvvzqhn7000epl6yd8bp7mzz",
         description="Postiz integration ID for Instagram (Regi)",
     )
+    POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID: str = Field(
+        "cmw909dnc0013o274l7q4fjc5",
+        description="Postiz integration ID for Instagram (Kitten Gaul)",
+    )
     POSTIZ_THREADS_INTEGRATION_ID: str = Field(
         "cmw1m3jvh0001o274j5o6snns",
         description="Postiz integration ID for Threads (reggimuhamad)",

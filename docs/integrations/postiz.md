@@ -66,6 +66,7 @@ Tabel ID integrasi yang saat ini aktif digunakan dalam sistem:
 | **TikTok** | DongengIDN (`@berdongeng`) | `cmw3byats000ao2745rk4z14k` | `POSTIZ_TIKTOK_INTEGRATION_ID` |
 | **TikTok** | Kedai Daily Nurul (`@nurulzulaikhha`) | `cmw2y48yi0003o274ue9csad3` | `POSTIZ_TIKTOK_KEDAI_INTEGRATION_ID` |
 | **Instagram** | Regi (`@reggimuhamad`) | `cmvvzqhn7000epl6yd8bp7mzz` | `POSTIZ_INSTAGRAM_INTEGRATION_ID` |
+| **Instagram** | Kitten Gaul (`@kittengaul`) | `cmw909dnc0013o274l7q4fjc5` | `POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID` |
 | **Threads** | Regi (`@reggimuhamad`) | `cmw1m3jvh0001o274j5o6snns` | `POSTIZ_THREADS_INTEGRATION_ID` |
 | **YouTube** | Dongeng Nusantara | `cmw1jqlvs0001mk736aotawcm` | `POSTIZ_YOUTUBE_INTEGRATION_ID` |
 

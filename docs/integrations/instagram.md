@@ -290,8 +290,9 @@ POSTIZ_API_KEY=your_postiz_api_key_here
 POSTIZ_BASE_URL=https://sosial.bogorstore.com/api/public/v1
 
 # Meta Platform Integration IDs
-POSTIZ_INSTAGRAM_INTEGRATION_ID=cmvvzqhn7000epl6yd8bp7mzz  # Akun Instagram
-POSTIZ_THREADS_INTEGRATION_ID=cmw1m3jvh0001o274j5o6snns    # Akun Threads
+POSTIZ_INSTAGRAM_INTEGRATION_ID=cmvvzqhn7000epl6yd8bp7mzz              # Akun Instagram (Regi)
+POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID=cmw909dnc0013o274l7q4fjc5  # Akun Instagram (Kitten Gaul)
+POSTIZ_THREADS_INTEGRATION_ID=cmw1m3jvh0001o274j5o6snns                # Akun Threads
 ```
 
 ---

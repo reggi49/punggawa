@@ -26,7 +26,19 @@ from config.settings import settings
 
 API_KEY = settings.POSTIZ_API_KEY
 BASE_URL = settings.POSTIZ_BASE_URL
-INTEGRATION_ID = settings.POSTIZ_INSTAGRAM_INTEGRATION_ID
+
+# Pilih akun target: default ke kitten gaul jika ada, atau lewat argumen --regi / --kittengaul
+account_arg = sys.argv[1].lower() if len(sys.argv) > 1 else ""
+if "regi" in account_arg:
+    INTEGRATION_ID = settings.POSTIZ_INSTAGRAM_INTEGRATION_ID
+    ACCOUNT_LABEL = "Regi (@reggimuhamad)"
+elif "kitten" in account_arg:
+    INTEGRATION_ID = settings.POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID
+    ACCOUNT_LABEL = "Kitten Gaul (@kittengaul)"
+else:
+    # Default prioritas ke akun Kitten Gaul yang baru ditambahkan
+    INTEGRATION_ID = settings.POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID or settings.POSTIZ_INSTAGRAM_INTEGRATION_ID
+    ACCOUNT_LABEL = "Kitten Gaul (@kittengaul)" if INTEGRATION_ID == settings.POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID else "Regi (@reggimuhamad)"
 
 def create_banner():
     width, height = 1080, 1080
@@ -77,7 +89,7 @@ def create_banner():
     return buf, now_str
 
 def main():
-    print("🚀 [Punggawa] Starting Postiz Instagram Autopost Test...")
+    print(f"🚀 [Punggawa] Starting Postiz Instagram Autopost Test for: {ACCOUNT_LABEL} ({INTEGRATION_ID})...")
     
     # 1. Generate Banner
     buf, now_str = create_banner()
