@@ -239,7 +239,11 @@ def get_next_unposted_drive_video(
         safe_name += ".mp4"
 
     temp_file_path = os.path.join(TEMP_DOWNLOAD_DIR, f"{candidate['id']}_{safe_name}")
-    success = download_file_from_drive(service, candidate["id"], temp_file_path, candidate["name"])
+    if os.path.exists(temp_file_path) and os.path.getsize(temp_file_path) > 0:
+        logger.info(f"⚡ File video '{safe_name}' sudah ada di cache temporer lokal: {temp_file_path}")
+        success = True
+    else:
+        success = download_file_from_drive(service, candidate["id"], temp_file_path, candidate["name"])
 
     if not success or not os.path.exists(temp_file_path):
         return None
@@ -328,4 +332,6 @@ if __name__ == "__main__":
     for i, v in enumerate(videos, 1):
         status = "✅ SUDAH TAYANG" if v["id"] in posted else "⏳ ANTRIAN (PENDING)"
         print(f"{i:3d}. [{status}] {v['name']} (ID: {v['id']})")
+
+    os._exit(0)
 

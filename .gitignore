@@ -3,6 +3,9 @@
 .env.*
 !.env.example
 *.local
+*credentials*.json
+config/*.json
+!config/default*.json
 
 # Python Environments & Cache
 .venv/
@@ -59,3 +62,5 @@ Thumbs.db
 # Media & Queue Data (Ephemeral queue, jangan push ke Git)
 data/tiktok_queue/**/*
 !data/tiktok_queue/**/.gitkeep
+data/temp_gdrive_downloads/**/*
+!data/temp_gdrive_downloads/**/.gitkeep

@@ -197,7 +197,7 @@ def upload_media_to_postiz(file_path: str) -> dict[str, Any]:
     headers = {"Authorization": POSTIZ_API_KEY}
     with open(file_path, "rb") as f:
         files = {"file": (filename, f, "video/mp4")}
-        res = requests.post(f"{POSTIZ_BASE_URL}/upload", headers=headers, files=files, timeout=60.0)
+        res = requests.post(f"{POSTIZ_BASE_URL}/upload", headers=headers, files=files, timeout=300.0)
 
     if res.status_code != 201:
         raise RuntimeError(f"Gagal upload ke Postiz ({res.status_code}): {res.text}")
