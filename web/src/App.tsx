@@ -72,7 +72,7 @@ export function App() {
   // Otherwise, render full 3D Office with Progressive Suspense Fallback
   return (
     <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      <Suspense fallback={<OfficeLoadingScreen onSwitchTo2D={isMobile ? () => setViewMode('2d') : undefined} />}>
+      <Suspense fallback={<OfficeLoadingScreen onSwitchTo2D={() => setViewMode('2d')} />}>
         {/* 3D Office Isometric World with Multi-Agent Team */}
         <OfficeCanvas
           currentNode={currentNode}
@@ -109,7 +109,7 @@ export function App() {
         onSimulateNode={setSimulatedNode}
         onReconnect={reconnect}
         isMobile={isMobile}
-        onSwitchTo2D={isMobile ? () => setViewMode('2d') : undefined}
+        onSwitchTo2D={() => setViewMode('2d')}
       />
     </div>
   );

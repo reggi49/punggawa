@@ -1145,8 +1145,8 @@ export function HUDOverlay({
             <span>Upload TikTok</span>
           </button>
 
-          {/* Mode 2D Eco Toggle Button - Disembunyikan di browser desktop */}
-          {isMobile && onSwitchTo2D && (
+          {/* Mode 2D Eco Toggle Button */}
+          {onSwitchTo2D && (
             <button
               onClick={onSwitchTo2D}
               style={{
