@@ -293,13 +293,13 @@ def dispatch_tiktok_draft(
         logger.info(f"✅ Video berhasil diunggah ke Postiz: {media_path}")
 
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
-        is_instagram = account_cfg.get("platform") == "instagram"
+        is_instagram = acct_conf.get("platform") == "instagram"
 
         post_settings: dict[str, Any]
         if is_instagram:
             post_settings = {
                 "__type": "instagram",
-                "post_type": "reel",
+                "post_type": "post",
             }
         else:
             post_settings = {
@@ -377,7 +377,7 @@ def dispatch_tiktok_draft(
 def process_queue(limit: int = 1, account_key: str | None = None, dry_run: bool = False):
     """Memproses video antrean multi-akun yang ada di data/tiktok_queue."""
     os.makedirs(QUEUE_DIR, exist_ok=True)
-    targets = [account_key] if account_key else ["kedaidaily", "berdongeng"]
+    targets = [account_key] if account_key else ["kedaidaily", "berdongeng", "kittengaul"]
 
     total_processed = 0
     for acc in targets:
@@ -428,7 +428,7 @@ def process_queue(limit: int = 1, account_key: str | None = None, dry_run: bool 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Punggawa TikTok Queue Dispatcher")
     parser.add_argument("--file", help="Path ke file video tertentu untuk diposting langsung")
-    parser.add_argument("--account", choices=["kedaidaily", "berdongeng"], help="Pilih akun target (kedaidaily / berdongeng)")
+    parser.add_argument("--account", choices=["kedaidaily", "berdongeng", "kittengaul"], help="Pilih akun target (kedaidaily / berdongeng / kittengaul)")
     parser.add_argument("--caption", help="Caption kustom untuk video")
     parser.add_argument("--title", help="Judul TikTok kustom (max 90 char)")
     parser.add_argument("--method", choices=["UPLOAD", "DIRECT_POST"], help="Override mode posting: UPLOAD (Draf) atau DIRECT_POST (Langsung)")
