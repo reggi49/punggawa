@@ -123,11 +123,43 @@ Postiz meminta izin (*scopes*) `pages_read_engagement` dan `instagram_manage_ins
 ### Mengapa Akun Baru Tidak Muncul di Postiz?
 Meskipun akun Instagram baru (misalnya `@kittengaul`) **sudah berhasil berstatus Tester** di Meta Developer Portal, akun tersebut **tetap tidak akan muncul di daftar pilihan "Select Instagram Account" Postiz jika belum terhubung ke sebuah Facebook Page**.
 
-Postiz menggunakan endpoint Meta Graph API `/me/accounts`. Saat Anda login dengan Facebook, Meta hanya mengembalikan akun Instagram yang **sudah ditautkan ke salah satu Halaman Facebook (Facebook Page) yang Anda kelola**.
+Postiz menggunakan endpoint Meta Graph API `/me/accounts`. Saat Anda login dengan Facebook, Meta hanya mengembalikan akun Instagram yang **sudah ditautkan ke salah satu Halaman Facebook (Facebook Page) yang dikelola oleh akun Facebook Anda**.
 
 ---
 
-### Metode 1: Lewat Web Facebook (Linked Accounts - Rekomendasi Utama ⭐)
+### ⭐ Solusi Cepat (Hanya 2 Menit dari Aplikasi Instagram di HP)
+
+Anda tidak perlu repot membuka laptop atau membuat fanspage rumit di Facebook. Cukup lakukan ini langsung dari aplikasi Instagram:
+
+1. **Buka Aplikasi Instagram di HP**:
+   - Pastikan sedang aktif/login di akun target (misal: `kittengaul`).
+
+2. **Pastikan Akun Sudah Berstatus Profesional**:
+   - Masuk ke tab **Profil** ➔ Menu garis tiga (**☰**) di pojok kanan atas ➔ **Pengaturan dan Privasi**.
+   - Pilih **Jenis dan fitur akun** (*Account type and tools*) ➔ tap **Beralih ke Akun Profesional**.
+   - Pilih kategori bebas (misal: *Kreator Konten*) ➔ pilih tipe **Creator** atau **Business**.
+
+3. **Buat & Hubungkan ke Facebook Page Otomatis**:
+   - Di halaman Profil akun `kittengaul`, tap tombol **Edit Profil** (*Edit profile*).
+   - Gulir ke bagian **Informasi Bisnis Publik** (*Public business information*).
+   - Tap menu **Halaman** (*Page*).
+   - Tap opsi **Buat Halaman Facebook Baru** (*Create Facebook Page*) (atau hubungkan ke akun Facebook Anda).
+   - Beri nama halaman bebas (misal: *Kitten Gaul Official*) ➔ klik **Selesai / Selesai Hubungkan**. (Halaman Facebook ini boleh kosong, tidak perlu diisi postingan sama sekali).
+
+4. **Hubungkan Kembali di Postiz**:
+   - Kembali ke Postiz di browser (`sosial.bogorstore.com`).
+   - Klik **Add Channel** ➔ pilih **Instagram (Facebook Business)**.
+   - Saat pop-up otorisasi Facebook muncul, pastikan Halaman Facebook baru tersebut dan akun `kittengaul` dicentang ➔ klik **Lanjutkan**.
+   - Kartu profil `kittengaul` sekarang akan langsung muncul di sebelah Regi dan Master Laptop!
+
+> [!TIP]
+> **Catatan jika Menu "Halaman" di Edit Profil tidak muncul di HP:**
+> Pada beberapa versi aplikasi Instagram terbaru, menu ini dipindahkan ke **Pusat Akun Meta (Accounts Center)**:
+> Buka **Profil** ➔ menu **☰** ➔ **Pusat Akun** ➔ **Pengalaman terhubung** ➔ **Berbagi antar-profil** ➔ **Tambah akun Facebook**.
+
+---
+
+### Metode 1: Lewat Web Facebook (Linked Accounts - Alternatif Desktop)
 
 Cara ini paling stabil dan langsung terverifikasi oleh server Facebook:
 
@@ -184,6 +216,48 @@ Jika akun Anda menggunakan Business Portfolio Meta (misalnya `bogorstore.com`):
 5. Tap **Berbagi antar-profil (Sharing across profiles)**.
 6. Tap **Tambah Akun (Add accounts)** ➔ pilih **Tambah akun Facebook**.
 7. Login menggunakan akun Facebook Anda (`Regi`) dan pilih Halaman Facebook yang ingin dipasangkan.
+
+---
+
+### 🚨 Mengapa Hanya 2 Akun (Regi & Master Laptop) yang Muncul dan Cara Mengatasinya
+
+Jika di dialog **Configure Your Channel** Postiz masih hanya muncul 2 akun lama (**Regi** dan **Master Laptop**) dan `kittengaul` belum muncul, hal ini disebabkan oleh **dua kemungkinan utama**:
+
+#### 1. Facebook Login Menyimpan Sesi Izin Lama (OAuth Permission Cache)
+Saat pertama kali menghubungkan Postiz ke Facebook, Anda hanya memberikan izin akses pada Halaman *Reggi Ig* dan *Distributor Laptop*. Ketika Anda mengklik *Add Channel* kembali, Facebook **tidak meminta ulang izin untuk Halaman baru secara otomatis**, melainkan langsung menggunakan izin yang tersimpan sebelumnya.
+
+**Solusi (Reset Integrasi Facebook):**
+1. Buka halaman pengaturan integrasi bisnis Facebook:
+   👉 [https://www.facebook.com/settings/?tab=business_tools](https://www.facebook.com/settings/?tab=business_tools)
+2. Cari aplikasi **Bogorstore Social**.
+3. Klik tombol **Remove (Hapus)** pada aplikasi *Bogorstore Social*.
+   *(Catatan: Menghapus ini aman, tidak menghapus postingan Anda di Facebook maupun Postiz. Ini hanya mereset izin OAuth Facebook)*.
+4. Kembali ke Postiz: [https://sosial.bogorstore.com/integrations](https://sosial.bogorstore.com/integrations).
+5. Klik **Add Channel** ➔ **Instagram (Facebook Business)**.
+6. Pop-up Facebook Login sekarang akan menampilkan wizard izin dari awal:
+   - Centang **Pilih Semua Akun Instagram** (atau pastikan `kittengaul` tercentang).
+   - Centang **Pilih Semua Halaman Facebook** (atau pastikan Halaman baru tercentang).
+   - Klik **Lanjutkan / Selesai**.
+7. Akun `kittengaul` akan langsung muncul di Postiz!
+
+---
+
+#### 2. Akun `kittengaul` Belum Terkait ke Halaman Facebook Milik Akun `Regi`
+Agar Postiz dapat mendeteksi `kittengaul`, akun Instagram tersebut harus terhubung ke Halaman Facebook yang dikelola oleh akun Facebook `Regi`.
+
+Di Facebook saat ini, akun `Regi` mengelola 4 Halaman:
+1. `Merah Putih Garuda`
+2. `Reggi Ig` (terhubung ke akun IG Regi)
+3. `Distributor Laptop` (terhubung ke akun IG Master Laptop)
+4. `Bogorstore.com`
+
+**Solusi Tautan Langsung dari Facebook Web (Paling Pasti & 1 Menit Selesai):**
+Jika di aplikasi HP menu tautan terlewat, Anda bisa menautkan langsung dari Halaman Facebook yang sudah ada (misal `Bogorstore.com` atau Halaman Baru):
+1. Buka [https://www.facebook.com/pages/create/](https://www.facebook.com/pages/create/) di browser komputer Anda (sedang login Facebook `Regi`).
+2. Masukkan nama: `Kitten Gaul` ➔ Kategori: `Kreator Konten` ➔ klik **Buat Halaman**.
+3. Beralih ke profil Halaman `Kitten Gaul` tersebut ➔ buka **Pengaturan (Settings)** ➔ **Akun Tertaut (Linked Accounts)** ➔ **Instagram**.
+4. Klik **Hubungkan Akun (Connect Account)** ➔ Masukkan login Instagram `kittengaul`.
+5. Setelah terhubung, lakukan langkah Reset Izin di atas ➔ `kittengaul` 100% muncul di Postiz!
 
 ---
 
