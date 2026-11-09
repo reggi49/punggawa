@@ -722,7 +722,9 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
                     type="text"
                     maxLength={90}
                     placeholder={
-                      targetAccount === 'berdongeng'
+                      targetAccount === 'kittengaul'
+                        ? 'Kitten Gaul (Otomatis)'
+                        : targetAccount === 'berdongeng'
                         ? 'Contoh: Kisah Legenda Malin Kundang #1'
                         : 'Contoh: Promo Kalisha Saira Hijab Instan'
                     }
@@ -741,12 +743,23 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569', marginBottom: '4px' }}>
-                    Caption & Hashtags (Opsional)
-                  </label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                      Caption & Hashtags (Opsional)
+                    </label>
+                    {targetAccount === 'kittengaul' && (
+                      <span style={{ fontSize: '11px', color: '#E11D48', fontWeight: 600 }}>
+                        Preset Otomatis: #sakura #fyp #viral #sakuraschoolsimulator
+                      </span>
+                    )}
+                  </div>
                   <textarea
                     rows={3}
-                    placeholder="Tulis deskripsi dan hashtag di sini (otomatis disimpan ke file .txt pendamping)..."
+                    placeholder={
+                      targetAccount === 'kittengaul'
+                        ? '#sakura\n#fyp\n#viral\n#sakuraschoolsimulator'
+                        : 'Tulis deskripsi dan hashtag di sini (otomatis disimpan ke file .txt pendamping)...'
+                    }
                     value={caption}
                     onChange={(e) => setCaption(e.target.value)}
                     style={{

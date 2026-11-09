@@ -73,12 +73,8 @@ TIKTOK_ACCOUNTS: dict[str, dict[str, Any]] = {
         "subfolder": "kittengaul",
         "method": "REEL",
         "apply_cover": False,
-        "default_title": "Video Seru & Gemas Kitten Gaul",
-        "default_caption": (
-            "Keseruan dan momen gemas hari ini bareng Kitten Gaul! 🐾✨\n\n"
-            "Yuk follow @kittengaul untuk video lucu lainnya tiap hari! 🐱💖\n\n"
-            "#kittengaul #kucinglucu #reelsinstagram #catlovers #catsoftiktok #fyp #viral"
-        ),
+        "default_title": "Kitten Gaul",
+        "default_caption": "#sakura\n#fyp\n#viral\n#sakuraschoolsimulator",
     },
 }
 
@@ -258,6 +254,12 @@ def dispatch_tiktok_draft(
     # Fallback caption & title
     final_caption = custom_caption or acct_conf.get("default_caption", "Video terbaru hari ini! ✨ #fyp")
     final_title = title or acct_conf.get("default_title", "Video Terbaru")
+
+    # Khusus Channel Kitten Gaul (@kittengaul / cmw909dnc0013o274l7q4fjc5)
+    # Wajib hanya 4 hashtag spesifik tanpa narasi/teks tambahan sesuai preferensi
+    if detected_acc == "kittengaul" or target_integration == "cmw909dnc0013o274l7q4fjc5":
+        final_caption = "#sakura\n#fyp\n#viral\n#sakuraschoolsimulator"
+        final_title = "Kitten Gaul"
 
     account_name = acct_conf.get("name", target_integration)
     if dry_run:
