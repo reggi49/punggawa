@@ -7,12 +7,13 @@ Dokumentasi lengkap mengenai integrasi otomatisasi publikasi konten ke **Instagr
 ## 📑 Daftar Isi
 1. [Arsitektur & Alur Publikasi](#1-arsitektur--alur-publikasi)
 2. [Prasyarat Akun & Meta Graph API](#2-prasyarat-akun--meta-graph-api)
-3. [Konfigurasi Environment](#3-konfigurasi-environment)
-4. [Format Media & Spesifikasi Teknis](#4-format-media--spesifikasi-teknis)
-5. [Alur Pemanggilan API Postiz](#5-alur-pemanggilan-api-postiz)
-6. [Skrip Pengujian Otomatis (`scripts/test_postiz_autopost.py`)](#6-skrip-pengujian-otomatis-scriptstest_postiz_autopostpy)
-7. [Integrasi Khusus Threads](#7-integrasi-khusus-threads)
-8. [Troubleshooting & Solusi Error](#8-troubleshooting--solusi-error)
+3. [Portal Developer, Domain & Pendaftaran Akun Tester (Meta)](#3-portal-developer-domain--pendaftaran-akun-tester-meta)
+4. [Konfigurasi Environment](#4-konfigurasi-environment)
+5. [Format Media & Spesifikasi Teknis](#5-format-media--spesifikasi-teknis)
+6. [Alur Pemanggilan API Postiz](#6-alur-pemanggilan-api-postiz)
+7. [Skrip Pengujian Otomatis (`scripts/test_postiz_autopost.py`)](#7-skrip-pengujian-otomatis-scriptstest_postiz_autopostpy)
+8. [Integrasi Khusus Threads](#8-integrasi-khusus-threads)
+9. [Troubleshooting & Solusi Error](#9-troubleshooting--solusi-error)
 
 ---
 
@@ -48,7 +49,47 @@ Meta Graph API memiliki kebijakan ketat mengenai jenis akun yang dapat menerima 
 
 ---
 
-## 3. Konfigurasi Environment
+## 3. Portal Developer, Domain & Pendaftaran Akun Tester (Meta)
+
+Saat aplikasi Meta masih dalam tahap pengembangan (**In Development Mode**), Meta memblokir akun publik dan hanya mengizinkan akun yang telah terdaftar sebagai **Tester** atau **Developer**.
+
+### 🌐 Daftar Domain & URL Kunci
+- **Portal Meta for Developers**: [https://developers.facebook.com/](https://developers.facebook.com/)
+- **Halaman Konfirmasi Tester (Wajib Diakses Tester)**: [https://www.instagram.com/accounts/manage_access/](https://www.instagram.com/accounts/manage_access/)
+- **Domain Redirect URI (OAuth Callback)**: `https://sosial.bogorstore.com/api/auth/callback/instagram` (atau `https://sosial.bogorstore.com/api/auth/callback/threads`)
+
+---
+
+### 🛠️ Langkah-Langkah Mendaftarkan Akun Tester Instagram:
+
+1. **Masuk ke Portal Meta Developer**:
+   - Kunjungi [https://developers.facebook.com/](https://developers.facebook.com/) dan login menggunakan akun Facebook admin Anda.
+   - Klik menu **My Apps** di kanan atas, lalu pilih aplikasi yang terhubung ke Postiz.
+
+2. **Buka Menu Roles (Peran)**:
+   - Pada panel navigasi di sebelah kiri, klik **App Roles** (atau **Roles** / **Peran**).
+   - Pilih submenu **Roles**.
+
+3. **Undang Akun Instagram sebagai Tester**:
+   - Gulir ke bawah hingga menemukan bagian **Instagram Testers** (atau bagian **Testers**).
+   - Klik tombol **Add Instagram Testers** (atau *Tambahkan Penguji Instagram*).
+   - Masukkan **Username Instagram** dari akun yang ingin didaftarkan (misal: `@reggimuhamad` atau `@nurulzulaikhha`).
+   - Klik **Submit**. Status akun akan berubah menjadi *Pending* (Menunggu Konfirmasi).
+
+4. **Konfirmasi Undangan di Web Instagram (Langkah Wajib!)**:
+   - Buka browser dan login ke akun Instagram yang baru saja diundang di:
+     👉 [https://www.instagram.com/accounts/manage_access/](https://www.instagram.com/accounts/manage_access/)
+   - Klik tab **Tester Invitations (Undangan Penguji)**.
+   - Akan muncul kartu undangan dari nama aplikasi Meta Anda. Klik tombol **Accept (Terima)**.
+
+5. **Hubungkan Ulang di Postiz**:
+   - Buka dashboard Postiz di `https://sosial.bogorstore.com/integrations`.
+   - Klik **Connect Instagram** (atau *Reconnect*).
+   - Login menggunakan akun Instagram yang telah berstatus *Accepted Tester*. Otorisasi OAuth akan berhasil tanpa perlu menunggu aplikasi disetujui secara publik (*App Review*).
+
+---
+
+## 4. Konfigurasi Environment
 
 Nilai integrasi disimpan di file `.env` atau `config/settings.py`:
 
@@ -64,7 +105,7 @@ POSTIZ_THREADS_INTEGRATION_ID=cmw1m3jvh0001o274j5o6snns    # Akun Threads
 
 ---
 
-## 4. Format Media & Spesifikasi Teknis
+## 5. Format Media & Spesifikasi Teknis
 
 ### A. Postingan Feed (Gambar)
 Meta Graph API mewajibkan rasio aspek tertentu untuk postingan gambar:
@@ -86,7 +127,7 @@ Meta Graph API mewajibkan rasio aspek tertentu untuk postingan gambar:
 
 ---
 
-## 5. Alur Pemanggilan API Postiz
+## 6. Alur Pemanggilan API Postiz
 
 ### Langkah 1: Unggah Gambar ke Media Storage
 ```bash
@@ -140,7 +181,7 @@ Content-Type: application/json
 
 ---
 
-## 6. Skrip Pengujian Otomatis (`scripts/test_postiz_autopost.py`)
+## 7. Skrip Pengujian Otomatis (`scripts/test_postiz_autopost.py`)
 
 Punggawa menyertakan skrip otomatisasi end-to-end untuk menguji jalur integrasi Instagram:
 
@@ -166,7 +207,7 @@ Punggawa menyertakan skrip otomatisasi end-to-end untuk menguji jalur integrasi 
 
 ---
 
-## 7. Integrasi Khusus Threads
+## 8. Integrasi Khusus Threads
 
 Punggawa juga mendukung penerbitan otomatis ke platform **Threads** menggunakan integrasi `POSTIZ_THREADS_INTEGRATION_ID`:
 
@@ -182,7 +223,7 @@ Punggawa juga mendukung penerbitan otomatis ke platform **Threads** menggunakan 
 
 ---
 
-## 8. Troubleshooting & Solusi Error
+## 9. Troubleshooting & Solusi Error
 
 | Gejala Error | Penyebab Utama | Solusi |
 |---|---|---|

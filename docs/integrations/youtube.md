@@ -7,14 +7,15 @@ Dokumentasi lengkap mengenai integrasi YouTube pada sistem **Punggawa**, meliput
 ## 📑 Daftar Isi
 1. [Arsitektur & Komponen](#1-arsitektur--komponen)
 2. [Konfigurasi Environment](#2-konfigurasi-environment)
-3. [Deep Channel Scanner (`scripts/channel_scanner.py`)](#3-deep-channel-scanner-scriptschannel_scannerpy)
+3. [Portal Developer, Domain & Pendaftaran Akun Tester (Google Cloud)](#3-portal-developer-domain--pendaftaran-akun-tester-google-cloud)
+4. [Deep Channel Scanner (`scripts/channel_scanner.py`)](#4-deep-channel-scanner-scriptschannel_scannerpy)
    - [Strategi Uploads Playlist (Hemat Kuota 100x Lipat)](#strategi-uploads-playlist-hemat-kuota-100x-lipat)
    - [Penyaringan Kualitas & Filter Skip](#penyaringan-kualitas--filter-skip)
    - [Skema Database Katalog Video](#skema-database-katalog-video)
-4. [Pemeriksaan Integritas Video Tanpa Kuota (Zero-Quota oEmbed)](#4-pemeriksaan-integritas-video-tanpa-kuota-zero-quota-oembed)
-5. [YouTube Shorts & Stories Pipeline](#5-youtube-shorts--stories-pipeline)
-6. [Publikasi YouTube via Postiz Gateway](#6-publikasi-youtube-via-postiz-gateway)
-7. [Panduan Pengoperasian CLI](#7-panduan-pengoperasian-cli)
+5. [Pemeriksaan Integritas Video Tanpa Kuota (Zero-Quota oEmbed)](#5-pemeriksaan-integritas-video-tanpa-kuota-zero-quota-oembed)
+6. [YouTube Shorts & Stories Pipeline](#6-youtube-shorts--stories-pipeline)
+7. [Publikasi YouTube via Postiz Gateway](#7-publikasi-youtube-via-postiz-gateway)
+8. [Panduan Pengoperasian CLI](#8-panduan-pengoperasian-cli)
 
 ---
 
@@ -63,7 +64,43 @@ POSTIZ_YOUTUBE_INTEGRATION_ID=cmw1jqlvs0001mk736aotawcm
 
 ---
 
-## 3. Deep Channel Scanner (`scripts/channel_scanner.py`)
+## 3. Portal Developer, Domain & Pendaftaran Akun Tester (Google Cloud)
+
+Jika Anda menghubungkan channel YouTube Anda sendiri ke Postiz via Google OAuth 2.0 saat aplikasi Google Cloud masih berstatus **Testing (Uji Coba)**, Google hanya mengizinkan akun email yang secara eksplisit didaftarkan pada daftar **Test Users (Pengguna Uji)**.
+
+### 🌐 Daftar Domain & URL Kunci
+- **Google Cloud Console**: [https://console.cloud.google.com/](https://console.cloud.google.com/)
+- **Halaman OAuth Consent Screen (Layar Persetujuan)**: [https://console.cloud.google.com/apis/credentials/consent](https://console.cloud.google.com/apis/credentials/consent)
+- **Domain Redirect URI (OAuth Callback)**: `https://sosial.bogorstore.com/api/auth/callback/google`
+
+---
+
+### 🛠️ Langkah-Langkah Mendaftarkan Akun Tester di Google Cloud Console:
+
+1. **Masuk ke Google Cloud Console**:
+   - Buka [https://console.cloud.google.com/](https://console.cloud.google.com/) dan login menggunakan akun Google admin / pemilik project.
+   - Pilih project Google Cloud yang Anda gunakan untuk integrasi YouTube/Postiz di bilah atas (*Project Selector*).
+
+2. **Buka Menu OAuth Consent Screen**:
+   - Pada panel navigasi kiri, pilih **APIs & Services** -> **OAuth consent screen** (Layar Persetujuan OAuth).
+   - Pastikan **Publishing status** tertulis **Testing** (jika belum berstatus *In Production*).
+
+3. **Tambahkan Email Tester (Test Users)**:
+   - Gulir ke bawah hingga ke bagian **Test users (Pengguna uji)**.
+   - Klik tombol **+ ADD USERS**.
+   - Masukkan **Alamat Email Google / Gmail** dari akun yang ingin dihubungkan sebagai channel YouTube di Postiz (Anda dapat mendaftarkan hingga maksimal 100 email pengguna).
+   - Klik **SAVE**.
+
+4. **Hubungkan Channel YouTube di Postiz**:
+   - Buka dashboard Postiz di `https://sosial.bogorstore.com/integrations`.
+   - Klik **Connect YouTube**.
+   - Pilih akun Google yang baru saja didaftarkan ke Test users.
+   - Jika muncul peringatan *"Google hasn’t verified this app"*, klik **Advanced (Lanjutan)** -> lalu klik **Go to bogorstore.com (unsafe / lanjutkan)** -> centang seluruh izin YouTube dan klik **Continue**.
+   - Channel YouTube akan langsung terhubung secara sukses tanpa terkena error `403: access_denied`.
+
+---
+
+## 4. Deep Channel Scanner (`scripts/channel_scanner.py`)
 
 ### Strategi Uploads Playlist (Hemat Kuota 100x Lipat)
 
@@ -102,7 +139,7 @@ CREATE TABLE IF NOT EXISTS youtube_dongeng_catalog (
 
 ---
 
-## 4. Pemeriksaan Integritas Video Tanpa Kuota (Zero-Quota oEmbed)
+## 5. Pemeriksaan Integritas Video Tanpa Kuota (Zero-Quota oEmbed)
 
 Dalam jadwal publikasi harian, agen **Kang Bos** wajib memverifikasi bahwa video YouTube yang dijadwalkan masih berstatus publik (belum dihapus oleh pemilik aslinya atau diubah menjadi *Private*).
 
@@ -125,7 +162,7 @@ def verify_youtube_video_availability(video_id: str) -> bool:
 
 ---
 
-## 5. YouTube Shorts & Stories Pipeline
+## 6. YouTube Shorts & Stories Pipeline
 
 Konten dongeng vertikal pendek (durasi < 60 detik) dideteksi dan disalurkan ke pipeline khusus:
 1. **CMS Stories**: Dikirim ke endpoint `DONGENG_CMS_STORIES_URL` (`https://bogorstore.com/agoose/api/posts/stories`) agar tampil di fitur cerita instan aplikasi mobile.
@@ -133,7 +170,7 @@ Konten dongeng vertikal pendek (durasi < 60 detik) dideteksi dan disalurkan ke p
 
 ---
 
-## 6. Publikasi YouTube via Postiz Gateway
+## 7. Publikasi YouTube via Postiz Gateway
 
 Untuk mempublikasikan video ke channel YouTube milik sendiri (*Dongeng Nusantara*), Punggawa menggunakan integrasi Postiz:
 ```json
@@ -167,7 +204,7 @@ Untuk mempublikasikan video ke channel YouTube milik sendiri (*Dongeng Nusantara
 
 ---
 
-## 7. Panduan Pengoperasian CLI
+## 8. Panduan Pengoperasian CLI
 
 ### 1. Menjalankan Pemindaian Seluruh Channel Target
 ```bash

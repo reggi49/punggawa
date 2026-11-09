@@ -80,10 +80,17 @@ POSTIZ_TIKTOK_KEDAI_INTEGRATION_ID=cmw2y48yi0003o274ue9csad3
 
 ## 3. Panduan Otorisasi OAuth & Sandbox Troubleshooting
 
-### Mengatasi Error `non_sandbox_target`
+### 🌐 Daftar Domain & URL Kunci
+- **TikTok for Developers Portal**: [https://developers.tiktok.com/](https://developers.tiktok.com/)
+- **Halaman Manage Apps**: [https://developers.tiktok.com/apps/](https://developers.tiktok.com/apps/)
+- **Domain Redirect URI (OAuth Callback)**: `https://sosial.bogorstore.com/api/auth/callback/tiktok`
+
+---
+
+### Mengatasi Error `non_sandbox_target` (Pendaftaran Akun Tester)
 
 #### 📌 Penyebab Error
-Error ini muncul saat Anda mencoba menghubungkan akun TikTok baru ke platform Postiz (`sosial.bogorstore.com`). Jika aplikasi di [TikTok Developer Portal](https://developers.tiktok.com/) masih berstatus **Sandbox (Development)**, TikTok secara ketat menolak login OAuth dari akun manapun yang **belum didaftarkan secara manual ke daftar Target Users**.
+Error ini muncul saat Anda mencoba menghubungkan akun TikTok baru ke platform Postiz (`sosial.bogorstore.com`). Jika aplikasi di [TikTok Developer Portal](https://developers.tiktok.com/) masih berstatus **Sandbox (Development)**, TikTok secara ketat menolak login OAuth dari akun manapun yang **belum didaftarkan secara manual ke daftar Target Users (Tester)**.
 
 Pesan error yang muncul di browser:
 ```text
@@ -92,11 +99,11 @@ If you're a developer, correct the following and try again:
 non_sandbox_target
 ```
 
-#### 🛠️ Langkah-Langkah Solusi (Menambahkan Target Users):
+#### 🛠️ Langkah-Langkah Menambahkan Akun Tester (Target Users):
 1. **Buka TikTok Developer Portal**:
    - Kunjungi [https://developers.tiktok.com/](https://developers.tiktok.com/) dan login menggunakan akun developer.
 2. **Pilih Aplikasi Anda**:
-   - Di menu navigasi atas, klik **My Apps** (atau **Manage apps**).
+   - Di menu navigasi atas, klik **My Apps** (atau **Manage apps** di [https://developers.tiktok.com/apps/](https://developers.tiktok.com/apps/)).
    - Pilih aplikasi integrasi sosial (misalnya: *Bogorstore Social* atau *Postiz*).
 3. **Pastikan Mode Sandbox Aktif**:
    - Periksa toggle status di bagian atas layar, pastikan berada pada mode **Sandbox**.
@@ -104,9 +111,9 @@ non_sandbox_target
    - Di bilah menu sebelah kiri, klik tab **Sandbox settings**.
 5. **Tambahkan Akun TikTok (Target Users)**:
    - Gulir ke bagian **Target users**.
-   - Klik tombol **+ Add account** (Anda dapat mendaftarkan hingga maksimal 10 akun penguji).
+   - Klik tombol **+ Add account** (Anda dapat mendaftarkan hingga maksimal 10 akun penguji/tester).
    - Akan muncul jendela otorisasi TikTok:
-     - Masukkan Email, Nomor HP, atau Username TikTok yang ingin dihubungkan.
+     - Masukkan Email, Nomor HP, atau Username TikTok yang ingin dihubungkan (misal: `@berdongeng` atau `@nurulzulaikhha`).
      - Masukkan password dan selesaikan verifikasi captcha.
      - Klik **Log in** dan setujui **TikTok Developer Terms of Service**.
 6. **Verifikasi Status Akun**:
@@ -114,7 +121,7 @@ non_sandbox_target
 7. **Coba Hubungkan Ulang di Postiz**:
    - Buka kembali `https://sosial.bogorstore.com/integrations/social/tiktok`.
    - Klik **Connect / Tambah Akun TikTok**.
-   - Login menggunakan akun yang baru saja didaftarkan. Otorisasi akan sukses tanpa pesan error `non_sandbox_target`.
+   - Login menggunakan akun yang baru saja didaftarkan ke Target Users. Otorisasi akan sukses tanpa pesan error `non_sandbox_target`.
 
 ---
 

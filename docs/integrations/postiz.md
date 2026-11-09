@@ -15,6 +15,7 @@ Dokumentasi lengkap mengenai **Postiz Social Gateway** sebagai jembatan terpusat
    - [Mengecek Status Postingan (`GET /posts`)](#mengecek-status-postingan-get-posts)
 5. [Contoh Payload Multi-Channel Broadcast](#5-contoh-payload-multi-channel-broadcast)
 6. [Maintenance & Re-Autentikasi Akun](#6-maintenance--re-autentikasi-akun)
+7. [Pengaturan Callback & Redirect URI di Portal Pengembang](#7-pengaturan-callback--redirect-uri-di-portal-pengembang)
 
 ---
 
@@ -185,3 +186,17 @@ Jika salah satu akun media sosial gagal menerbitkan postingan karena masalah ses
 3. Klik tombol **Reconnect** (atau hapus lalu tambahkan kembali).
 4. Selesaikan login OAuth di jendela pop-up.
 5. Setelah terhubung kembali, worker Punggawa dapat langsung memproses antrean berikutnya tanpa perlu restart sistem.
+
+---
+
+## 7. Pengaturan Callback & Redirect URI di Portal Pengembang
+
+Saat membuat aplikasi OAuth di masing-masing portal pengembang, daftarkan **Domain & Redirect URI (Callback)** berikut agar alur otorisasi berhasil kembali ke Postiz:
+
+| Platform | Portal Pengembang | Form Pengaturan di Portal | Redirect URI / Callback URL |
+|---|---|---|---|
+| **TikTok** | [developers.tiktok.com](https://developers.tiktok.com/) | Products > Login Kit > Redirect domains | `https://sosial.bogorstore.com`<br>`https://sosial.bogorstore.com/api/auth/callback/tiktok` |
+| **Instagram** | [developers.facebook.com](https://developers.facebook.com/) | Instagram Basic Display / Graph API > Valid OAuth Redirect URIs | `https://sosial.bogorstore.com/api/auth/callback/instagram` |
+| **Threads** | [developers.facebook.com](https://developers.facebook.com/) | Threads API > Valid OAuth Redirect URIs | `https://sosial.bogorstore.com/api/auth/callback/threads` |
+| **YouTube** | [console.cloud.google.com](https://console.cloud.google.com/) | APIs & Services > Credentials > OAuth 2.0 Client IDs > Authorized redirect URIs | `https://sosial.bogorstore.com/api/auth/callback/google` |
+

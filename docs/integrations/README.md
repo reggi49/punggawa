@@ -16,6 +16,21 @@ Koleksi panduan teknis dan referensi integrasi media sosial, CMS, dan layanan ek
 
 ---
 
+## 🧪 Panduan & Domain Pendaftaran Tester per Platform
+
+Saat aplikasi media sosial masih dalam status **Pengembangan / Sandbox / Testing**, platform membatasi akses OAuth hanya untuk akun-akun yang terdaftar secara resmi sebagai **Tester**.
+
+Gunakan tabel referensi berikut untuk mendaftarkan akun tester:
+
+| Platform | Portal Developer (Domain) | Lokasi Menu Tester | Cara Registrasi & Konfirmasi | Kuota Maksimal | Redirect URI (Postiz Callback) |
+|---|---|---|---|:---:|---|
+| **TikTok** | [developers.tiktok.com](https://developers.tiktok.com/) | `My Apps > [App] > Sandbox settings > Target users` | 1. Klik **+ Add account**.<br>2. Login dengan akun TikTok target dan setujui Terms.<br>3. Status langsung aktif di tabel Target Users. | 10 Akun | `https://sosial.bogorstore.com/api/auth/callback/tiktok` |
+| **Instagram & Threads** | [developers.facebook.com](https://developers.facebook.com/) | `App Dashboard > App Roles > Roles > Instagram Testers` | 1. Klik **Add Instagram Testers** dan masukkan username.<br>2. **Wajib:** Buka [instagram.com/accounts/manage_access/](https://www.instagram.com/accounts/manage_access/) di browser akun tester.<br>3. Buka tab **Tester Invitations** -> klik **Accept**. | 50 Tester | `https://sosial.bogorstore.com/api/auth/callback/instagram`<br>`https://sosial.bogorstore.com/api/auth/callback/threads` |
+| **YouTube** | [console.cloud.google.com](https://console.cloud.google.com/) | `APIs & Services > OAuth consent screen > Test users` | 1. Klik **+ ADD USERS**.<br>2. Masukkan alamat email Google / Gmail pengelola channel YouTube.<br>3. Klik **Save**. Saat login di Postiz, pilih *Advanced > Go to bogorstore.com (unsafe)*. | 100 Email | `https://sosial.bogorstore.com/api/auth/callback/google` |
+| **Postiz Hub** | [sosial.bogorstore.com](https://sosial.bogorstore.com/) | `Settings > Integrations` | Hubungkan (*Connect*) akun yang telah disetujui sebagai tester di atas. | Tak Terbatas | Domain pusat gateway sosial |
+
+---
+
 ## 🛠️ Ringkasan Environment Variable
 
 Pastikan variabel-variabel berikut telah dikonfigurasi pada file `.env` root proyek Anda:
