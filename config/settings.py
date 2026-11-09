@@ -182,6 +182,28 @@ class Settings(BaseSettings):
         description="Postiz integration ID for YouTube (Dongeng Nusantara)",
     )
 
+    # Google Drive Content Queue Integration
+    GOOGLE_DRIVE_SYNC_ENABLED: bool = Field(
+        False,
+        description="Aktifkan sinkronisasi antrean video dari Google Drive",
+    )
+    GOOGLE_DRIVE_FOLDER_ID: str = Field(
+        "",
+        description="Default folder ID Google Drive untuk stok video konten",
+    )
+    GOOGLE_DRIVE_FOLDER_ID_KITTENGAUL: str = Field(
+        "",
+        description="Folder ID Google Drive khusus stok video Kitten Gaul (@kittengaul)",
+    )
+    GOOGLE_SERVICE_ACCOUNT_JSON: str = Field(
+        "config/gdrive_credentials.json",
+        description="Path file JSON service account Google Cloud",
+    )
+    GOOGLE_SERVICE_ACCOUNT_JSON_RAW: str | None = Field(
+        None,
+        description="Opsional raw string JSON service account jika diisi via env",
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -358,13 +358,19 @@ def dispatch_tiktok_draft(
         except Exception as exc:
             logger.warning(f"Gagal menghapus file lokal: {exc}")
 
+        post_id = (
+            (result_data[0].get("postId") or result_data[0].get("id"))
+            if isinstance(result_data, list) and result_data
+            else (result_data.get("id") if isinstance(result_data, dict) else None)
+        )
+
         return {
             "status": "success",
             "file": filename,
             "account": detected_acc,
             "integration_id": target_integration,
             "method": posting_method,
-            "post_id": result_data[0].get("postId") if isinstance(result_data, list) else None,
+            "post_id": post_id,
         }
     finally:
         # Selalu bersihkan file video sementara hasil merge cover jika ada
@@ -377,13 +383,68 @@ def dispatch_tiktok_draft(
 
 
 def process_queue(limit: int = 1, account_key: str | None = None, dry_run: bool = False):
-    """Memproses video antrean multi-akun yang ada di data/tiktok_queue."""
+    """
+    Memproses video antrean multi-akun.
+    Prioritas 1: Google Drive Content Queue (Read-Only + Supabase tracking).
+    Prioritas 2 (Fallback): Antrean lokal disk di data/tiktok_queue/{subfolder}.
+    """
     os.makedirs(QUEUE_DIR, exist_ok=True)
     targets = [account_key] if account_key else ["kedaidaily", "berdongeng", "kittengaul"]
 
     total_processed = 0
     for acc in targets:
         acct_conf = TIKTOK_ACCOUNTS.get(acc, {})
+        target_integration = acct_conf.get("integration_id")
+        acc_processed = 0
+
+        # ==============================================================
+        # 1. Prioritas Utama: Google Drive Queue (Read-Only)
+        # ==============================================================
+        while acc_processed < limit:
+            try:
+                from scripts.gdrive_sync import get_next_unposted_drive_video, record_video_dispatch
+
+                drive_res = get_next_unposted_drive_video(account_key=acc, channel_id=target_integration)
+                if not drive_res:
+                    break
+
+                temp_video_path, drive_meta = drive_res
+                logger.info(
+                    f"🌐 [Google Drive Queue] Menemukan video baru: '{drive_meta.get('name')}' "
+                    f"untuk channel '{acc}' ({target_integration})"
+                )
+
+                dispatch_res = dispatch_tiktok_draft(temp_video_path, account_key=acc, dry_run=dry_run)
+
+                # Catat publikasi sukses ke Supabase PostgreSQL
+                if not dry_run and dispatch_res.get("status") == "success":
+                    record_video_dispatch(
+                        channel_id=target_integration,
+                        channel_name=acc,
+                        gdrive_file_id=drive_meta["id"],
+                        gdrive_file_name=drive_meta.get("name", "video.mp4"),
+                        file_md5=drive_meta.get("md5Checksum"),
+                        file_size_bytes=int(drive_meta.get("size", 0)) if drive_meta.get("size") else None,
+                        postiz_post_id=dispatch_res.get("post_id"),
+                        platform=acct_conf.get("platform", "instagram" if acc == "kittengaul" else "tiktok"),
+                    )
+
+                acc_processed += 1
+                total_processed += 1
+                if not dry_run and acc_processed < limit:
+                    time.sleep(4)
+            except Exception as exc:
+                logger.warning(f"Google Drive sync lewati akun '{acc}': {exc}")
+                break
+
+        # Jika kuota limit per batch sudah terpenuhi dari Google Drive, lanjut ke akun berikutnya
+        remaining_limit = limit - acc_processed
+        if remaining_limit <= 0:
+            continue
+
+        # ==============================================================
+        # 2. Fallback: Antrean Lokal Disk (data/tiktok_queue/{subfolder})
+        # ==============================================================
         sub_dir = os.path.join(QUEUE_DIR, acct_conf.get("subfolder", acc))
         os.makedirs(sub_dir, exist_ok=True)
 
@@ -398,18 +459,20 @@ def process_queue(limit: int = 1, account_key: str | None = None, dry_run: bool 
 
         files.sort(key=os.path.getmtime)  # FIFO
         if not files:
-            logger.info(f"ℹ️ Antrean untuk akun '{acc}' ({acct_conf.get('name')}) kosong.")
+            if acc_processed == 0:
+                logger.info(f"ℹ️ Antrean untuk akun '{acc}' ({acct_conf.get('name')}) kosong.")
             continue
 
-        logger.info(f"📋 Ditemukan {len(files)} file video untuk akun '{acc}' di '{sub_dir}'.")
-        target_files = files[:limit]
+        logger.info(f"📋 Ditemukan {len(files)} file video lokal untuk akun '{acc}' di '{sub_dir}'.")
+        target_files = files[:remaining_limit]
 
         for f_path in target_files:
             try:
                 dispatch_tiktok_draft(f_path, account_key=acc, dry_run=dry_run)
+                acc_processed += 1
                 total_processed += 1
-                if not dry_run and total_processed < len(target_files):
-                    time.sleep(4)  # Jeda aman 4 detik untuk mematuhi rate limit TikTok API
+                if not dry_run and acc_processed < limit:
+                    time.sleep(4)  # Jeda aman 4 detik untuk mematuhi rate limit API
             except Exception as exc:
                 logger.error(f"❌ Gagal memproses video '{os.path.basename(f_path)}': {exc}", exc_info=True)
 
@@ -453,4 +516,7 @@ if __name__ == "__main__":
     else:
         lim = 999 if args.all else args.limit
         process_queue(limit=lim, account_key=args.account, dry_run=args.dry_run)
+
+    # Exit bersih tanpa menunggu threadpool background timeout
+    os._exit(0)
 
