@@ -62,6 +62,24 @@ TIKTOK_ACCOUNTS: dict[str, dict[str, Any]] = {
             "#dongengindonesia #berdongeng #ceritaanak #kisahdongeng #fyp"
         ),
     },
+    "kittengaul": {
+        "name": "Kitten Gaul (@kittengaul)",
+        "platform": "instagram",
+        "integration_id": (
+            os.getenv("POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID")
+            or getattr(settings, "POSTIZ_INSTAGRAM_KITTENGAUL_INTEGRATION_ID", "cmw909dnc0013o274l7q4fjc5")
+            or "cmw909dnc0013o274l7q4fjc5"
+        ),
+        "subfolder": "kittengaul",
+        "method": "REEL",
+        "apply_cover": False,
+        "default_title": "Video Seru & Gemas Kitten Gaul",
+        "default_caption": (
+            "Keseruan dan momen gemas hari ini bareng Kitten Gaul! 🐾✨\n\n"
+            "Yuk follow @kittengaul untuk video lucu lainnya tiap hari! 🐱💖\n\n"
+            "#kittengaul #kucinglucu #reelsinstagram #catlovers #catsoftiktok #fyp #viral"
+        ),
+    },
 }
 
 
@@ -275,6 +293,29 @@ def dispatch_tiktok_draft(
         logger.info(f"✅ Video berhasil diunggah ke Postiz: {media_path}")
 
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        is_instagram = account_cfg.get("platform") == "instagram"
+
+        post_settings: dict[str, Any]
+        if is_instagram:
+            post_settings = {
+                "__type": "instagram",
+                "post_type": "reel",
+            }
+        else:
+            post_settings = {
+                "__type": "tiktok",
+                "title": final_title[:90],
+                "privacy_level": "PUBLIC_TO_EVERYONE",
+                "duet": False,
+                "stitch": False,
+                "comment": True,
+                "autoAddMusic": "no",
+                "brand_content_toggle": False,
+                "brand_organic_toggle": False,
+                "video_made_with_ai": False,
+                "content_posting_method": posting_method,
+            }
+
         payload = {
             "type": "now",
             "date": now_iso,
@@ -289,32 +330,21 @@ def dispatch_tiktok_draft(
                             "image": [{"id": media_id, "path": media_path}],
                         }
                     ],
-                    "settings": {
-                        "__type": "tiktok",
-                        "title": final_title[:90],
-                        "privacy_level": "PUBLIC_TO_EVERYONE",
-                        "duet": False,
-                        "stitch": False,
-                        "comment": True,
-                        "autoAddMusic": "no",
-                        "brand_content_toggle": False,
-                        "brand_organic_toggle": False,
-                        "video_made_with_ai": False,
-                        "content_posting_method": posting_method,
-                    },
+                    "settings": post_settings,
                 }
             ],
         }
 
         headers = {"Authorization": POSTIZ_API_KEY}
-        logger.info(f"🚀 Menerbitkan video ke TikTok ({account_name}) dengan mode: {posting_method}...")
+        target_platform_label = "Instagram Reels" if is_instagram else "TikTok"
+        logger.info(f"🚀 Menerbitkan video ke {target_platform_label} ({account_name}) dengan mode: {posting_method}...")
         res = requests.post(f"{POSTIZ_BASE_URL}/posts", headers=headers, json=payload, timeout=30.0)
 
         if res.status_code != 201:
             raise RuntimeError(f"Gagal membuat postingan di Postiz ({res.status_code}): {res.text}")
 
         result_data = res.json()
-        logger.info(f"🎉 SUKSES! Video berhasil diproses ke TikTok: {result_data}")
+        logger.info(f"🎉 SUKSES! Video berhasil diproses ke {target_platform_label}: {result_data}")
 
         # Bersihkan file lokal setelah sukses terposting
         try:

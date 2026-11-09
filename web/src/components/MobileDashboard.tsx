@@ -25,6 +25,7 @@ import { STATUS_LABELS, getHumanStatus } from '../utils/statusLabels';
 import { LogEntry } from '../hooks/useEventStream';
 import { CharacterVisualState } from '../simulation/useAmbientOffice';
 import { CareerOpsModal } from './CareerOpsModal';
+import { TikTokUploadModal } from './TikTokUploadModal';
 
 interface MobileDashboardProps {
   currentNode: string;
@@ -66,6 +67,7 @@ export function MobileDashboard({
 }: MobileDashboardProps) {
   const [activeTab, setActiveTab] = useState<'agents' | 'logs' | 'health'>('agents');
   const [careerOpsOpen, setCareerOpsOpen] = useState(false);
+  const [tiktokUploadModalOpen, setTiktokUploadModalOpen] = useState(false);
   const [quickDispatchOpen, setQuickDispatchOpen] = useState(false);
   const [dispatchStatus, setDispatchStatus] = useState<string | null>(null);
 
@@ -324,14 +326,14 @@ export function MobileDashboard({
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: '8px',
+            gridTemplateColumns: 'repeat(5, 1fr)',
+            gap: '6px',
           }}
         >
           <button
             onClick={() => handleQuickTrigger('github')}
             style={{
-              padding: '10px 6px',
+              padding: '10px 4px',
               borderRadius: '12px',
               border: '1px solid rgba(53, 74, 96, 0.2)',
               backgroundColor: 'rgba(244, 241, 234, 0.9)',
@@ -350,7 +352,7 @@ export function MobileDashboard({
           <button
             onClick={() => handleQuickTrigger('dongeng')}
             style={{
-              padding: '10px 6px',
+              padding: '10px 4px',
               borderRadius: '12px',
               border: '1px solid rgba(217, 128, 120, 0.3)',
               backgroundColor: 'rgba(244, 241, 234, 0.9)',
@@ -369,7 +371,7 @@ export function MobileDashboard({
           <button
             onClick={() => handleQuickTrigger('server_check')}
             style={{
-              padding: '10px 6px',
+              padding: '10px 4px',
               borderRadius: '12px',
               border: '1px solid rgba(141, 168, 149, 0.3)',
               backgroundColor: 'rgba(244, 241, 234, 0.9)',
@@ -388,7 +390,7 @@ export function MobileDashboard({
           <button
             onClick={() => handleQuickTrigger('scout')}
             style={{
-              padding: '10px 6px',
+              padding: '10px 4px',
               borderRadius: '12px',
               border: '1px solid rgba(13, 148, 136, 0.3)',
               backgroundColor: 'rgba(244, 241, 234, 0.9)',
@@ -402,6 +404,26 @@ export function MobileDashboard({
           >
             <span style={{ fontSize: '18px' }}>🎯</span>
             <span style={{ fontSize: '10px', fontWeight: 700 }}>Career</span>
+          </button>
+
+          <button
+            onClick={() => setTiktokUploadModalOpen(true)}
+            style={{
+              padding: '10px 4px',
+              borderRadius: '12px',
+              border: '1px solid rgba(2, 132, 199, 0.35)',
+              backgroundColor: 'rgba(244, 241, 234, 0.9)',
+              color: '#0284C7',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              cursor: 'pointer',
+            }}
+            title="Unggah Video ke Antrean Sosmed (TikTok / Instagram)"
+          >
+            <span style={{ fontSize: '18px' }}>📤</span>
+            <span style={{ fontSize: '10px', fontWeight: 700 }}>Upload</span>
           </button>
         </div>
 
@@ -857,6 +879,12 @@ export function MobileDashboard({
           setCareerOpsOpen(false);
           // can open dispatch
         }}
+      />
+
+      {/* 7. MULTI-CHANNEL VIDEO UPLOAD MODAL */}
+      <TikTokUploadModal
+        isOpen={tiktokUploadModalOpen}
+        onClose={() => setTiktokUploadModalOpen(false)}
       />
     </div>
   );

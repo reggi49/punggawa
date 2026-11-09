@@ -39,7 +39,7 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
   apiBaseUrl = '',
   adminPassword = '',
 }) => {
-  const [targetAccount, setTargetAccount] = useState<'berdongeng' | 'kedaidaily'>('berdongeng');
+  const [targetAccount, setTargetAccount] = useState<'berdongeng' | 'kedaidaily' | 'kittengaul'>('berdongeng');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
@@ -51,9 +51,14 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
 
   // Tab: 'upload' vs 'queue'
   const [activeTab, setActiveTab] = useState<'upload' | 'queue'>('upload');
-  const [queueData, setQueueData] = useState<{ berdongeng: QueueItem[]; kedaidaily: QueueItem[] }>({
+  const [queueData, setQueueData] = useState<{
+    berdongeng: QueueItem[];
+    kedaidaily: QueueItem[];
+    kittengaul: QueueItem[];
+  }>({
     berdongeng: [],
     kedaidaily: [],
+    kittengaul: [],
   });
   const [loadingQueue, setLoadingQueue] = useState(false);
 
@@ -66,7 +71,7 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
       const res = await fetch(`${apiBaseUrl}/api/tiktok/queue`);
       if (res.ok) {
         const data = await res.json();
-        setQueueData(data.queue || { berdongeng: [], kedaidaily: [] });
+        setQueueData(data.queue || { berdongeng: [], kedaidaily: [], kittengaul: [] });
       }
     } catch (err) {
       console.warn('Gagal memuat antrean video:', err);
@@ -191,7 +196,10 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
     xhr.send(formData);
   };
 
-  const totalVideos = queueData.berdongeng.length + queueData.kedaidaily.length;
+  const totalVideos =
+    (queueData.berdongeng?.length || 0) +
+    (queueData.kedaidaily?.length || 0) +
+    (queueData.kittengaul?.length || 0);
 
   return createPortal(
     <div
@@ -214,7 +222,7 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
       <div
         style={{
           width: '100%',
-          maxWidth: '680px',
+          maxWidth: '720px',
           maxHeight: '90vh',
           background: 'linear-gradient(135deg, #FAF8F5 0%, #F3EFEA 100%)',
           borderRadius: '20px',
@@ -256,10 +264,10 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
             </div>
             <div>
               <h2 style={{ margin: 0, fontSize: '17px', fontWeight: 700, color: '#0F172A' }}>
-                Unggah Video Antrean TikTok
+                Unggah Video Antrean Sosmed
               </h2>
               <div style={{ fontSize: '11px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span>Kang Sosmed Queue Dispatcher</span>
+                <span>Kang Sosmed Queue Dispatcher (TikTok & IG)</span>
                 <span>•</span>
                 <span style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', color: '#059669' }}>
                   <ShieldCheck size={12} /> Secure Gateway
@@ -436,6 +444,55 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* Akun Kitten Gaul Queue */}
+              <div style={{ marginTop: '18px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                  <Sparkles size={14} color="#E11D48" />
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: '#BE123C' }}>
+                    Kitten Gaul (@kittengaul) — {queueData.kittengaul?.length || 0} video
+                  </span>
+                  <span style={{ fontSize: '10px', background: '#FFE4E6', color: '#E11D48', padding: '2px 6px', borderRadius: '4px' }}>
+                    Instagram Reels
+                  </span>
+                </div>
+                {!queueData.kittengaul || queueData.kittengaul.length === 0 ? (
+                  <div style={{ padding: '12px', background: '#F8FAFC', borderRadius: '8px', fontSize: '12px', color: '#94A3B8', textAlign: 'center' }}>
+                    Antrean kittengaul kosong.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    {queueData.kittengaul.map((item, idx) => (
+                      <div
+                        key={idx}
+                        style={{
+                          padding: '10px 12px',
+                          background: '#FFFFFF',
+                          borderRadius: '8px',
+                          border: '1px solid #E2E8F0',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          fontSize: '12px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <FileVideo size={16} color="#E11D48" />
+                          <div>
+                            <div style={{ fontWeight: 600, color: '#1E293B' }}>{item.filename}</div>
+                            {item.caption_preview && (
+                              <div style={{ fontSize: '11px', color: '#64748B', marginTop: '2px' }}>
+                                "{item.caption_preview}..."
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <span style={{ fontSize: '11px', color: '#64748B', fontWeight: 600 }}>{item.size_mb} MB</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             /* TAB: UPLOAD FORM */
@@ -484,9 +541,9 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
               {/* 1. Target Account Selector */}
               <div style={{ marginBottom: '16px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>
-                  PILIH AKUN TIKTOK TUJUAN
+                  PILIH AKUN TUJUAN (TIKTOK & INSTAGRAM)
                 </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
                   {/* Option: Berdongeng */}
                   <div
                     onClick={() => setTargetAccount('berdongeng')}
@@ -509,7 +566,7 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
                       </span>
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748B', lineHeight: '1.4' }}>
-                      Cover Dongeng otomatis di detik awal • Mode Draf Inbox HP
+                      TikTok • Cover 1.0s otomatis • Draf Inbox HP
                     </div>
                   </div>
 
@@ -535,7 +592,33 @@ export const TikTokUploadModal: React.FC<TikTokUploadModalProps> = ({
                       </span>
                     </div>
                     <div style={{ fontSize: '11px', color: '#64748B', lineHeight: '1.4' }}>
-                      Draf Inbox HP • Semat Keranjang Kuning TikTok Shop
+                      TikTok Shop • Draf Inbox HP (Keranjang Kuning)
+                    </div>
+                  </div>
+
+                  {/* Option: Kitten Gaul */}
+                  <div
+                    onClick={() => setTargetAccount('kittengaul')}
+                    style={{
+                      padding: '12px',
+                      borderRadius: '12px',
+                      border: targetAccount === 'kittengaul' ? '2px solid #E11D48' : '1px solid #CBD5E1',
+                      background: targetAccount === 'kittengaul' ? '#FFF1F2' : '#FFFFFF',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={16} color="#E11D48" />
+                        <span style={{ fontSize: '13px', fontWeight: 700, color: '#0F172A' }}>Kitten Gaul</span>
+                      </div>
+                      <span style={{ fontSize: '10px', background: '#FFE4E6', color: '#BE123C', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                        @kittengaul
+                      </span>
+                    </div>
+                    <div style={{ fontSize: '11px', color: '#64748B', lineHeight: '1.4' }}>
+                      Instagram Reels & Video • Otomatis via Postiz
                     </div>
                   </div>
                 </div>

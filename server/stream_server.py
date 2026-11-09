@@ -1002,7 +1002,7 @@ ALLOWED_VIDEO_MIME_TYPES = {
     "video/webm",
     "application/octet-stream",
 }
-ALLOWED_TIKTOK_ACCOUNTS = {"berdongeng", "kedaidaily"}
+ALLOWED_TIKTOK_ACCOUNTS = {"berdongeng", "kedaidaily", "kittengaul"}
 SERVER_PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
 
@@ -1034,11 +1034,11 @@ def sanitize_safe_filename(original_name: str) -> str:
 
 @app.get("/api/tiktok/queue")
 async def get_tiktok_queue_endpoint():
-    """Mengembalikan daftar video dalam antrean untuk akun berdongeng dan kedaidaily."""
+    """Mengembalikan daftar video dalam antrean untuk akun berdongeng, kedaidaily, dan kittengaul."""
     base_queue_dir = os.path.abspath(os.path.join(SERVER_PROJECT_ROOT, "data", "tiktok_queue"))
     queue_data: dict[str, Any] = {}
 
-    for acc in ["berdongeng", "kedaidaily"]:
+    for acc in ["berdongeng", "kedaidaily", "kittengaul"]:
         sub_dir = os.path.join(base_queue_dir, acc)
         os.makedirs(sub_dir, exist_ok=True)
         videos = []
