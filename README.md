@@ -1,26 +1,42 @@
 # Punggawa: Hybrid Autonomous AI Agent Orchestrator
 
-Arsitektur orkestrasi AI Agent berbasis **LangGraph** yang beroperasi secara hybrid (Sinkron antara mesin Lokal Mac dan Cloud VPS) **tanpa race condition**.
+Arsitektur orkestrasi AI Agent berbasis **LangGraph** yang beroperasi secara hybrid (sinkronisasi nir-bentrok antara mesin Lokal Mac dan Cloud VPS) menggunakan **PostgreSQL Checkpointing** dan **Redis Distributed Lock**. Dilengkapi dengan dashboard visualisasi kantor 3D real-time interaktif berbasis Three.js / React Three Fiber.
 
 ---
 
 ## 🌟 Fitur Utama
-1. **LangGraph StateGraph & PostgresSaver**:
+1. **LangGraph StateGraph & PostgreSQL Checkpointer**:
    - Single source of truth menggunakan PostgreSQL terpusat (Supabase / Managed PostgreSQL).
-   - Menghindari penggunaan SQLite lokal yang rawan desinkronisasi.
+   - Menghindari penggunaan SQLite lokal yang rawan desinkronisasi antar-node.
 2. **Anti-Race Condition Distributed Lock**:
    - Atomic locking menggunakan Redis `SET NX EX`.
    - Safe release menggunakan Redis Lua Script berbasis token UUID kepemilikan.
-   - Fail-fast mechanism: Task dilepas kembali ke queue jika sedang diproses instance lain.
+   - Fail-fast mechanism: Task dilepas kembali ke queue jika sedang diproses instance worker lain.
 3. **Modular Nodes & Checkpointing**:
    - `IngestNode`: Validasi payload dan audit worker metadata.
-   - `ProcessorNode`: Eksekusi komputasi / Tool Calling.
+   - `ProcessorNode`: Eksekusi komputasi, multi-source research, dan tool calling.
    - `CompleteNode`: Finalisasi task dan completion logging.
-4. **Human-in-the-Loop Ready**:
+4. **Human-in-the-Loop (HITL) Ready**:
    - Percabangan graf otomatis menahan eksekusi di checkpoint jika flag `requires_approval=True`.
-   - Worker mendukung resume task langsung dari checkpoint PostgreSQL.
-5. **Graceful Shutdown**:
+   - Worker mendukung resume task langsung dari checkpoint PostgreSQL via Telegram / Web UI.
+5. **Interactive 3D Virtual Office HUD**:
+   - Visualisasi status agen AI secara spasial (3D scene) yang mencerminkan aktivitas agen di meja kerja masing-masing secara real-time via WebSocket / SSE.
+6. **Graceful Shutdown**:
    - Penanganan sinyal OS (`SIGINT`, `SIGTERM`) untuk menghentikan worker tanpa memotong task yang sedang aktif.
+
+---
+
+## 👥 Skuad AI Agent Punggawa
+
+Sistem Punggawa ditenagai oleh 5 agen otonom khusus yang beroperasi secara kolaboratif:
+
+| Agen | Kode / Alias | Peran & Spesialisasi | Fokus Eksekusi |
+|---|---|---|---|
+| 👑 **Kang Bos** | `bayzero` | **SOP Auditor & Lead** | Audit integritas jadwal, validasi kepatuhan SOP, pengecekan ketersediaan video/link fisik, dan health check microservices. |
+| ✍️ **Kang Nulis** | `stark` | **Tech Writer** | Riset multi-sumber (Brave Search & Google News), penulisan artikel mendalam, dan publikasi ke KodePintar CMS. |
+| 📖 **Kang Dongeng** | `usagi` | **Media & Cerita** | Kurasi video YouTube, naskah cerita rakyat, tipografi thumbnail otomatis (PIL), dan publikasi Bogorstore CMS. |
+| 💼 **Kang Kerja** | `scout` | **Career Intelligence** | Agregasi lowongan kerja, career profile matching, scoring relevansi, dan personalisasi cover letter. |
+| 📱 **Kang Sosmed** | `sosmed` | **Social Media Lead** | Manajemen Postiz, antrean video TikTok Shop (Keranjang Kuning), FFmpeg bumper cover, Instagram, dan Threads. |
 
 ---
 
@@ -28,23 +44,40 @@ Arsitektur orkestrasi AI Agent berbasis **LangGraph** yang beroperasi secara hyb
 
 ```text
 .
-├── config/
-│   ├── __init__.py
-│   └── settings.py          # Pydantic Settings (ENV: Postgres, Redis, Workers)
-├── orchestrator/
-│   ├── __init__.py
-│   ├── state.py             # Definisi AgentState TypedDict
+├── config/                  # Pengaturan Pydantic & Profile Karir
+│   ├── settings.py          # Konfigurasi ENV terpusat (Postgres, Redis, Postiz, dll)
+│   └── career_profile.yml   # Profil preferensi karir untuk Kang Kerja
+├── docs/                    # Dokumentasi Teknis Terpisah
+│   └── integrations/        # Panduan Lengkap Integrasi Sosial Media & CMS
+│       ├── README.md        # Index dokumentasi integrasi
+│       ├── tiktok.md        # Integrasi TikTok (Draft Inbox, OAuth Sandbox, FFmpeg Cover)
+│       ├── instagram.md     # Integrasi Instagram Feed/Reels & Threads via Meta Graph API
+│       ├── youtube.md       # YouTube Data API v3, Deep Scanner, Zero-Quota oEmbed
+│       ├── postiz.md        # Postiz Social Gateway API & Multi-Channel Broadcast
+│       └── cms.md           # Bogorstore CMS, KodePintar, & Smart FCM Notifications
+├── orchestrator/            # LangGraph Core Engine
+│   ├── graph.py             # Definisi StateGraph, routing, dan node perakitan
+│   ├── state.py             # AgentState TypedDict
 │   ├── connections.py       # ConnectionPool PostgresSaver & Redis Client
 │   ├── lock.py              # Redis Distributed Lock & Decorator
-│   └── graph.py             # LangGraph assembly, modular nodes, and routing
-├── workers/
-│   ├── __init__.py
+│   ├── graphs/              # Pipeline sub-graph (article, dongeng, job, chat)
+│   └── tools/               # Tooling (YouTube, Scraper, CMS Notifier, PIL, dll)
+├── workers/                 # Worker Task Processing
 │   ├── runner.py            # Worker entrypoint (BLPOP queue polling)
-│   └── enqueue_test.py      # Helper untuk mengirim task ke antrean
-├── .env.example             # Template konfigurasi variabel lingkungan
+│   └── enqueue_test.py      # Helper untuk mengirim task pengujian
+├── scripts/                 # Utilitas Dispatching, Scanner & Planner
+│   ├── tiktok_dispatcher.py # Dispatcher antrean multi-akun TikTok
+│   ├── channel_scanner.py   # Deep scanner YouTube uploads playlist
+│   ├── planner.py           # Perencanaan jadwal harian konten
+│   └── test_postiz_autopost.py # Skrip verifikasi Meta/Instagram
+├── server/                  # Real-Time Visualizer Streaming Server
+│   └── stream_server.py     # FastAPI Server (WebSocket, SSE, API Upload TikTok)
+├── web/                     # Frontend 3D Office HUD (React + Three.js)
+├── data/                    # Storage Antrean Lokal & Cover Branding
+│   ├── covers/              # File cover branding channel resmi
+│   └── tiktok_queue/        # Antrean video (berdongeng & kedaidaily)
+├── docker-compose.yml       # Container Postgres, Redis, dan Cloud Worker
 ├── requirements.txt         # Daftar dependensi Python
-├── docker-compose.yml       # Setup container Postgres, Redis, dan Cloud Worker
-├── Dockerfile               # Production image Docker worker
 └── README.md
 ```
 
@@ -53,146 +86,82 @@ Arsitektur orkestrasi AI Agent berbasis **LangGraph** yang beroperasi secara hyb
 ## 🚀 Panduan Memulai Cepat
 
 ### 1. Setup Environment Lokal
-
 Buat virtual environment dan install dependensi:
-
 ```bash
-python3 -m venv .venv
-source .venv/bin/activate
+python3 -m venv venv
+source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Salin file `.env.example` ke `.env`:
-
+Salin file `.env.example` ke `.env` lalu sesuaikan konfigurasi:
 ```bash
 cp .env.example .env
 ```
 
-Sesuaikan nilai di dalam `.env`:
-```env
-DATABASE_URL=postgresql://postgres:postgrespassword@localhost:5432/punggawa_db
-REDIS_URL=redis://localhost:6379/0
-WORKER_ID=mac-local-worker
-```
-
-### 2. Jalankan Infrastruktur Lokal (Opsional)
-
+### 2. Jalankan Infrastruktur (Docker)
 Jika belum memiliki PostgreSQL dan Redis cloud, jalankan infrastruktur lokal via Docker:
-
 ```bash
 docker compose up -d postgres redis
 ```
 
-### 3. Jalankan Worker Lokal
-
+### 3. Jalankan Worker Punggawa
 ```bash
-python -m workers.runner
+./venv/bin/python -m workers.runner
 ```
-
 Output terminal:
 ```text
-2026-10-19 [INFO] [Worker-mac-local-worker] 🚀 Worker 'mac-local-worker' aktif mendengarkan queue 'agent:task:queue'...
+[INFO] [Worker-local-worker] 🚀 Worker 'local-worker' aktif mendengarkan queue 'agent:task:queue'...
 ```
 
-### 4. Kirim Test Task ke Antrean
-
-Di terminal lain, kirim task percobaan:
-
+### 4. Jalankan Real-time Streaming Server & Web HUD
+Di terminal terpisah:
 ```bash
-# Task standar
-python -m workers.enqueue_test
+# Server Backend (FastAPI + WebSocket)
+./venv/bin/python server/stream_server.py
 
-# Task dengan Human-in-the-loop checkpoint
-python -m workers.enqueue_test --approval
+# Frontend Web Dashboard (Opsional jika ingin tampilan dev)
+cd web && npm run dev
+```
+Akses dashboard di browser melalui: `http://localhost:8000` (atau port Vite `http://localhost:5173`).
+
+### 5. Kirim Task Percobaan
+```bash
+# Kirim task standar
+./venv/bin/python -m workers.enqueue_test
+
+# Kirim task dengan checkpoint Human-in-the-Loop
+./venv/bin/python -m workers.enqueue_test --approval
 ```
 
 ---
 
 ## ☁️ Topologi Hybrid (Lokal ⟷ VPS Cloud)
 
-Untuk menjalankan worker di VPS Cloud bersamaan dengan Mac Lokal:
-1. Hubungkan `DATABASE_URL` ke PostgreSQL cloud yang sama (misal Supabase).
-2. Hubungkan `REDIS_URL` ke Redis cloud yang sama (misal Redis Cloud / Upstash).
-3. Berikan `WORKER_ID` yang berbeda:
-   - Mac Lokal: `WORKER_ID=mac-reggi`
+Punggawa didesain untuk beroperasi serentak di laptop lokal dan VPS Cloud tanpa risiko bentrok pekerjaan:
+1. Hubungkan `DATABASE_URL` ke PostgreSQL cloud yang sama (misal: Supabase).
+2. Hubungkan `REDIS_URL` ke Redis cloud yang sama (misal: Upstash / Redis Cloud).
+3. Berikan `WORKER_ID` yang unik pada masing-masing mesin:
+   - Mac Lokal: `WORKER_ID=mac-local-reggi`
    - Cloud VPS: `WORKER_ID=vps-cloud-worker-1`
-4. Kedua worker akan mengonsumsi antrean yang sama. Jika kedua worker mencoba thread yang sama, **Redis Distributed Lock menjamin hanya ada 1 worker yang mengeksekusinya**, sementara worker lainnya mengembalikan task ke queue tanpa bentrok data.
+4. Kedua worker akan mengonsumsi antrean task bersama. **Redis Distributed Lock menjamin hanya ada satu worker yang mengeksekusi suatu thread ID**, sementara worker lainnya mengembalikan task ke antrean secara aman jika lock sedang dipegang.
 
 ---
 
-## 📱 Panduan Integrasi Media Sosial & Troubleshooting OAuth
+## 🌐 Integrasi Media Sosial & Layanan Eksternal
 
-### 1. Mengatasi Error Login TikTok: `non_sandbox_target`
+Panduan teknis mendalam mengenai setiap integrasi eksternal telah diekstrak ke dalam dokumen terpisah:
 
-#### 📌 Penyebab Error
-Error ini muncul ketika aplikasi TikTok di [TikTok Developer Portal](https://developers.tiktok.com/) masih berada dalam mode **Sandbox** (Development). Pada mode Sandbox, TikTok secara ketat membatasi login OAuth **hanya untuk akun-akun TikTok yang telah didaftarkan secara manual ke dalam daftar Target Users (Sandbox Test Accounts)**. Jika akun yang mencoba login belum didaftarkan, TikTok akan menolak otorisasi dengan pesan:
-```text
-We couldn't log in with TikTok. This may be due to specific app settings.
-If you're a developer, correct the following and try again:
-non_sandbox_target
-```
+| Layanan / Platform | Dokumentasi Lengkap | Topik Utama |
+|---|---|---|
+| **TikTok** | [📖 `docs/integrations/tiktok.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/tiktok.md) | Penanganan error OAuth `non_sandbox_target`, strategi Draf Inbox untuk Keranjang Kuning, auto-bumper video cover FFmpeg, upload gateway aman, dan multi-akun (`@berdongeng` & `@nurulzulaikhha`). |
+| **Instagram & Threads** | [📖 `docs/integrations/instagram.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/instagram.md) | Meta Graph API via Postiz, syarat Akun Profesional, generator banner otomatis Pillow (1080x1080), Reels, dan postingan Threads. |
+| **YouTube** | [📖 `docs/integrations/youtube.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/youtube.md) | YouTube Data API v3, Deep Channel Scanner (paginasi uploads playlist hemat kuota 100x), verifikasi video publik tanpa kuota (Zero-Quota oEmbed), dan pipeline Shorts. |
+| **Postiz Social Gateway** | [📖 `docs/integrations/postiz.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/postiz.md) | Jembatan sosial terpusat `sosial.bogorstore.com`, autentikasi API Key, upload media storage, payload siaran multi-channel, dan pemulihan token. |
+| **CMS & Push Notifications** | [📖 `docs/integrations/cms.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/cms.md) | Integrasi Bogorstore CMS (cmsAgoose), KodePintar Tech Articles, dan penjadwalan Smart Anti-Collision Google FCM Push Notification. |
 
-#### 🛠️ Langkah-Langkah Menambahkan Akun/Email ke Target Users:
-1. **Buka TikTok Developer Portal**:
-   - Kunjungi [https://developers.tiktok.com/](https://developers.tiktok.com/) dan login menggunakan akun developer Anda.
-2. **Buka Menu Aplikasi**:
-   - Di navigasi atas, klik **My Apps** (atau **Manage apps**).
-   - Pilih aplikasi yang Anda gunakan untuk integrasi sosial (misalnya aplikasi Bogorstore Social / Postiz).
-3. **Pastikan Mode Sandbox Aktif**:
-   - Periksa toggle mode di bagian atas / samping nama aplikasi, pastikan berada pada mode **Sandbox** (bukan Live/Production).
-4. **Masuk ke Sandbox Settings**:
-   - Di bilah menu sebelah kiri, klik tab **Sandbox settings** (atau gulir ke bawah pada halaman detail aplikasi).
-5. **Tambahkan Akun Target (Target Users)**:
-   - Temukan bagian bertuliskan **Target users**.
-   - Klik tombol **+ Add account** (atau *Add Target User*). Anda dapat menambahkan hingga maksimal 10 akun penguji.
-   - Akan muncul jendela otorisasi / login TikTok:
-     - Masukkan **Email**, **Nomor Telepon**, atau **Username TikTok** yang ingin Anda gunakan untuk login di Bogorstore Social/Postiz.
-     - Masukkan password akun TikTok tersebut dan selesaikan verifikasi captcha jika diminta.
-     - Klik tombol **Log in** dan setujui **TikTok Developer Terms of Service**.
-6. **Verifikasi Daftar Akun**:
-   - Setelah berhasil login, akun tersebut akan langsung tercantum dalam daftar tabel **Target users**.
-7. **Coba Login Ulang**:
-   - Kembali ke halaman integrasi sosial (misalnya `https://sosial.bogorstore.com/integrations/social/tiktok` atau Postiz).
-   - Klik **Connect / Tambah Akun TikTok**.
-   - Login menggunakan akun yang baru saja didaftarkan ke Target Users. Proses otorisasi akan berjalan sukses tanpa error `non_sandbox_target`.
+👉 Kunjungi [**Index Dokumentasi Integrasi**](file:///Users/reggi/Projects/punggawa/docs/integrations/README.md) untuk ringkasan variabel lingkungan dan daftar lengkap panduan.
 
 ---
 
-#### 💡 Troubleshooting Error TikTok Lainnya:
-
-* **Error `scope`**:
-  - *Penyebab*: Scope/izin yang diminta oleh platform integrasi (seperti `user.info.basic`, `user.info.profile`, `user.info.stats`, `video.list`, `video.upload`, `video.publish`) belum diaktifkan di portal developer.
-  - *Solusi*: Di menu aplikasi TikTok Developer, buka **Products** / **Add Products**, tambahkan **Login Kit** dan **Video Kit**, lalu pastikan permissions/scopes tersebut dicentang dan disimpan.
-* **Pindah ke Mode Live/Production**:
-  - Jika aplikasi ingin dapat dihubungkan oleh akun TikTok publik tanpa perlu mendaftarkan akun satu per satu ke Target Users, ajukan aplikasi melalui tombol **Submit for Review** di TikTok Developer Portal hingga disetujui (*Approved*).
-
----
-
-## 📱 Agen "Kang Sosmed" & Alur Antrean Video TikTok (Inbox Draft)
-
-### 1. Peran & Spesialisasi
-Agen **Kang Sosmed** (`sosmed`, warna branding `#E11D48` Crimson Rose) beroperasi di meja bundar kantor 3D (Kursi 0), bertugas mengelola publikasi media sosial multi-channel melalui platform Postiz (`sosial.bogorstore.com` / `sosial.mbtech.info`).
-
-Fokus utamanya adalah memproses antrean konten video TikTok Shop untuk akun **Kedai Daily Nurul** (`cmw2y48yi0003o274ue9csad3`).
-
-### 2. Alur Pengunggahan Video 7 Hari (`data/tiktok_queue/`):
-1. **Unggah File Video**:
-   - Letakkan file video MP4 produk ke dalam folder `data/tiktok_queue/` (misalnya: `promo_kopi_bogor.mp4`, `madu_hutan.mp4`, dll).
-   - *(Opsional)* Jika ingin caption khusus, sertakan file teks dengan nama yang sama: `promo_kopi_bogor.txt`.
-2. **Perencanaan & Dispatching**:
-   - Kang Sosmed secara otomatis menjadwalkan video (jam 13:00 WIB setiap hari) via Planner.
-   - Script dispatcher mengunggah video ke Postiz Media Storage lalu menerbitkannya sebagai **Draf Inbox TikTok** (`content_posting_method: "UPLOAD"`).
-3. **Penyematan Keranjang Kuning di HP**:
-   - Notifikasi sistem akan muncul di HP TikTok admin: *"Video Anda siap diposting"*.
-   - Admin membuka notifikasi -> tap **+ Tambah Tautan / Produk (Add Link)** -> pilih produk dari etalase TikTok Shop -> klik **Posting**.
-4. **Pembersihan Otomatis Storage**:
-   - Setelah video sukses masuk ke Inbox TikTok, file lokal di `data/tiktok_queue/` otomatis dihapus demi menjaga efisiensi ruang disk.
-
-### 3. Pengecekan Integritas Fisik oleh Kang Bos (Bay-Zero):
-Setiap pagi, Kang Bos (Bay-Zero) melakukan audit kebenaran jadwal (bukan formalitas database):
-* **Pengecekan Video TikTok**: Memastikan file fisik MP4 benar-benar ada di `data/tiktok_queue` sebelum waktu tayang tiba, dan memverifikasi Postiz Post ID untuk status `completed`.
-* **Pengecekan Video YouTube**: Memverifikasi video YouTube masih aktif via oEmbed endpoint (bukan video terhapus atau diset private).
-* **Pengecekan Artikel**: Memverifikasi tautan publikasi CMS (`result_url`) terdaftar valid.
-* Jika ditemukan ketidaksesuaian, Kang Bos otomatis mengirimkan notifikasi diagnostik transparan agar strategi konten dapat segera diselaraskan.
-
-
+## 📜 Lisensi & Kontributor
+Dikembangkan secara otonom oleh tim **Punggawa AI Orchestrator** untuk ekosistem Bogorstore & KodePintar.

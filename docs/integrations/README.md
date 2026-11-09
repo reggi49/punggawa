@@ -1,0 +1,40 @@
+# 🌐 Dokumentasi Integrasi Eksternal Punggawa
+
+Koleksi panduan teknis dan referensi integrasi media sosial, CMS, dan layanan eksternal yang terhubung dengan **Punggawa Hybrid Autonomous AI Agent Orchestrator**.
+
+---
+
+## 📚 Daftar Panduan Integrasi
+
+| Modul Integrasi | File Panduan | Deskripsi & Cakupan |
+|---|---|---|
+| **TikTok** | [`tiktok.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/tiktok.md) | Panduan lengkap otomatisasi TikTok: OAuth Developer Sandbox (`non_sandbox_target`), alur Keranjang Kuning via Draf Inbox HP, FFmpeg 1.0s video bumper cover, gateway web upload aman, dan multi-akun (`DongengIDN` & `Kedai Daily Nurul`). |
+| **Instagram & Threads** | [`instagram.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/instagram.md) | Publikasi otomatis feed & reels Instagram via Meta Graph API, generator banner Pillow dinamis, integrasi postingan Threads, dan penanganan token OAuth. |
+| **YouTube** | [`youtube.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/youtube.md) | Integrasi YouTube Data API v3, Deep Channel Scanner (hemat kuota 100x via Uploads Playlist), verifikasi integritas video publik tanpa kuota (Zero-Quota oEmbed), dan pipeline Shorts. |
+| **Postiz Social Gateway** | [`postiz.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/postiz.md) | Panduan gateway terpusat multi-sosmed (`sosial.bogorstore.com`), API keys, endpoint upload media, payload broadcast multi-channel, dan manajemen token. |
+| **CMS & Push Notifications** | [`cms.md`](file:///Users/reggi/Projects/punggawa/docs/integrations/cms.md) | Sindikasi artikel teknologi ke KodePintar, kurasi naskah dongeng ke Bogorstore CMS, dan Smart Anti-Collision Push Notification (Google FCM). |
+
+---
+
+## 🛠️ Ringkasan Environment Variable
+
+Pastikan variabel-variabel berikut telah dikonfigurasi pada file `.env` root proyek Anda:
+
+```env
+# Postiz Gateway
+POSTIZ_API_KEY=your_postiz_api_key
+POSTIZ_BASE_URL=https://sosial.bogorstore.com/api/public/v1
+POSTIZ_TIKTOK_INTEGRATION_ID=cmw3byats000ao2745rk4z14k
+POSTIZ_TIKTOK_KEDAI_INTEGRATION_ID=cmw2y48yi0003o274ue9csad3
+POSTIZ_INSTAGRAM_INTEGRATION_ID=cmvvzqhn7000epl6yd8bp7mzz
+POSTIZ_THREADS_INTEGRATION_ID=cmw1m3jvh0001o274j5o6snns
+POSTIZ_YOUTUBE_INTEGRATION_ID=cmw1jqlvs0001mk736aotawcm
+
+# YouTube Data API
+YOUTUBE_API_KEY=AIzaSy...
+
+# CMS & Push Notifications
+DONGENG_CMS_POST_URL=https://bogorstore.com/agoose/api/posts
+DONGENG_CMS_STORIES_URL=https://bogorstore.com/agoose/api/posts/stories
+DONGENG_CMS_NOTIFICATION_URL=https://bogorstore.com/agoose/posts/sendnotification
+```
