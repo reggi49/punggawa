@@ -36,19 +36,29 @@ WIB = timezone(timedelta(hours=7))
 AGENT_CADENCE: dict[str, dict[str, Any]] = {
     "Stark": {
         "name": "Stark",
-        "target_hour_wib": 9,      # 09:00 WIB (Tech / Coding Deep-Dive)
+        "target_hour_wib": 9,
+        "slots": [
+            {"hour": 9, "category": "technology", "label": "Pagi (Tech / AI / Programming)"},
+            {"hour": 16, "category": "games", "label": "Sore (Gaming / Hardware / IoT)"},
+        ],
         "task_type": "trend-article",
-        "description": "Tech & Programming Article Specialist",
+        "description": "Tech, Gaming & Programming Article Specialist (2x sehari)",
     },
     "Sosmed": {
         "name": "Sosmed",
-        "target_hour_wib": 13,     # 13:00 WIB (Social Media & TikTok Campaign)
+        "target_hour_wib": 13,
+        "slots": [
+            {"hour": 13, "category": None, "label": "Siang (TikTok / Instagram Campaign)"},
+        ],
         "task_type": "tiktok",
         "description": "Social Media & TikTok Shop Campaign Specialist",
     },
     "Usagi": {
         "name": "Usagi",
-        "target_hour_wib": 19,     # 19:00 WIB (Cerita Rakyat & Dongeng Anak)
+        "target_hour_wib": 19,
+        "slots": [
+            {"hour": 19, "category": None, "label": "Malam (Cerita Rakyat & Dongeng Anak)"},
+        ],
         "task_type": "dongeng",
         "description": "Children Folktale & Animation Specialist",
     },
@@ -253,22 +263,30 @@ def cleanup_duplicate_schedules() -> int:
 cleanup_duplicate_pending_schedules = cleanup_duplicate_schedules
 
 
-def is_agent_covered_on_date(agent_name: str, target_date: datetime.date) -> tuple[bool, str, list[dict]]:
+def is_agent_covered_on_date(
+    agent_name: str, target_date: datetime.date, target_hour: int | None = None
+) -> tuple[bool, str, list[dict]]:
     """
     Memeriksa apakah seorang agen sudah memiliki jadwal atau telah menyelesaikan tugas pada target_date (WIB).
-    Aturan:
-    - Hari ini (today): covered jika ada task 'completed' hari ini, 'in_progress' hari ini, atau 'pending' dijadwalkan hari ini.
-    - Hari depan (future): covered HANYA jika ada task 'pending' atau 'in_progress' yang dijadwalkan pada hari tersebut.
-      Task yang sudah 'completed' di masa lalu TIDAK menutupi hari depan (karena sudah selesai duluan, sehingga hari depan menjadi kosong/nganggur!).
+    Jika target_hour ditentukan, memeriksa apakah slot waktu spesifik (+/- 2 jam) sudah terisi.
     """
     today_wib = datetime.now(WIB).date()
     tasks: list[dict] = []
+
+    hour_filter = ""
+    params_today = [agent_name, target_date, target_date]
+    params_future = [agent_name, target_date]
+
+    if target_hour is not None:
+        hour_filter = " AND ABS(EXTRACT(HOUR FROM (scheduled_at AT TIME ZONE 'UTC' + INTERVAL '7 hours')) - %s) <= 2"
+        params_today.append(target_hour)
+        params_future.append(target_hour)
 
     try:
         with postgres_pool.connection() as conn:
             with conn.cursor() as cur:
                 if target_date == today_wib:
-                    cur.execute("""
+                    cur.execute(f"""
                         SELECT id, title, status, scheduled_at, completed_at
                         FROM content_schedules
                         WHERE agent_name = %s
@@ -277,17 +295,19 @@ def is_agent_covered_on_date(agent_name: str, target_date: datetime.date) -> tup
                             OR status = 'in_progress'
                             OR (status = 'pending' AND (scheduled_at AT TIME ZONE 'UTC' + INTERVAL '7 hours')::date = %s)
                           )
+                          {hour_filter}
                         ORDER BY scheduled_at ASC;
-                    """, (agent_name, target_date, target_date))
+                    """, tuple(params_today))
                 else:
-                    cur.execute("""
+                    cur.execute(f"""
                         SELECT id, title, status, scheduled_at, completed_at
                         FROM content_schedules
                         WHERE agent_name = %s
                           AND status IN ('pending', 'in_progress')
                           AND (scheduled_at AT TIME ZONE 'UTC' + INTERVAL '7 hours')::date = %s
+                          {hour_filter}
                         ORDER BY scheduled_at ASC;
-                    """, (agent_name, target_date))
+                    """, tuple(params_future))
                 
                 rows = cur.fetchall()
                 for r in rows:
@@ -370,46 +390,65 @@ def pull_earliest_future_task_forward(
         return None
 
 
-def fetch_candidate_for_stark(existing_topics: set[str]) -> tuple[str, str, dict[str, Any]]:
-    """Mengambil 1 topik teknologi baru yang belum pernah dikerjakan Stark (GitHub Trending -> Google News -> Fallback)."""
-    # 1. GitHub Trending
+def fetch_candidate_for_stark(
+    existing_topics: set[str], preferred_category: str | None = None
+) -> tuple[str, str, dict[str, Any]]:
+    """
+    Mengambil 1 topik teknologi/gaming/AI/IoT baru yang belum pernah dikerjakan Stark.
+    Prioritas 1: Database Sumber RSS (content_rss_sources di Supabase - 28+ media aktif)
+    Prioritas 2: GitHub Trending Weekly (Programming & Tools)
+    Prioritas 3: Google News Tech & Gaming RSS
+    Prioritas 4: Dynamic Curated Fallbacks
+    """
+    # 1. Database RSS Sources (28+ media feed terdaftar di Supabase)
     try:
-        raw_gh = get_github_trending_weekly(language="", max_items=15)
-        for item in raw_gh:
-            r_name = item.get("repo_name", "").strip().lower()
-            r_url = item.get("repo_url", "").strip().lower()
-            if r_name and r_name not in existing_topics and r_url not in existing_topics:
-                title = f"Bedah Repositori: {item['repo_name']}"
-                existing_topics.add(r_name)
-                existing_topics.add(r_url)
-                existing_topics.add(title.lower())
-                input_data = {
-                    "query": item.get("description") or item["repo_name"],
-                    "topic": title,
-                    "task_type": "article",
-                    "action": "trend-article",
-                    "source": "github",
-                    "target_urls": item["repo_url"],
-                    "category": "programming",
-                    "dry_run": False,
-                }
-                return title, "trend-article", input_data
+        from orchestrator.tools.rss_fetcher import fetch_next_rss_candidate
+        rss_cand = fetch_next_rss_candidate(existing_topics, preferred_category=preferred_category)
+        if rss_cand:
+            return rss_cand
     except Exception as exc:
-        logger.warning(f"Gagal mengambil GitHub Trending: {exc}")
+        logger.warning(f"Gagal mengambil dari database RSS feed: {exc}")
 
-    # 2. Google News Tech RSS
+    # 2. GitHub Trending (jika slot programming atau fallback)
+    if preferred_category in (None, "programming", "technology"):
+        try:
+            raw_gh = get_github_trending_weekly(language="", max_items=15)
+            for item in raw_gh:
+                r_name = item.get("repo_name", "").strip().lower()
+                r_url = item.get("repo_url", "").strip().lower()
+                if r_name and r_name not in existing_topics and r_url not in existing_topics:
+                    title = f"Bedah Repositori: {item['repo_name']}"
+                    existing_topics.add(r_name)
+                    existing_topics.add(r_url)
+                    existing_topics.add(title.lower())
+                    input_data = {
+                        "query": item.get("description") or item["repo_name"],
+                        "topic": title,
+                        "task_type": "article",
+                        "action": "trend-article",
+                        "source": "github",
+                        "target_urls": item["repo_url"],
+                        "category": "programming",
+                        "dry_run": False,
+                    }
+                    return title, "trend-article", input_data
+        except Exception as exc:
+            logger.warning(f"Gagal mengambil GitHub Trending: {exc}")
+
+    # 3. Google News Tech & Gaming RSS
     try:
-        raw_news = get_google_news_topics(keyword="technology", max_items=15, lang="en")
+        gnews_kw = "gaming" if preferred_category == "games" else "technology"
+        raw_news = get_google_news_topics(keyword=gnews_kw, max_items=15, lang="en")
         for item in raw_news:
             t = item.get("title", "").strip().lower()
             u = item.get("url", "").strip().lower()
             if t and t not in existing_topics and u not in existing_topics:
-                title = item.get("title", "Google News Tech Update")
+                title = item.get("title", "Google News Tech & Gaming Update")
                 existing_topics.add(t)
                 existing_topics.add(u)
                 existing_topics.add(title.lower())
                 from orchestrator.tools.kodepintar_publisher import determine_article_category
-                cat = determine_article_category(title)
+                cat = determine_article_category(title, default_category=preferred_category or "technology")
                 input_data = {
                     "query": title,
                     "topic": title,
@@ -680,11 +719,15 @@ def fetch_candidate_for_sosmed(existing_topics: set[str]) -> tuple[str, str, dic
 
 
 def replenish_task_for_agent(
-    agent_name: str, target_date: datetime.date, target_hour: int, existing_topics: set[str]
+    agent_name: str,
+    target_date: datetime.date,
+    target_hour: int,
+    existing_topics: set[str],
+    preferred_category: str | None = None,
 ) -> dict[str, Any] | None:
     """Mencari/menghasilkan pekerjaan baru dari web/feed dan menjadwalkannya pada target_date (Auto-Replenish)."""
     if agent_name == "Stark":
-        candidate = fetch_candidate_for_stark(existing_topics)
+        candidate = fetch_candidate_for_stark(existing_topics, preferred_category=preferred_category)
     elif agent_name == "Sosmed":
         candidate = fetch_candidate_for_sosmed(existing_topics)
     else:
@@ -772,54 +815,35 @@ def rebalance_and_replenish_schedules(days_ahead: int = 7) -> dict[str, Any]:
 
     for agent_name, cfg in AGENT_CADENCE.items():
         coverage_summary[agent_name] = {}
-        target_hour = cfg["target_hour_wib"]
+        slots = cfg.get("slots", [{"hour": cfg["target_hour_wib"], "category": None}])
 
         for day_offset in range(days_ahead):
             target_date = today_wib + timedelta(days=day_offset)
             date_str = target_date.strftime("%Y-%m-%d")
+            slot_reports = []
 
-            is_covered, status_reason, tasks = is_agent_covered_on_date(agent_name, target_date)
+            for slot_info in slots:
+                target_hour = slot_info["hour"]
+                preferred_cat = slot_info.get("category")
 
-            if is_covered:
-                coverage_summary[agent_name][date_str] = f"OK ({tasks[0]['title'][:25]}...)"
-                continue
+                is_covered, status_reason, tasks = is_agent_covered_on_date(
+                    agent_name, target_date, target_hour=target_hour
+                )
 
-            # Agen terdeteksi kosong/nganggur pada hari ini!
-            logger.warning(
-                f"⚠️ [Bay-Zero Audit] Agen {agent_name} terdeteksi KOSONG pada {date_str}! Mengisi slot..."
-            )
+                if is_covered:
+                    slot_reports.append(f"{target_hour:02d}:00 OK")
+                    continue
 
-            # Langkah 1: Coba majukan tugas pending dari hari berikutnya (Fast-Forward)
-            pulled = pull_earliest_future_task_forward(agent_name, target_date, target_hour)
-            if pulled:
-                pulled_forward.append(pulled)
-                coverage_summary[agent_name][date_str] = f"Pulled from {pulled['old_date']}"
+                # Agen terdeteksi kosong/nganggur pada slot ini!
+                logger.warning(
+                    f"⚠️ [Bay-Zero Audit] Agen {agent_name} terdeteksi KOSONG pada {date_str} jam {target_hour:02d}:00! Mengisi slot..."
+                )
 
-                try:
-                    from orchestrator.events import emit_agent_event
-                    emit_agent_event(
-                        thread_id="system",
-                        node="bayzero_schedule_audit",
-                        status="in_progress",
-                        message=(
-                            f"⏩ Bay-Zero memajukan jadwal '{pulled['title'][:35]}...' milik {agent_name} "
-                            f"ke {date_str} agar agen tidak menganggur."
-                        ),
-                        details={
-                            "agent_name": "Bay-Zero",
-                            "action": "pull_forward",
-                            "target_agent": agent_name,
-                            "schedule_id": pulled["schedule_id"],
-                        },
-                    )
-                except Exception:
-                    pass
-            else:
-                # Langkah 2: Jika tidak ada tugas masa depan yang bisa dimajukan, cari tugas baru (Replenish)
-                new_task = replenish_task_for_agent(agent_name, target_date, target_hour, existing_topics)
-                if new_task:
-                    replenished.append(new_task)
-                    coverage_summary[agent_name][date_str] = f"Replenished ({new_task['title'][:25]}...)"
+                # Langkah 1: Coba majukan tugas pending dari hari berikutnya (Fast-Forward)
+                pulled = pull_earliest_future_task_forward(agent_name, target_date, target_hour)
+                if pulled:
+                    pulled_forward.append(pulled)
+                    slot_reports.append(f"{target_hour:02d}:00 Pulled")
 
                     try:
                         from orchestrator.events import emit_agent_event
@@ -828,20 +852,50 @@ def rebalance_and_replenish_schedules(days_ahead: int = 7) -> dict[str, Any]:
                             node="bayzero_schedule_audit",
                             status="in_progress",
                             message=(
-                                f"✨ Bay-Zero menemukan tugas baru '{new_task['title'][:35]}...' untuk {agent_name} "
-                                f"pada {date_str} agar kuota harian terpenuhi."
+                                f"⏩ Bay-Zero memajukan jadwal '{pulled['title'][:35]}...' milik {agent_name} "
+                                f"ke {date_str} ({target_hour:02d}:00 WIB) agar slot terisi."
                             ),
                             details={
                                 "agent_name": "Bay-Zero",
-                                "action": "replenish",
+                                "action": "pull_forward",
                                 "target_agent": agent_name,
-                                "schedule_id": new_task["schedule_id"],
+                                "schedule_id": pulled["schedule_id"],
                             },
                         )
                     except Exception:
                         pass
                 else:
-                    coverage_summary[agent_name][date_str] = "KOSONG (Sumber habis - Menunggu Kang Bos)"
+                    # Langkah 2: Cari tugas baru (Replenish) dengan preferred category slot
+                    new_task = replenish_task_for_agent(
+                        agent_name, target_date, target_hour, existing_topics, preferred_category=preferred_cat
+                    )
+                    if new_task:
+                        replenished.append(new_task)
+                        slot_reports.append(f"{target_hour:02d}:00 Replenished")
+
+                        try:
+                            from orchestrator.events import emit_agent_event
+                            emit_agent_event(
+                                thread_id="system",
+                                node="bayzero_schedule_audit",
+                                status="in_progress",
+                                message=(
+                                    f"✨ Bay-Zero menemukan tugas baru '{new_task['title'][:35]}...' untuk {agent_name} "
+                                    f"pada {date_str} ({target_hour:02d}:00 WIB) agar kuota terpenuhi."
+                                ),
+                                details={
+                                    "agent_name": "Bay-Zero",
+                                    "action": "replenish",
+                                    "target_agent": agent_name,
+                                    "schedule_id": new_task["schedule_id"],
+                                },
+                            )
+                        except Exception:
+                            pass
+                    else:
+                        slot_reports.append(f"{target_hour:02d}:00 KOSONG")
+
+            coverage_summary[agent_name][date_str] = " | ".join(slot_reports)
 
     total_actions = len(pulled_forward) + len(replenished)
     logger.info(
