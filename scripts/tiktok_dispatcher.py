@@ -40,14 +40,9 @@ TIKTOK_ACCOUNTS: dict[str, dict[str, Any]] = {
         "integration_id": os.getenv("POSTIZ_TIKTOK_KEDAI_INTEGRATION_ID") or "cmw2y48yi0003o274ue9csad3",
         "subfolder": "kedaidaily",
         "method": "UPLOAD",  # Draf ke Inbox HP untuk disematkan Keranjang Kuning
-        "apply_cover": False,
-        "default_title": "Rekomendasi Spesial Kedai Daily Nurul",
-        "default_caption": (
-            "Rekomendasi terbaik hari ini dari Kedai Daily Nurul! ✨ "
-            "Kualitas terjamin, harga bersahabat, siap kirim ke seluruh Indonesia 🛍️📦\n\n"
-            "👉 Klik keranjang kuning di bawah untuk order sekarang!\n\n"
-            "#kedaidailynurul #racuntiktok #belilokal #tiktokshop #rekomendasiproduk #fyp"
-        ),
+        "apply_cover": True,
+        "default_title": "Kedai Daily",
+        "default_caption": "#fyppppppp\n#viralootd\n#hijabviral",
     },
     "berdongeng": {
         "name": "DongengIDN (@berdongeng)",
@@ -55,12 +50,8 @@ TIKTOK_ACCOUNTS: dict[str, dict[str, Any]] = {
         "subfolder": "berdongeng",
         "method": "UPLOAD",  # Draf ke Inbox HP dengan Cover Otomatis (FYP & Keranjang Kuning Maksimal)
         "apply_cover": True,
-        "default_title": "Dongeng Indonesia: Kisah Pilihan",
-        "default_caption": (
-            "Kisah dongeng pilihan spesial untuk hari ini! ✨ Cerita baik, untuk hari yang lebih baik 🌙📖\n\n"
-            "👉 Jangan lupa follow TikTok @berdongeng dan unduh aplikasinya sekarang di App Store & Google Play! 📲💖\n\n"
-            "#dongengindonesia #berdongeng #ceritaanak #kisahdongeng #fyp"
-        ),
+        "default_title": "DongengIDN",
+        "default_caption": "#fyppppppp\n#viralootd\n#hijabviral",
     },
     "kittengaul": {
         "name": "Kitten Gaul (@kittengaul)",
@@ -133,13 +124,22 @@ def resolve_channel_cover(file_path: str, integration_id: str | None = None) -> 
                     logger.info(f"🖼️ Menemukan cover alias channel dongeng: {alias}")
                     return cand
 
+        # Fallback alias jika channel kedai daily / hijab
+        if integration_id == "cmw2y48yi0003o274ue9csad3":
+            for alias in ["kedaidaily.jpg", "kedai.jpg", "hijab.jpg", "nurul.jpg"]:
+                cand = os.path.join(COVERS_DIR, alias)
+                if os.path.exists(cand):
+                    logger.info(f"🖼️ Menemukan cover alias channel kedai daily: {alias}")
+                    return cand
+
     return None
 
 
-def prepend_cover_to_video(video_path: str, cover_path: str, duration: float = 1.0) -> str:
+def prepend_cover_to_video(video_path: str, cover_path: str, duration: float = 0.1) -> str:
     """
     Menyisipkan gambar cover selama `duration` detik di awal video menggunakan FFmpeg.
-    Mengembalikan path file video baru dengan cover yang sudah terpasang di frame pertama.
+    Default 0.1s (sekejap mata/blink) agar terdeteksi sempurna sebagai thumbnail otomatis
+    tanpa mengganggu pengalaman penonton saat video diklik.
     """
     import subprocess
     import tempfile
@@ -191,17 +191,34 @@ def prepend_cover_to_video(video_path: str, cover_path: str, duration: float = 1
         return video_path
 
 
-def upload_media_to_postiz(file_path: str) -> dict[str, Any]:
-    """Mengunggah video ke penyimpanan Postiz."""
+def upload_media_to_postiz(file_path: str, max_retries: int = 3) -> dict[str, Any]:
+    """Mengunggah video ke penyimpanan Postiz dengan mekanisme auto-retry jika timeout/gagal jaringan."""
     filename = os.path.basename(file_path)
     headers = {"Authorization": POSTIZ_API_KEY}
-    with open(file_path, "rb") as f:
-        files = {"file": (filename, f, "video/mp4")}
-        res = requests.post(f"{POSTIZ_BASE_URL}/upload", headers=headers, files=files, timeout=300.0)
+    last_err = None
 
-    if res.status_code != 201:
-        raise RuntimeError(f"Gagal upload ke Postiz ({res.status_code}): {res.text}")
-    return res.json()
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"📤 Mengunggah video '{filename}' ke Postiz Storage (Percobaan {attempt}/{max_retries})...")
+            with open(file_path, "rb") as f:
+                files = {"file": (filename, f, "video/mp4")}
+                res = requests.post(f"{POSTIZ_BASE_URL}/upload", headers=headers, files=files, timeout=180.0)
+
+            if res.status_code == 201:
+                return res.json()
+            else:
+                last_err = RuntimeError(f"Gagal upload ke Postiz ({res.status_code}): {res.text}")
+                logger.warning(f"⚠️ {last_err}")
+        except Exception as exc:
+            last_err = exc
+            logger.warning(f"⚠️ Percobaan upload {attempt}/{max_retries} mengalami kendala koneksi: {exc}")
+
+        if attempt < max_retries:
+            backoff_secs = 5 * attempt
+            logger.info(f"⏳ Menunggu {backoff_secs} detik sebelum mencoba ulang upload...")
+            time.sleep(backoff_secs)
+
+    raise RuntimeError(f"Gagal mengunggah media ke Postiz setelah {max_retries} percobaan: {last_err}")
 
 
 def dispatch_tiktok_draft(
@@ -212,7 +229,7 @@ def dispatch_tiktok_draft(
     integration_id: str | None = None,
     method: str | None = None,
     apply_cover: bool | None = None,
-    cover_duration: float = 1.0,
+    cover_duration: float = 0.1,
     dry_run: bool = False,
 ) -> dict[str, Any]:
     """Mengirim 1 video ke TikTok (Draft atau Direct Post), lalu menghapus file lokal jika sukses."""
@@ -260,6 +277,14 @@ def dispatch_tiktok_draft(
     if detected_acc == "kittengaul" or target_integration == "cmw909dnc0013o274l7q4fjc5":
         final_caption = "#sakura\n#fyp\n#viral\n#sakuraschoolsimulator"
         final_title = "Kitten Gaul"
+
+    # Khusus Channel TikTok DongengIDN (cmw3byats000ao2745rk4z14k) & Kedai Daily (cmw2y48yi0003o274ue9csad3)
+    if target_integration in ("cmw3byats000ao2745rk4z14k", "cmw2y48yi0003o274ue9csad3") or detected_acc in ("berdongeng", "kedaidaily"):
+        final_caption = "#fyppppppp\n#viralootd\n#hijabviral"
+        if detected_acc == "berdongeng" or target_integration == "cmw3byats000ao2745rk4z14k":
+            final_title = "DongengIDN"
+        else:
+            final_title = "Kedai Daily"
 
     account_name = acct_conf.get("name", target_integration)
     if dry_run:
@@ -500,8 +525,19 @@ if __name__ == "__main__":
     parser.add_argument("--integration-id", help="Override ID Integrasi TikTok tujuan")
     parser.add_argument("--limit", type=int, default=1, help="Berapa banyak video di antrean yang diproses per akun (default: 1)")
     parser.add_argument("--all", action="store_true", help="Proses seluruh video yang ada di antrean")
+    parser.add_argument("--jitter", type=int, default=0, help="Jeda acak (maksimum menit) sebelum mulai memproses agar tidak terdeteksi bot (e.g. --jitter 8)")
     parser.add_argument("--dry-run", action="store_true", help="Simulasi tanpa mengirim ke API")
     args = parser.parse_args()
+
+    if args.jitter > 0 and not args.dry_run:
+        import random
+        max_secs = max(60, args.jitter * 60)
+        delay_secs = random.randint(60, max_secs)
+        logger.info(
+            f"🎲 [Humanize Jitter] Menunggu secara acak selama {delay_secs} detik "
+            f"({round(delay_secs / 60, 1)} menit) sebelum dispatch agar waktu posting terlihat organik..."
+        )
+        time.sleep(delay_secs)
 
     if args.file:
         dispatch_tiktok_draft(

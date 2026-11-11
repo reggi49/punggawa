@@ -689,12 +689,18 @@ def fetch_candidate_for_sosmed(existing_topics: set[str]) -> tuple[str, str, dic
         if clean_title.lower() in existing_topics or filename.lower() in existing_topics:
             continue
 
+        target_integ = settings.POSTIZ_TIKTOK_INTEGRATION_ID or "cmw3byats000ao2745rk4z14k"
+        resolved_caption = custom_caption
+        if not resolved_caption:
+            if target_integ in ("cmw3byats000ao2745rk4z14k", "cmw2y48yi0003o274ue9csad3"):
+                resolved_caption = "#fyppppppp\n#viralootd\n#hijabviral"
+
         return clean_title, "tiktok", {
             "task_type": "tiktok",
             "file_path": vpath,
             "filename": filename,
-            "caption": custom_caption,
-            "integration_id": settings.POSTIZ_TIKTOK_INTEGRATION_ID or "cmw2y48yi0003o274ue9csad3",
+            "caption": resolved_caption,
+            "integration_id": target_integ,
             "strategy": "draft_inbox",
         }
 
